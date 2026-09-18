@@ -855,3 +855,57 @@ func TestAnActivityTheSiteWithheldIsNotAnEmptyCourse(t *testing.T) {
 		t.Errorf("the message does not name what the site withheld:\n%s", stderr)
 	}
 }
+
+func TestAPartialListSaysSoInHumanOutput(t *testing.T) {
+	// 站台把讀不到的課／被限制的活動從一次**成功**的回覆裡拿掉，契約用 meta.partial
+	// 記下來——但那只有 --json 的讀者看得到。人類看到的是一張短了幾行的表，
+	// 沒有任何東西告訴他這張表是不完整的。提示走 stderr，管線收到的仍然只有資料。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionAssignments, map[string]any{
+		"courses": []any{map[string]any{
+			"id": 15, "shortname": "CS5006",
+			"assignments": []any{map[string]any{
+				"id": 7, "cmid": 12, "course": 15, "name": "Essay 1",
+				"duedate": 1789000000, "cutoffdate": 0,
+				"intro": "", "introformat": 1, "grade": 100,
+				"allowsubmissionsfromdate": 0, "maxattempts": -1, "timelimit": 0,
+				"teamsubmission": 0, "blindmarking": 0,
+				"introattachments": []any{}, "configs": pluginConfigs(nil),
+				"submissiondrafts": boolToInt(true), "requiresubmissionstatement": 0,
+			}},
+		}},
+		"warnings": []any{map[string]any{
+			"item": "module", "itemid": 13, "warningcode": "1",
+			"message": "No access rights in module context",
+		}},
+	})
+
+	stdout, stderr, code := a.run("assignment", "list", "--course", "15")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Essay 1") {
+		t.Fatalf("the readable assignment was dropped:\n%s", stdout)
+	}
+	if !strings.Contains(stderr, "incomplete") {
+		t.Errorf("a filtered list was presented as the whole answer:\n%s", stderr)
+	}
+	if strings.Contains(stdout, "incomplete") {
+		t.Errorf("the notice went into the data a pipe receives:\n%s", stdout)
+	}
+}
+
+func TestACompleteListIsNotAnnouncedAsPartial(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+
+	stdout, stderr, code := a.run("assignment", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if stdout == "" {
+		t.Fatal("nothing was listed")
+	}
+	if strings.Contains(stderr, "incomplete") {
+		t.Errorf("a complete answer was called incomplete:\n%s", stderr)
+	}
+}

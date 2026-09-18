@@ -47,6 +47,13 @@ type Result struct {
 }
 
 // Render writes a successful result.
+//
+// A partial answer is announced on stderr after the data. Moodle filters a
+// successful reply rather than refusing it — a course the account cannot read,
+// an activity a restriction withholds — and the contract has carried that as
+// meta.partial all along, where only a --json reader ever saw it. A person
+// reading a short list had no way to tell it was short. Stderr keeps the notice
+// out of the data, so a pipe still receives exactly the rows.
 func (r Renderer) Render(res Result) error {
 	if r.Format == FormatJSON {
 		return r.writeJSON(res.Envelope)
@@ -54,7 +61,14 @@ func (r Renderer) Render(res Result) error {
 	if res.Human == nil {
 		return nil
 	}
-	return res.Human(r.Streams.Out)
+	if err := res.Human(r.Streams.Out); err != nil {
+		return err
+	}
+	if res.Envelope.Meta.Partial {
+		fmt.Fprintln(r.Streams.Err,
+			"Note: the site left something out of this answer, so it is incomplete.")
+	}
+	return nil
 }
 
 // reported marks a failure whose output has already been written. Doctor
