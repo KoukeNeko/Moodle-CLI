@@ -909,3 +909,29 @@ func TestACompleteListIsNotAnnouncedAsPartial(t *testing.T) {
 		t.Errorf("a complete answer was called incomplete:\n%s", stderr)
 	}
 }
+
+func TestAWithheldAssignmentIsNotSentBackToTheListThatHidesIt(t *testing.T) {
+	// 被限制擋掉的作業，在這份清單裡跟「已經被刪掉」長得一模一樣，我們分不出來。
+	// 但把人指回 `assignment list`——那裡同樣看不到它——等於讓他繞回原地。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionAssignments, map[string]any{
+		"courses": []any{map[string]any{
+			"id": 15, "shortname": "CS5006", "assignments": []any{},
+		}},
+		"warnings": []any{map[string]any{
+			"item": "module", "itemid": 45, "warningcode": "1",
+			"message": "No access rights in module context",
+		}},
+	})
+
+	_, stderr, code := a.run("assignment", "show", "26")
+	if code != v1.ExitNotFound {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitNotFound, stderr)
+	}
+	if strings.Contains(stderr, "moodle assignment list") {
+		t.Errorf("the reader was sent to a list the assignment is also missing from:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "45") {
+		t.Errorf("the message does not say the reply was short:\n%s", stderr)
+	}
+}

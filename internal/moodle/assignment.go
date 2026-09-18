@@ -286,6 +286,18 @@ func (b *AssignmentBackend) Show(ctx context.Context, assignmentID string) (assi
 			return detail, nil
 		}
 	}
+	// An assignment the site withheld is absent from this listing exactly as a
+	// deleted one is. The warning names a course module, and the question asked
+	// about an assignment, so which of the two this is cannot be settled from
+	// here — but sending someone to `assignment list`, where it is equally
+	// absent, walks them in a circle. Say that the reply was short instead.
+	if withheld := withheldActivities(dto); len(withheld) > 0 {
+		return assignment.Detail{}, errs.New(errs.CodeNotFound,
+			fmt.Sprintf("no assignment with id %s in what this account can read", assignmentID)).
+			WithHint(fmt.Sprintf("the site also withheld activity %s from the same reply, "+
+				"so this may be one of them rather than one that does not exist",
+				strings.Join(withheld, ", ")))
+	}
 	return assignment.Detail{}, errs.New(errs.CodeNotFound,
 		fmt.Sprintf("no assignment with id %s", assignmentID)).
 		WithHint("list them with `moodle assignment list`")
