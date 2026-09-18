@@ -134,7 +134,9 @@ func newForumReadCommand(r *Renderer, deps Deps) *cobra.Command {
 			posts, _ := envelope.Data.([]v1.Post)
 			return r.Render(Result{
 				Envelope: envelope,
-				Human:    func(w io.Writer) error { return writeThread(w, posts) },
+				Human: func(w io.Writer) error {
+					return writeThread(w, posts, result.WithheldPosts)
+				},
 			})
 		},
 	}
@@ -181,7 +183,7 @@ func writeDiscussionTable(w io.Writer, discussions []v1.Discussion) error {
 	return table.Flush()
 }
 
-func writeThread(w io.Writer, posts []v1.Post) error {
+func writeThread(w io.Writer, posts []v1.Post, withheld int) error {
 	if len(posts) == 0 {
 		_, err := fmt.Fprintln(w, "Nothing in this thread.")
 		return err
@@ -213,6 +215,17 @@ func writeThread(w io.Writer, posts []v1.Post) error {
 		for _, attachment := range post.Attachments {
 			fmt.Fprintf(w, "  [attachment] %s (%d bytes)\n", attachment.Name, attachment.Size)
 		}
+	}
+	if withheld > 0 {
+		// A question with its answers withheld looks exactly like a question
+		// nobody answered, and a Q&A forum shows a student precisely that
+		// until they post. Saying how many are missing is the difference
+		// between "nobody replied" and "you cannot see the replies yet".
+		phrase := "posts in this thread were"
+		if withheld == 1 {
+			phrase = "post in this thread was"
+		}
+		fmt.Fprintf(w, "\n%d further %s not sent to this account.\n", withheld, phrase)
 	}
 	return nil
 }

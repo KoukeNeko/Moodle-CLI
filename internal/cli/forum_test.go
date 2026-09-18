@@ -372,3 +372,64 @@ func TestAnUnavailableProbeLeavesTheListingStanding(t *testing.T) {
 		t.Errorf("the listing did not stand:\n%s", stdout)
 	}
 }
+
+func TestAQAndAForumsWithheldRepliesAreCounted(t *testing.T) {
+	// Q&A 論壇在你自己發文之前只給你看問題，把所有回覆扣住。回覆本身沒有任何
+	// 訊號：warnings 是空的、鍵一模一樣、貼文帶的 capabilities 也一樣。
+	// 照印就是讓學生以為沒有人回答——而實際上有，只是要先發文才看得到。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.withForum()
+	f.server.HandleValue(moodle.FunctionForumPosts, map[string]any{
+		"posts": []any{
+			post(7, nil, "Tammy Teacher", "第一次作業的常見問題", "<p>先看評分標準。</p>", 1789000000),
+		},
+		"forumid": 2, "courseid": 2, "warnings": []any{},
+	})
+
+	stdout, stderr, code := f.run("forum", "read", "1")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "1 further post") {
+		t.Errorf("a thread with its replies withheld read as one nobody answered:\n%s", stdout)
+	}
+	if !strings.Contains(stderr, "incomplete") {
+		t.Errorf("the answer was not marked partial:\n%s", stderr)
+	}
+}
+
+func TestAThreadNobodyRepliedToIsNotCalledIncomplete(t *testing.T) {
+	// 真的沒人回的討論串也只有一篇貼文。誤報等於在每一個沒人回的問題底下
+	// 告訴使用者「有東西被藏起來了」。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.withForum()
+	f.server.HandleValue(moodle.FunctionForumDiscussion, map[string]any{
+		"discussions": []any{map[string]any{
+			"id": 7, "discussion": 1, "name": "第一次作業的常見問題",
+			"userfullname": "Tammy Teacher", "usermodifiedfullname": "Tammy Teacher",
+			"created": 1789000000, "timemodified": 1789000000,
+			"numreplies": 0, "numunread": 0,
+			"pinned": false, "locked": false, "canreply": true,
+		}},
+		"warnings": []any{},
+	})
+	f.server.HandleValue(moodle.FunctionForumPosts, map[string]any{
+		"posts": []any{
+			post(7, nil, "Tammy Teacher", "第一次作業的常見問題", "<p>先看評分標準。</p>", 1789000000),
+		},
+		"forumid": 2, "courseid": 2, "warnings": []any{},
+	})
+
+	stdout, stderr, code := f.run("forum", "read", "1")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "further post") {
+		t.Errorf("a thread nobody replied to was reported as filtered:\n%s", stdout)
+	}
+	if strings.Contains(stderr, "incomplete") {
+		t.Errorf("a complete thread was marked partial:\n%s", stderr)
+	}
+}

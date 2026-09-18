@@ -76,6 +76,10 @@ type postsDTO struct {
 			View string `json:"view"`
 		} `json:"urls"`
 	} `json:"posts"`
+	// ForumID is the thread's forum, which the caller did not have to know.
+	// It is what makes the reply-count check below possible without asking the
+	// reader for something they were not holding.
+	ForumID int64 `json:"forumid"`
 }
 
 // ForumBackend reads forums over the web service API.
@@ -310,7 +314,52 @@ func (b *ForumBackend) Thread(ctx context.Context, discussionID string) (forum.T
 	}
 
 	orderForReading(result.Posts)
+	if len(result.Posts) == 1 {
+		// Exactly one post is the shape a Q&A forum produces for someone who
+		// has not posted yet: it shows the question and withholds every
+		// answer. It is also the shape of a thread nobody has replied to, and
+		// the two read identically — a student concludes nobody answered.
+		//
+		// Only this shape is worth a round trip. Once an account can see any
+		// reply it can see them all, so a thread that came back with more than
+		// one post is not being filtered this way.
+		if withheld := b.withheldPosts(ctx, dto.ForumID, id, len(result.Posts)); withheld > 0 {
+			result.WithheldPosts = withheld
+			result.Provenance.Partial = true
+		}
+	}
 	return result, nil
+}
+
+// withheldPosts reports how many posts the site kept back from this thread.
+//
+// Nothing in the posts reply says any were: the warnings array is empty, the
+// key set is identical, and the posts that arrive carry the same capabilities
+// as a full reading — measured. The discussion listing does know, because its
+// numreplies counts the thread rather than what this account may read.
+//
+// Zero is both "none were withheld" and "could not tell". Only a count the
+// site actually supports is acted on.
+func (b *ForumBackend) withheldPosts(ctx context.Context, forumID, discussionID int64, got int) int {
+	if forumID == 0 {
+		return 0
+	}
+	var dto discussionsDTO
+	if err := b.route.call(ctx, FunctionForumDiscussion,
+		map[string]any{"forumid": forumID}, &dto); err != nil {
+		return 0
+	}
+	for _, item := range dto.Discussions {
+		if item.Discussion != discussionID {
+			continue
+		}
+		// The opening post is not a reply, so a thread holds numreplies + 1.
+		if missing := item.NumReplies + 1 - got; missing > 0 {
+			return missing
+		}
+		return 0
+	}
+	return 0
 }
 
 // orderForReading puts a thread in the order a person reads it.

@@ -92,7 +92,11 @@ type DiscussionsResult struct {
 type ThreadResult struct {
 	DiscussionID string
 	Posts        []Post
-	Provenance   site.Provenance
+	// WithheldPosts is how many posts the site kept back from this account,
+	// when it said so. Zero covers both "none" and "could not tell", so it is
+	// never evidence that a thread is complete.
+	WithheldPosts int
+	Provenance    site.Provenance
 }
 
 // Backend is one way of reading forums.
