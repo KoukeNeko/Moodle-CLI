@@ -1,4 +1,5 @@
-# 編譯產物
+# 編譯產物（bin/ 為 Makefile 的輸出目錄，沿用 taiga-cli 慣例）
+/bin/
 /moodle
 /moodle.exe
 /dist/

@@ -5,13 +5,21 @@
 
 ## 用法
 
+從 repo 根目錄：
+
 ```bash
-./up.sh v52      # 起 Moodle 5.2（標準站 + 變體站），等就緒後自動佈建
-./up.sh v51      # Moodle 5.1
-./up.sh v45      # Moodle 4.5 LTS
-./down.sh v52            # 停掉，保留資料
-./down.sh v52 --purge    # 停掉並刪除資料
+make moodle-up    V=v52   # 起 Moodle 5.2（標準站 + 變體站），等就緒後自動佈建
+make moodle-up    V=v51   # Moodle 5.1
+make moodle-up    V=v45   # Moodle 4.5 LTS
+make moodle-down  V=v52   # 停掉，保留資料
+make moodle-purge V=v52   # 停掉並刪除資料
+make moodle-status        # 列出目前的測試站
 ```
+
+`make` 只是薄薄一層；實際進入點是 [`scripts/moodle-env.sh`](../../scripts/moodle-env.sh)
+（固定 project name `moodle-cli-e2e`、`docker compose --wait`、失敗時倒出 log），
+慣例沿用 [KoukeNeko/taiga-cli](https://github.com/KoukeNeko/taiga-cli) 的
+`scripts/test-integration.sh`。
 
 **一次只起一個版本。** 每個站約 300–500MB，六個一起會吃爆 8GB 的機器。
 
@@ -86,12 +94,13 @@ curl -s http://localhost:8521/webservice/rest/server.php \
 | 5.2.3 | ✅ token + 課程 + 三種作業 | ✅ 回 `enablewsdescription` | 429 |
 
 > 同樣的種子資料，三個版本開放的函式數量都不同（437／431／429）。這正是
-> 「看函式清單、不看版本號」這個做法的實證。
+> 「看函式清單、不看版本號」這個做法
+> 「看函式清單、不看版本號」的實證。
 
 ## 限制
 
 - 這些站是 **HTTP**。QR 登入與 autologin 需要 HTTPS（Moodle 會擋 `httpsrequired`），
   所以 **SSO 相關的登入方式無法在這個矩陣上測**，要另外準備 HTTPS 站台
-  （待確認項）。
+  。
 - SQLite 僅供測試；Moodle 官方不建議正式環境使用。
 - 尚未加入 SSO（OAuth2）站台，Phase 5 需要時再補。
