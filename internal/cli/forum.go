@@ -144,7 +144,12 @@ func newForumReadCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func writeForumTable(w io.Writer, forums []v1.Forum) error {
 	if len(forums) == 0 {
-		_, err := fmt.Fprintln(w, "No forums.")
+		// Not "this course has no forums": that is more than the reply
+		// supports. mod_forum_get_forums_by_courses filters by activity
+		// visibility and by mod/forum:viewdiscussion before it answers, so an
+		// empty listing is about what this account can see, never about what
+		// the course holds. A course it cannot read at all is refused earlier.
+		_, err := fmt.Fprintln(w, "No forums are visible to this account.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

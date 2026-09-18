@@ -5,6 +5,7 @@ import (
 	"html"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
@@ -14,9 +15,13 @@ import (
 // Forum web service functions. Only reads: mod_forum_view_* records a view and
 // can complete an activity, so none of those are called.
 const (
-	FunctionForums          = "mod_forum_get_forums_by_courses"
-	FunctionForumDiscussion = "mod_forum_get_forum_discussions"
-	FunctionForumPosts      = "mod_forum_get_discussion_posts"
+	FunctionForums = "mod_forum_get_forums_by_courses"
+	// FunctionNavigationOptions is not a forum call. It is the only cheap way
+	// to ask whether this account can reach a course at all, which is what an
+	// empty forum listing leaves open.
+	FunctionNavigationOptions = "core_course_get_user_navigation_options"
+	FunctionForumDiscussion   = "mod_forum_get_forum_discussions"
+	FunctionForumPosts        = "mod_forum_get_discussion_posts"
 )
 
 // forumDTO is Moodle's reply to mod_forum_get_forums_by_courses.
@@ -136,7 +141,80 @@ func (b *ForumBackend) List(ctx context.Context, courseIDs []string) (forum.List
 			Discussions: item.NumDiscussions,
 		})
 	}
+	if len(result.Forums) == 0 && len(courseIDs) > 0 {
+		// Only now, and only for a question about named courses: a listing
+		// that returned something has already answered, and an empty listing
+		// with no course named is a different question.
+		if err := b.refuseUnreadableCourses(ctx, courseIDs); err != nil {
+			return forum.ListResult{}, err
+		}
+	}
 	return result, nil
+}
+
+// navigationOptionsDTO is Moodle's reply to
+// core_course_get_user_navigation_options. Only the shape that says which
+// courses were readable is mapped; the options themselves are not wanted.
+type navigationOptionsDTO struct {
+	Courses []struct {
+		ID int64 `json:"id"`
+	} `json:"courses"`
+	Warnings []struct {
+		Item        string `json:"item"`
+		ItemID      int64  `json:"itemid"`
+		WarningCode string `json:"warningcode"`
+	} `json:"warnings"`
+}
+
+// refuseUnreadableCourses reports the courses this account cannot reach.
+//
+// mod_forum_get_forums_by_courses computes warnings and then drops them: its
+// returns declaration has no field for them, and the source says so. An empty
+// reply is therefore three different answers at once — the course is
+// unreachable, every forum in it is hidden from this account, or there are
+// none — and nothing in the reply separates them.
+//
+// This asks a different function the same question. It is worth a round trip
+// only because the listing already came back empty, and it answers the one
+// part that can be answered: get_user_navigation_options runs
+// validate_context() rather than checking enrolments, so a manager holding no
+// enrolment is reported as able to read the course, which is what ruled out
+// deciding this from the account's own course list.
+//
+// A probe that does not answer leaves the question open rather than closing
+// it the wrong way: only a warning naming a course is treated as a refusal.
+func (b *ForumBackend) refuseUnreadableCourses(ctx context.Context, courseIDs []string) error {
+	ids := make([]any, 0, len(courseIDs))
+	for _, raw := range courseIDs {
+		id, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return nil
+		}
+		ids = append(ids, id)
+	}
+
+	var dto navigationOptionsDTO
+	if err := b.route.call(ctx, FunctionNavigationOptions,
+		map[string]any{"courseids": ids}, &dto); err != nil {
+		// The site may not offer this function, or the route may not reach it.
+		// Either way nothing has been learned, and the listing stands.
+		return nil
+	}
+
+	var unreadable []string
+	for _, warning := range dto.Warnings {
+		if warning.Item != "course" {
+			continue
+		}
+		unreadable = append(unreadable, strconv.FormatInt(warning.ItemID, 10))
+	}
+	if len(unreadable) == 0 {
+		return nil
+	}
+	return errs.New(errs.CodePermissionDenied,
+		"this account cannot read course "+strings.Join(unreadable, ", ")).
+		WithHint("the forum listing came back empty because the course is out of reach, " +
+			"not because it holds no forums")
 }
 
 func (b *ForumBackend) Discussions(ctx context.Context, forumID string) (forum.DiscussionsResult, error) {

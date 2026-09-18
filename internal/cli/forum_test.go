@@ -311,3 +311,64 @@ func TestAThreadHeldBackByItsGroupIsNotAnEmptyThread(t *testing.T) {
 		t.Errorf("the message does not say why an empty reply settles it:\n%s", stderr)
 	}
 }
+
+func TestACourseTheAccountCannotReadIsNotAForumlessCourse(t *testing.T) {
+	// mod_forum_get_forums_by_courses 算出 warning 之後就丟掉——它的 returns
+	// 定義裡根本沒有那個欄位。於是「這門課你讀不到」跟「這門課沒有論壇」回的
+	// 是同一個空陣列。空陣列照印就是對一門根本沒讀到的課說「這裡沒有論壇」。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionForums, []any{})
+	f.server.HandleValue(moodle.FunctionNavigationOptions, map[string]any{
+		"courses": []any{},
+		"warnings": []any{map[string]any{
+			"item": "course", "itemid": 2, "warningcode": "1",
+			"message": "No access rights in course context",
+		}},
+	})
+
+	stdout, stderr, code := f.run("forum", "list", "--course", "2")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitPermissionDenied, stderr)
+	}
+	if strings.Contains(stdout, "No forums") {
+		t.Errorf("a course the account cannot read was reported as one with no forums:\n%s", stdout)
+	}
+}
+
+func TestACourseTheAccountCanReadButHasNoVisibleForumsIsNotRefused(t *testing.T) {
+	// 探針確認讀得到，就不能拒絕。而且即使如此也只能說「這個帳號看不到論壇」：
+	// 那支函式還會依活動可見性與 mod/forum:viewdiscussion 過濾。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionForums, []any{})
+	f.server.HandleValue(moodle.FunctionNavigationOptions, map[string]any{
+		"courses":  []any{map[string]any{"id": 2, "options": []any{}}},
+		"warnings": []any{},
+	})
+
+	stdout, stderr, code := f.run("forum", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "visible to this account") {
+		t.Errorf("an empty listing claimed more than the reply supports:\n%s", stdout)
+	}
+}
+
+func TestAnUnavailableProbeLeavesTheListingStanding(t *testing.T) {
+	// 站台沒有這支探針時，我們什麼都沒學到——不能因此把一次成功的列表變成拒絕。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionForums, []any{})
+	f.server.FailException(moodle.FunctionNavigationOptions,
+		"webservice_access_exception", "accessexception", "Access control exception")
+
+	stdout, _, code := f.run("forum", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d, want 0: a probe that said nothing must not refuse", code)
+	}
+	if !strings.Contains(stdout, "No forums") {
+		t.Errorf("the listing did not stand:\n%s", stdout)
+	}
+}
