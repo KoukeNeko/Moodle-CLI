@@ -1008,3 +1008,27 @@ func TestARefusalOnOneAssignmentDoesNotSuppressTheNext(t *testing.T) {
 		t.Errorf("the second call answered nothing:\n%s", stdout)
 	}
 }
+
+func TestAnAccountThatIsBothStudentAndStaffIsStillAskedAboutItself(t *testing.T) {
+	// 同一門課可以同時給一個帳號 student 與 teacher 兩個角色，Moodle 取聯集：
+	// 實測站台會**兩個鍵都回**（lastattempt 與 gradingsummary 同時存在）。
+	// 挑一個「人設」來套用就會答錯——問的是「我的繳交狀態」，而他確實有一筆。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, map[string]any{
+		"lastattempt":    lastAttempt("new", nil)["lastattempt"],
+		"gradingsummary": map[string]any{"participantcount": 3, "submissionssubmittedcount": 1},
+		"assignmentdata": map[string]any{},
+		"warnings":       []any{},
+	})
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "nothing submitted yet") {
+		t.Errorf("an account that is also staff was not answered about itself:\n%s", stdout)
+	}
+	if strings.Contains(stderr, "you are staff") {
+		t.Errorf("a participant was told they are staff:\n%s", stderr)
+	}
+}
