@@ -10,6 +10,9 @@
  *     但呼叫 REST 會得到 accessexception。
  *   - moosh activity-add 的 -o 選項不會套用到 assign 的設定欄位，
  *     所以三種作業設定要在這裡改回正確值。
+ *   - moosh course-enrol 在 SQLite 上會把 user_enrolments 寫進去、卻沒有建出
+ *     role_assignments（Moodle 4.5 實測）。那樣學生連 mod/assign:view 都沒有，
+ *     作業列表是空的，每一張表卻都「有資料」，很難查。選課改用 Moodle API。
  *
  * 用法（容器內）：
  *   php /seed.php std    # 標準站：開啟 Web Services
@@ -48,11 +51,40 @@ if ($mode === 'std') {
     echo "[seed] mobile web services DISABLED (variant site)\n";
 }
 
+// 選課與角色指派。
+require_once($CFG->dirroot . '/enrol/manual/lib.php');
+$course = $DB->get_record('course', ['shortname' => 'CS204'], '*', MUST_EXIST);
+$manual = $DB->get_record('enrol',
+    ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+$enrolplugin = enrol_get_plugin('manual');
+
+// student2 是為了交件測試：交出去不可逆，重跑一次要有乾淨的帳號。
+$people = [
+    'teacher1' => 'editingteacher',
+    'student1' => 'student',
+    'student2' => 'student',
+];
+foreach ($people as $username => $roleshort) {
+    $user = $DB->get_record('user', ['username' => $username]);
+    if (!$user) {
+        echo "[seed] WARNING: user not found: $username\n";
+        continue;
+    }
+    $role = $DB->get_record('role', ['shortname' => $roleshort], '*', MUST_EXIST);
+    // 起始日往前挪一天：Moodle 只認「已經開始」的選課，剛好在這一秒開始的會被
+    // 當成還沒生效，佈建完立刻查就會看到一門課都沒有。
+    $enrolplugin->enrol_user($manual, $user->id, $role->id, time() - DAYSECS);
+}
+echo "[seed] enrolled: " . implode(', ', array_keys($people)) . "\n";
+
 // 三種作業設定，對應三種不同的提交流程。
+// nosubmissions 也要歸零：moosh 建立作業時沒有啟用任何繳交外掛，assign 那一列
+// 就被標成「不收繳交」。Moodle 5.1 實測，這時 mod_assign_get_submission_status
+// 會回 nopermission（而不是 submissionsenabled=false），完全看不出真正原因。
 $want = [
-    'A1 direct submit' => ['submissiondrafts' => 0, 'requiresubmissionstatement' => 0],
-    'A2 submit button' => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 0],
-    'A3 statement'     => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 1],
+    'A1 direct submit' => ['submissiondrafts' => 0, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0],
+    'A2 submit button' => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0],
+    'A3 statement'     => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 1, 'nosubmissions' => 0],
 ];
 foreach ($want as $name => $fields) {
     $rec = $DB->get_record('assign', ['name' => $name]);
@@ -63,7 +95,27 @@ foreach ($want as $name => $fields) {
     foreach ($fields as $field => $value) {
         $DB->set_field('assign', $field, $value, ['id' => $rec->id]);
     }
-    echo "[seed] $name -> submissiondrafts={$fields['submissiondrafts']} requiresubmissionstatement={$fields['requiresubmissionstatement']}\n";
+
+    // 沒有啟用任何繳交外掛的話，Moodle 會回 submissionsenabled=false，
+    // 學生根本無法提交 —— 那樣的測試站驗不出提交流程。
+    $plugins = [
+        ['assignsubmission', 'file', 'enabled', '1'],
+        ['assignsubmission', 'file', 'maxfilesubmissions', '3'],
+        ['assignsubmission', 'file', 'maxsubmissionsizebytes', '0'],
+        ['assignsubmission', 'onlinetext', 'enabled', '1'],
+    ];
+    foreach ($plugins as [$subtype, $plugin, $key, $value]) {
+        $conditions = ['assignment' => $rec->id, 'subtype' => $subtype,
+                       'plugin' => $plugin, 'name' => $key];
+        if ($existing = $DB->get_record('assign_plugin_config', $conditions)) {
+            $DB->set_field('assign_plugin_config', 'value', $value, ['id' => $existing->id]);
+        } else {
+            $row = (object) array_merge($conditions, ['value' => $value]);
+            $DB->insert_record('assign_plugin_config', $row);
+        }
+    }
+
+    echo "[seed] $name -> submissiondrafts={$fields['submissiondrafts']} requiresubmissionstatement={$fields['requiresubmissionstatement']} submission plugins enabled\n";
 }
 
 // 權限、服務定義與模組設定都有快取，改完要清。

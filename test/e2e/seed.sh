@@ -29,10 +29,9 @@ m user-create --password 'Teacher123!' --email teacher1@example.com \
    --firstname Tammy --lastname Teacher teacher1 >>"$LOG" || true
 m user-create --password 'Student123!' --email student1@example.com \
    --firstname Sam --lastname Student student1 >>"$LOG" || true
-
-echo "==> [$CONTAINER] 選課"
-m course-enrol -s -r editingteacher CS204 teacher1 >>"$LOG" || true
-m course-enrol -s -r student CS204 student1 >>"$LOG" || true
+# 第二個學生：交件測試會留下不可逆的狀態，多一個乾淨帳號才能重跑一次。
+m user-create --password 'Student123!' --email student2@example.com \
+   --firstname Robin --lastname Reader student2 >>"$LOG" || true
 
 echo "==> [$CONTAINER] 建立三個作業"
 CID=$(docker exec -w /var/www/html "$CONTAINER" \
@@ -62,14 +61,17 @@ RESULT=$(docker exec -w /var/www/html "$CONTAINER" php -r '
 define("CLI_SCRIPT",true);require("/var/www/html/config.php");
 $c=$DB->get_record("course",["shortname"=>"CS204"]);
 if (!$c) { echo "course=MISSING enrolled=0 assignments=0\n"; exit; }
-$n=$DB->count_records_sql("SELECT COUNT(*) FROM {user_enrolments} ue
-     JOIN {enrol} e ON e.id=ue.enrolid WHERE e.courseid=?",[$c->id]);
+$n=$DB->count_records("role_assignments",["contextid"=>context_course::instance($c->id)->id]);
 $a=$DB->count_records("assign",["course"=>$c->id]);
-echo "course=$c->shortname enrolled=$n assignments=$a\n";' 2>>"$LOG")
+echo "course=$c->shortname roles=$n assignments=$a\n";' 2>>"$LOG")
 echo "    $RESULT"
 
-if [ "$RESULT" != "course=CS204 enrolled=2 assignments=3" ]; then
-  echo "ERROR: 佈建不完整（預期 enrolled=2 assignments=3）。詳見 $LOG" >&2
+# 角色指派數用下限而不是等號：驗收腳本會另外建臨時學生（交件不可逆，每次要乾淨
+# 帳號），那是預期中的增加，不該讓重新佈建失敗。作業數則必須剛好三個。
+ENROLLED=${RESULT#*roles=}; ENROLLED=${ENROLLED%% *}
+ASSIGNMENTS=${RESULT##*assignments=}
+if [ "${RESULT%% *}" != "course=CS204" ] || [ "${ENROLLED:-0}" -lt 3 ] || [ "${ASSIGNMENTS:-0}" != "3" ]; then
+  echo "ERROR: 佈建不完整（預期 course=CS204 roles>=3 assignments=3）。詳見 $LOG" >&2
   exit 1
 fi
 

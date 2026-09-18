@@ -33,11 +33,14 @@ make moodle-status        # 列出目前的測試站
 | 5.1 (`v5.1.7`) | http://localhost:8511 | http://localhost:8512 |
 | 5.2 (`v5.2.3`) | http://localhost:8521 | http://localhost:8522 |
 
-帳號：`admin` / `Admin123!`、`teacher1` / `Teacher123!`、`student1` / `Student123!`
+帳號：`admin` / `Admin123!`、`teacher1` / `Teacher123!`、
+`student1` / `Student123!`、`student2` / `Student123!`
+
+（交件是不可逆的，所以準備了兩個學生；驗收腳本還會自己再建臨時帳號。）
 
 ## 佈建內容
 
-- 課程 `CS204`（Operating Systems），teacher1 為教師、student1 為學生。
+- 課程 `CS204`（Operating Systems），teacher1 為教師、student1 與 student2 為學生。
 - 三個作業，對應三種不同的提交流程：
 
   | 作業 | `submissiondrafts` | `requiresubmissionstatement` | 意義 |
@@ -45,6 +48,10 @@ make moodle-status        # 列出目前的測試站
   | A1 direct submit | 0 | 0 | 儲存即算提交 |
   | A2 submit button | 1 | 0 | 需要按「提交評分」 |
   | A3 statement | 1 | 1 | 需要同意提交聲明 |
+
+  三個作業都啟用了 file 與 online text 兩個繳交外掛，因為真實課程通常就是這樣，
+  而且 Moodle 一次 `save_submission` 會寫入所有啟用的外掛——只送檔案、不送
+  online text，會把學生在瀏覽器裡打的字存成空的。這個行為必須測得到。
 
 - 標準站：`enablewebservices`、`enablemobilewebservice`、`rest` 協定、mobile service 已啟用，
   且「已驗證使用者」角色已授予 `webservice/rest:use`。
@@ -82,6 +89,15 @@ curl -s http://localhost:8521/webservice/rest/server.php \
 8. **SQLite 上 moosh 會撞 `mdl_sessions.sid` 的唯一鍵。** moosh 反覆啟動會累積 session 列，
    之後的呼叫全部失敗（Moodle 4.5 實測會讓 `course-enrol`、`activity-add` 整批無聲失敗，
    最後只建出空課程）。`seed.sh` 因此在每次 moosh 前跑 `admin/cli/kill_all_sessions.php`。
+9. **`moosh course-enrol` 會只做一半。** Moodle 4.5 實測：`user_enrolments` 寫進去了，
+   `role_assignments` 卻沒有，而且 moosh 仍然回非零。那樣的站台學生連 `mod/assign:view`
+   都沒有，作業列表是空的，但每張表看起來都「有資料」，極難查。選課因此改由
+   `seed.php` 用 Moodle API 做，驗證關卡也改看角色指派數而不是選課數。
+10. **選課起始日不能是「現在」。** Moodle 只認已經開始的選課，剛好在這一秒開始的會被
+    當成還沒生效，佈建完立刻查就會看到一門課都沒有。`seed.php` 一律往前挪一天。
+11. **`assign.nosubmissions` 要歸零。** moosh 建作業時沒有啟用任何繳交外掛，那一列就被
+    標成「不收繳交」。這時 `mod_assign_get_submission_status` 回的是 `nopermission`，
+    而不是 `submissionsenabled=false`——訊息完全指向錯誤的方向（權限），查很久。
 
 ## 已驗證
 
