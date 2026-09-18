@@ -277,3 +277,79 @@ func TestTokenEndpointErrorKeepsMoodlesOwnWording(t *testing.T) {
 		t.Errorf("upstream errorcode not preserved: %+v", e.Upstream)
 	}
 }
+
+func TestAnExpiredBrowserSessionIsAnAuthenticationProblem(t *testing.T) {
+	// Moodle answers a dead session with servicerequireslogin and says so in
+	// the message. Leaving it unclassified makes it an "upstream error",
+	// which points the user at the server instead of at their own credential:
+	// the one thing to do about it is sign in again.
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("core_course_get_courses", []any{})
+	server.FailException("core_course_get_courses", "moodle_exception", "servicerequireslogin",
+		"Web service is not available. (The session has been logged out or has expired.)")
+
+	var out []any
+	err := newClient(t, server).Call(context.Background(), "tok", "core_course_get_courses", nil, &out)
+	if err == nil {
+		t.Fatal("a dead session was treated as success")
+	}
+	e := errs.From(err)
+	if e.Code != errs.CodeAuthentication {
+		t.Errorf("code = %q, want authentication", e.Code)
+	}
+	if e.Upstream == nil || e.Upstream.ErrorCode != "servicerequireslogin" {
+		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
+	}
+}
+
+func TestACourseTheUserIsNotOnIsAPermissionProblem(t *testing.T) {
+	// require_login() raises this for an account that holds a valid session
+	// but is not on the course — an undergraduate reading a graduate course.
+	// It is not a defect in the site, so it must not read as one.
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("gradereport_user_get_grade_items", map[string]any{})
+	server.FailException("gradereport_user_get_grade_items", "core\\exception\\require_login_exception",
+		"requireloginerror", "Course or activity not accessible.")
+
+	var out map[string]any
+	err := newClient(t, server).Call(context.Background(), "tok",
+		"gradereport_user_get_grade_items", nil, &out)
+	if err == nil {
+		t.Fatal("a course the account is not on was treated as readable")
+	}
+	if e := errs.From(err); e.Code != errs.CodePermissionDenied {
+		t.Errorf("code = %q, want permission_denied", e.Code)
+	}
+}
+
+func TestACapabilityTheUserLacksIsAPermissionProblem(t *testing.T) {
+	// required_capability_exception carries the singular errorcode
+	// "nopermission", which is a different code from the plural
+	// "nopermissions" — the plural is classified and this one was not, so a
+	// manager reading an assignment of a course they are not enrolled in came
+	// back as an upstream fault. The message is Moodle's own untranslated
+	// "error/nopermission", which reads as a broken site; the code is what
+	// tells the truth, and only if it is classified.
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("mod_assign_get_submission_status", map[string]any{})
+	server.FailException("mod_assign_get_submission_status",
+		"core\\exception\\required_capability_exception",
+		"nopermission", "error/nopermission")
+
+	var out map[string]any
+	err := newClient(t, server).Call(context.Background(), "tok",
+		"mod_assign_get_submission_status", nil, &out)
+	if err == nil {
+		t.Fatal("a capability the account lacks was treated as readable")
+	}
+	e := errs.From(err)
+	if e.Code != errs.CodePermissionDenied {
+		t.Errorf("code = %q, want permission_denied", e.Code)
+	}
+	if e.Upstream == nil || e.Upstream.ErrorCode != "nopermission" {
+		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
+	}
+}

@@ -28,7 +28,11 @@ type Server struct {
 	// no writes at all rather than merely that it reported none.
 	requests []Request
 	failures map[string]Failure
-	tokens   map[string]bool
+	// exceptions override failures with a Moodle errorcode a test names
+	// itself, for the codes that are worth classifying but have no canned
+	// Failure of their own.
+	exceptions map[string]exception
+	tokens     map[string]bool
 	// nextItemID is handed out by the upload endpoint.
 	nextItemID int64
 }
@@ -70,12 +74,20 @@ const (
 	FailHTML Failure = "html"
 )
 
+// exception is one of Moodle's error answers, as the site sends it.
+type exception struct {
+	Exception string
+	ErrorCode string
+	Message   string
+}
+
 // New starts a fake Moodle.
 func New() *Server {
 	s := &Server{
-		functions: map[string]Handler{},
-		failures:  map[string]Failure{},
-		tokens:    map[string]bool{},
+		functions:  map[string]Handler{},
+		failures:   map[string]Failure{},
+		exceptions: map[string]exception{},
+		tokens:     map[string]bool{},
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/webservice/rest/server.php", s.handleREST)
@@ -113,6 +125,20 @@ func (s *Server) Fail(function string, failure Failure) {
 		return
 	}
 	s.failures[function] = failure
+}
+
+// FailException answers the function with a Moodle errorcode of the test's
+// choosing. A canned Failure covers the codes that are already understood;
+// this is for the ones being classified now, which a test has to be able to
+// spell out. Passing an empty errorCode clears it.
+func (s *Server) FailException(function, exceptionName, errorCode, message string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if errorCode == "" {
+		delete(s.exceptions, function)
+		return
+	}
+	s.exceptions[function] = exception{Exception: exceptionName, ErrorCode: errorCode, Message: message}
 }
 
 // AddToken marks a token as valid.
@@ -157,9 +183,15 @@ func (s *Server) handleREST(w http.ResponseWriter, r *http.Request) {
 	})
 	handler, known := s.functions[function]
 	failure := s.failures[function]
+	named, namedException := s.exceptions[function]
 	tokenKnown := s.tokens[token]
 	anyTokens := len(s.tokens) > 0
 	s.mu.Unlock()
+
+	if namedException {
+		writeException(w, named.Exception, named.ErrorCode, named.Message)
+		return
+	}
 
 	if failure == FailAppliedThenLost && known {
 		// The name is the behaviour: the site really does the work, and only
@@ -200,8 +232,15 @@ func (s *Server) handleNoLogin(w http.ResponseWriter, r *http.Request) {
 	})
 	handler, known := s.functions[function]
 	failure := s.failures[function]
+	named, namedException := s.exceptions[function]
 	s.mu.Unlock()
 
+	// 命名錯誤碼要在兩個端點都生效。QR 交換走的是這裡（service-nologin），
+	// 而測試不該因為客戶端碰巧用了哪個端點就寫不出那個錯誤。
+	if namedException {
+		writeNoLoginException(w, named.Exception, named.ErrorCode, named.Message)
+		return
+	}
 	if failure != "" {
 		s.writeFailure(w, failure)
 		return
@@ -351,6 +390,19 @@ func writeException(w http.ResponseWriter, exception, errorCode, message string)
 		"errorcode": errorCode,
 		"message":   message,
 	})
+}
+
+// writeNoLoginException is the same failure in the shape the no-login endpoint
+// uses: an array of per-call results, each one carrying its own exception.
+func writeNoLoginException(w http.ResponseWriter, exception, errorCode, message string) {
+	writeJSON(w, []map[string]any{{
+		"error": message,
+		"exception": map[string]any{
+			"exception": exception,
+			"errorcode": errorCode,
+			"message":   message,
+		},
+	}})
 }
 
 func writeJSON(w http.ResponseWriter, value any) {

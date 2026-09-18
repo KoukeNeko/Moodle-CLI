@@ -38,6 +38,11 @@ var knownErrorCodes = map[string]classification{
 	// retry after re-authenticating is safe.
 	"invalidtoken": {errs.CodeAuthentication, errs.ReasonTokenExpired,
 		"sign in again with `moodle auth login`"},
+	// The session behind a browser-session credential is gone. Moodle says so
+	// in as many words, and it is the same problem as an expired token: the
+	// request never ran, so re-authenticating is the whole fix.
+	"servicerequireslogin": {errs.CodeAuthentication, errs.ReasonTokenExpired,
+		"sign in again with `moodle auth login`"},
 	"accessexception": {errs.CodeAuthentication, errs.ReasonTokenExpired,
 		"sign in again with `moodle auth login`"},
 	"invalidlogin": {errs.CodeAuthentication, "",
@@ -60,8 +65,19 @@ var knownErrorCodes = map[string]classification{
 		"this flow only works on an https site"},
 
 	// Permissions: the user is who they say they are, but may not do this.
-	"nopermissions":                 {errs.CodePermissionDenied, "", ""},
+	//
+	// requireloginerror arrives as "Course or activity not accessible" from
+	// require_login() when the caller holds a valid session but is not on the
+	// course — an account reading a course it never enrolled in. An expired
+	// session never reaches here: it is caught earlier, at the login page the
+	// site serves instead of an answer.
+	"nopermissions": {errs.CodePermissionDenied, "", ""},
+	// 單數的 nopermission 是 required_capability_exception 的 errorcode，跟
+	// 複數那個不是同一個碼。少了它，一個「你在這門課沒有這個權限」會被報成
+	// 上游錯誤——指向站台，而該做的是換一個帳號或換一門課。
+	"nopermission":                  {errs.CodePermissionDenied, "", ""},
 	"nopermissiontoviewpage":        {errs.CodePermissionDenied, "", ""},
+	"requireloginerror":             {errs.CodePermissionDenied, "", ""},
 	"required_capability_exception": {errs.CodePermissionDenied, "", ""},
 	"cannotviewprofile":             {errs.CodePermissionDenied, "", ""},
 	"autologinnotallowedtoadmins": {errs.CodePermissionDenied, "",
