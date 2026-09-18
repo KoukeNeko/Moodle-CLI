@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "kind": "resolve",
+  "data": {
+    "url": "http://localhost:8521/webservice/pluginfile.php/16/mod_assign/introattachment/0/rubric.txt",
+    "kind": "file",
+    "module": null,
+    "cmid": null,
+    "course_id": null,
+    "user_id": null,
+    "discussion_id": null,
+    "file_name": "rubric.txt",
+    "command": "moodle file download http://localhost:8521/webservice/pluginfile.php/16/mod_assign/introattachment/0/rubric.txt"
+  },
+  "meta": {
+    "site": null,
+    "account": null,
+    "source": "local",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

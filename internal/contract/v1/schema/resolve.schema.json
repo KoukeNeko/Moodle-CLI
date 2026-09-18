@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/resolve.schema.json",
+  "title": "moodle-cli resolve",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "resolve" },
+    "data": {
+      "type": "object",
+      "required": [
+        "url", "kind", "module", "cmid", "course_id", "user_id",
+        "discussion_id", "file_name", "command"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string" },
+        "kind": {
+          "enum": ["course", "activity", "discussion", "file", "user", "grades", "calendar", "unknown"],
+          "description": "\"unknown\" is a Moodle address this build does not recognise, which is not an error: the address may be perfectly good."
+        },
+        "module": { "type": ["string", "null"], "description": "The activity type, such as assign or forum" },
+        "cmid": {
+          "type": ["string", "null"],
+          "description": "Course module id, which is what an activity address carries. NOT the activity's own id; the commands that take an assignment accept the address itself and do the lookup."
+        },
+        "course_id": { "type": ["string", "null"] },
+        "user_id": { "type": ["string", "null"] },
+        "discussion_id": { "type": ["string", "null"] },
+        "file_name": { "type": ["string", "null"] },
+        "command": { "type": ["string", "null"], "description": "What to run to act on this address; null when nothing here can act on it yet" }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

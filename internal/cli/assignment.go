@@ -112,7 +112,7 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 func newAssignmentShowCommand(r *Renderer, deps Deps) *cobra.Command {
 	var flags sessionFlags
 	cmd := &cobra.Command{
-		Use:         "show <assignment-id>",
+		Use:         "show <assignment-id|url>",
 		Short:       "Show one assignment and where you stand in it",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{annotationKind: "assignment.show"},
@@ -121,13 +121,17 @@ func newAssignmentShowCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			detail, err := service.Show(cmd.Context(), session.capabilities, args[0])
+			id, err := service.Locate(cmd.Context(), session.capabilities, args[0])
+			if err != nil {
+				return err
+			}
+			detail, err := service.Show(cmd.Context(), session.capabilities, id)
 			if err != nil {
 				return err
 			}
 			// The definition alone does not answer the question people
 			// actually have, which is whether their work is in.
-			state, err := service.Status(cmd.Context(), session.capabilities, args[0])
+			state, err := service.Status(cmd.Context(), session.capabilities, id)
 			if err != nil {
 				return err
 			}
@@ -147,7 +151,7 @@ func newAssignmentShowCommand(r *Renderer, deps Deps) *cobra.Command {
 func newAssignmentStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 	var flags sessionFlags
 	cmd := &cobra.Command{
-		Use:         "status <assignment-id>",
+		Use:         "status <assignment-id|url>",
 		Short:       "Show whether your work is saved, handed in, or neither",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{annotationKind: "assignment.status"},
@@ -156,11 +160,15 @@ func newAssignmentStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			state, err := service.Status(cmd.Context(), session.capabilities, args[0])
+			id, err := service.Locate(cmd.Context(), session.capabilities, args[0])
 			if err != nil {
 				return err
 			}
-			envelope := v1.AssignmentStatus(args[0], state,
+			state, err := service.Status(cmd.Context(), session.capabilities, id)
+			if err != nil {
+				return err
+			}
+			envelope := v1.AssignmentStatus(id, state,
 				session.resolved.SiteName, session.resolved.AccountName)
 			payload, _ := envelope.Data.(v1.SubmissionState)
 			return r.Render(Result{
@@ -182,7 +190,7 @@ func newAssignmentSubmitCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobr
 		assumeYes       bool
 	)
 	cmd := &cobra.Command{
-		Use:   "submit <assignment-id> <file>...",
+		Use:   "submit <assignment-id|url> <file>...",
 		Short: "Hand work in, and report what Moodle says afterwards",
 		Long: "Uploads the given files, attaches them to the submission and, when the\n" +
 			"assignment keeps drafts, hands the work in. The final state is read back\n" +
@@ -200,8 +208,12 @@ func newAssignmentSubmitCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobr
 			if err != nil {
 				return err
 			}
+			id, err := service.Locate(cmd.Context(), session.capabilities, args[0])
+			if err != nil {
+				return err
+			}
 			request := assignment.SubmitRequest{
-				AssignmentID:    args[0],
+				AssignmentID:    id,
 				Files:           args[1:],
 				AcceptStatement: acceptStatement,
 				DraftOnly:       draftOnly,

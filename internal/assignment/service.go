@@ -2,6 +2,9 @@ package assignment
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
@@ -31,6 +34,59 @@ func (s *Service) List(ctx context.Context, capabilities *site.Capabilities, cou
 		return ListResult{}, err
 	}
 	return s.backend.List(ctx, courseIDs)
+}
+
+// Locate turns what the caller typed into an assignment id.
+//
+// A bare number is already one. Anything else is read as a Moodle address,
+// which is what someone has in their clipboard after looking at the assignment
+// in a browser. Those addresses carry the course module id rather than the
+// assignment's own id, so getting from one to the other takes a lookup — the
+// two are both small integers and are not interchangeable.
+func (s *Service) Locate(ctx context.Context, capabilities *site.Capabilities, ref string) (string, error) {
+	trimmed := strings.TrimSpace(ref)
+	if trimmed == "" {
+		return "", errs.New(errs.CodeUsage, "no assignment given")
+	}
+	if _, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
+		return trimmed, nil
+	}
+
+	resource, err := site.ParseResourceURL(trimmed)
+	if err != nil {
+		return "", errs.New(errs.CodeUsage,
+			fmt.Sprintf("%q is neither an assignment id nor a Moodle address", ref))
+	}
+	if resource.Kind != site.ResourceActivity || resource.Module != "assign" {
+		return "", errs.New(errs.CodeUsage,
+			fmt.Sprintf("that address points at %s, not an assignment", describeResource(resource))).
+			WithHint("copy the address of the assignment itself")
+	}
+
+	list, err := s.List(ctx, capabilities, nil)
+	if err != nil {
+		return "", err
+	}
+	for _, item := range list.Assignments {
+		if item.CMID == resource.CMID {
+			return item.ID, nil
+		}
+	}
+	return "", errs.New(errs.CodeNotFound,
+		"that assignment is not one you are enrolled in").
+		WithHint("check you are signed in to the right site, with `moodle auth status`")
+}
+
+// describeResource names a resource for an error message.
+func describeResource(resource site.Resource) string {
+	switch resource.Kind {
+	case site.ResourceActivity:
+		return "a " + resource.Module + " activity"
+	case site.ResourceUnknown:
+		return "a part of Moodle this build does not recognise"
+	default:
+		return "a " + string(resource.Kind)
+	}
 }
 
 // Show returns one assignment's full definition.

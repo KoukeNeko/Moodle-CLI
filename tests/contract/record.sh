@@ -65,7 +65,7 @@ fi
 
 for kind in doctor site.inspect auth.status course.list \
             assignment.list assignment.show assignment.status assignment.submit \
-            grade.list grade.overview calendar.upcoming file.download; do
+            grade.list grade.overview calendar.upcoming file.download resolve; do
   case "$kind" in
     doctor)            args=(doctor) ;;
     site.inspect)      args=(site inspect) ;;
@@ -77,6 +77,8 @@ for kind in doctor site.inspect auth.status course.list \
     # A real download, into a scratch directory that is thrown away: the point
     # is that the recorded document comes from bytes that actually moved.
     file.download)     args=(file download "$ATTACHMENT" --dir "$SCRATCH" --force) ;;
+    # Parsing only; recorded against an address this site really produced.
+    resolve)           args=(resolve "$ATTACHMENT") ;;
     assignment.list)   args=(assignment list) ;;
     assignment.show)   args=(assignment show "$WITH_ATTACHMENT") ;;
     assignment.status) args=(assignment status "$ASSIGNMENT") ;;
