@@ -80,7 +80,7 @@ redact() {
   done
   printf '%s' "$text" | sed -E \
     -e "s/(\"($SECRET_FIELDS)\"[[:space:]]*:[[:space:]]*\")[^\"]+/\1<redacted>/g" \
-    -e "s/\b($SECRET_FIELDS)=[A-Za-z0-9._~+-]+/\1=<redacted>/g" \
+    -e "s/\b($SECRET_FIELDS)=[A-Za-z0-9._~+/=-]+/\1=<redacted>/g" \
     -e "s/\b($SECRET_ENVS)=[^ ]+/\1=<redacted>/g"
 }
 

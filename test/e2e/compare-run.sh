@@ -36,13 +36,18 @@ echo "本次：${NEW##*/}"
 # 每一輪本來就會不同的東西先抹掉，否則連續兩次一模一樣的跑測也會整片不同：
 # 跑測時間、建置資訊、站台回的時間戳、mktemp 的目錄、一次性的 QR token。
 # 暫存目錄與 token 會出現在**命令列本身**，所以結束碼那一層也得先過這一關。
+#
+# 憑證一律換成同一個 <secret>，不管紀錄裡留的是原值還是 <redacted>：
+# full-run.sh 的遮蔽範圍改變時，不該讓每一條命令看起來都變了。
 normalise() {
   sed -E \
     -e 's/[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})/<time>/g' \
     -e 's/"commit": *"[0-9a-f]+"/"commit": "<commit>"/g' \
     -e 's/commit [0-9a-f]{7,}/commit <commit>/g' \
     -e 's#/tmp/tmp\.[A-Za-z0-9]+#<tmpdir>#g' \
-    -e 's/qrlogin=[0-9a-f]+/qrlogin=<token>/g' \
+    -e 's/(qrlogin|passport|token|wstoken|sesskey)=[^ &"]+/\1=<secret>/g' \
+    -e 's/(\"(userprivateaccesskey|privatetoken|token|wstoken)\"[[:space:]]*:[[:space:]]*\")[^\"]*/\1<secret>/g' \
+    -e 's/(MOODLE_WS_TOKEN|MOODLE_SESSION)=[^ ]+/\1=<secret>/g' \
     -e 's#logs/[0-9]{8}-[0-9]{6}#logs/<run>#g' \
     "$1"
 }
