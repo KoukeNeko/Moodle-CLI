@@ -129,3 +129,44 @@ func TestAnUnclassifiedErrorStops(t *testing.T) {
 		t.Fatal("an unclassified error fell through to another route")
 	}
 }
+
+func TestExplainDoesNotLeaveTheReasonTrailingOff(t *testing.T) {
+	// A permission refusal carries no hint of its own. Appending the empty
+	// reason anyway leaves "cannot read grades on this site; " — a sentence
+	// that stops at a semicolon and tells the reader nothing.
+	err := site.Explain(errs.New(errs.CodePermissionDenied, "not enrolled"), "read grades")
+
+	hint := errs.From(err).Hint
+	if strings.Contains(hint, ";") {
+		t.Errorf("an empty reason was written out as one: %q", hint)
+	}
+	if !strings.Contains(hint, "read grades") {
+		t.Errorf("the hint does not say what could not be done: %q", hint)
+	}
+}
+
+func TestExplainKeepsAReasonWhenThereIsOne(t *testing.T) {
+	inner := errs.New(errs.CodeUnavailable, "no route").WithHint("tried: ws: no token")
+
+	hint := errs.From(site.Explain(inner, "list forums")).Hint
+	if !strings.Contains(hint, "tried: ws: no token") {
+		t.Errorf("the reason the routes gave was dropped: %q", hint)
+	}
+	if !strings.Contains(hint, "list forums") {
+		t.Errorf("the hint does not say what could not be done: %q", hint)
+	}
+}
+
+func TestExplainKeepsTheCodeAndOutcome(t *testing.T) {
+	// The hint is decoration. What a script reads is the code, and it must
+	// survive being explained.
+	inner := errs.New(errs.CodeAuthentication, "expired").Ambiguous()
+
+	explained := errs.From(site.Explain(inner, "read the calendar"))
+	if explained.Code != errs.CodeAuthentication {
+		t.Errorf("code became %q", explained.Code)
+	}
+	if explained.Outcome != errs.OutcomeAmbiguous {
+		t.Errorf("outcome became %q", explained.Outcome)
+	}
+}

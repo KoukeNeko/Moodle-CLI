@@ -3,7 +3,6 @@ package calendar
 import (
 	"context"
 
-	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
@@ -32,8 +31,7 @@ func (s *Service) Upcoming(ctx context.Context, capabilities *site.Capabilities,
 
 	outcome, err := site.Try(capabilities, attempts)
 	if err != nil {
-		return Result{}, errs.From(err).WithHint(
-			"cannot read the calendar on this site; " + errs.From(err).Hint)
+		return Result{}, site.Explain(err, "read the calendar")
 	}
 	if outcome.Drift {
 		// An earlier route could not read the site. The answer is good, but

@@ -85,6 +85,20 @@ func Unavailable(tried []string, lastError error) error {
 	return err
 }
 
+// Explain adds why the route that refused could not do the work.
+//
+// Most refusals carry no hint of their own — a permission error is its own
+// explanation — and the reason is appended only when there is one. Writing the
+// separator regardless leaves a sentence that trails off after a semicolon.
+func Explain(err error, what string) error {
+	failure := errs.From(err)
+	hint := "cannot " + what + " on this site"
+	if failure.Hint != "" {
+		hint += "; " + failure.Hint
+	}
+	return failure.WithHint(hint)
+}
+
 func join(items []string) string {
 	out := ""
 	for i, item := range items {

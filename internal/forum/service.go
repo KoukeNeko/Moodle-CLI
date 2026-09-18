@@ -37,8 +37,7 @@ func try[T any](s *Service, capabilities *site.Capabilities, what string,
 	outcome, err := site.Try(capabilities, attempts)
 	if err != nil {
 		var zero T
-		return zero, errs.From(err).WithHint("cannot " + what + " on this site; " +
-			errs.From(err).Hint)
+		return zero, site.Explain(err, what)
 	}
 	if outcome.Drift {
 		partial(&outcome.Result)
