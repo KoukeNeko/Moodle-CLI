@@ -37,11 +37,7 @@ func openForums(cmd *cobra.Command, deps Deps, flags sessionFlags) (
 	if err != nil {
 		return nil, nil, err
 	}
-	target, err := targetSite(resolved.SiteName, resolved.Site)
-	if err != nil {
-		return nil, nil, err
-	}
-	session := deps.Auth.OpenWithToken(target, resolved.Account.ID, token)
+	session := openSessionFor(deps, resolved, token)
 	capabilities, err := session.Capabilities(cmd.Context())
 	if err != nil {
 		return nil, nil, err

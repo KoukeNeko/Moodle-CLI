@@ -87,6 +87,8 @@ type Session struct {
 	token     string
 	accountID site.ID
 	cached    *site.Capabilities
+	// cookie is a browser session, used on sites that issue no token.
+	cookie moodle.SessionCookie
 }
 
 // Open builds a session from a stored credential.
@@ -105,6 +107,18 @@ func (m *Manager) Open(target site.Site, siteID, accountID site.ID) (*Session, e
 // as one supplied through the environment for a single run.
 func (m *Manager) OpenWithToken(target site.Site, accountID site.ID, token string) *Session {
 	return &Session{client: m.newClient(target), token: token, accountID: accountID}
+}
+
+// OpenWithSession builds a session that authenticates with a browser session
+// rather than a token, for sites that issue none.
+// The cookie is given as text because the command layer may not name the
+// transport's types; parsing it is this seam's job.
+func (m *Manager) OpenWithSession(target site.Site, accountID site.ID, cookie string) *Session {
+	return &Session{
+		client:    m.newClient(target),
+		accountID: accountID,
+		cookie:    moodle.ParseSessionCookie(cookie),
+	}
 }
 
 // Token returns the stored web service token for an account.
@@ -147,6 +161,12 @@ func (s *Session) Client() *moodle.Client { return s.client }
 // Token returns the credential this session authenticates with.
 func (s *Session) Token() string { return s.token }
 
+// Cookie returns the browser session, empty when there is none.
+func (s *Session) Cookie() moodle.SessionCookie { return s.cookie }
+
+// HasToken reports whether a web service token is available.
+func (s *Session) HasToken() bool { return s.token != "" }
+
 // Capabilities reports what this account may do, fetching once per process.
 //
 // Nothing is cached between runs: the CLI is short-lived, and a stale idea of
@@ -154,6 +174,18 @@ func (s *Session) Token() string { return s.token }
 func (s *Session) Capabilities(ctx context.Context) (*site.Capabilities, error) {
 	if s.cached != nil {
 		return s.cached, nil
+	}
+	if s.token == "" && s.cookie.Value != "" {
+		// A browser session cannot be asked what the site offers:
+		// core_webservice_get_site_info is not exposed over the AJAX endpoint,
+		// and nothing there lists what is. An empty set is the honest answer —
+		// it lets a backend that needs no capability run, and stops one that
+		// needs a token with a reason rather than a failed probe.
+		capabilities := site.NewCapabilities()
+		capabilities.AccountID = s.accountID
+		capabilities.Credential = site.CredentialBrowserSession
+		s.cached = capabilities
+		return capabilities, nil
 	}
 	capabilities, err := s.client.SiteInfo(ctx, s.token, s.accountID)
 	if err != nil {

@@ -52,11 +52,7 @@ func newMCPServeCommand(deps Deps, mode *safety.Mode) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			target, err := targetSite(resolved.SiteName, resolved.Site)
-			if err != nil {
-				return err
-			}
-			session := deps.Auth.OpenWithToken(target, resolved.Account.ID, token)
+			session := openSessionFor(deps, resolved, token)
 			// The handshake happens before any tool call, so a site that
 			// cannot be reached is reported now rather than inside a tool.
 			capabilities, err := session.Capabilities(cmd.Context())

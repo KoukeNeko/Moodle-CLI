@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -26,11 +27,19 @@ type ajaxSite struct {
 	available string
 	cookies   []string
 	sesskeys  []string
+	// courses is the payload the course function answers with.
+	courses string
 }
 
 func newAjaxSite(t *testing.T) *ajaxSite {
 	t.Helper()
-	s := &ajaxSite{available: "core_course_get_enrolled_courses_by_timeline_classification"}
+	s := &ajaxSite{
+		available: "core_course_get_enrolled_courses_by_timeline_classification",
+		// progress 0 with hasprogress false is what a site that does not track
+		// progress actually sends.
+		courses: `{"courses":[{"id":2,"shortname":"CS204","fullname":"Operating Systems",` +
+			`"progress":0,"hasprogress":false,"visible":true}]}`,
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/my/", func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt64(&s.pageHits, 1)
@@ -53,7 +62,7 @@ func newAjaxSite(t *testing.T) *ajaxSite {
 				`"message":"Web service is not available."}}]`))
 			return
 		}
-		_, _ = w.Write([]byte(`[{"error":false,"data":{"courses":[{"id":2,"shortname":"CS204"}]}}]`))
+		_, _ = w.Write([]byte(`[{"error":false,"data":` + s.courses + `}]`))
 	})
 	s.server = httptest.NewServer(mux)
 	t.Cleanup(s.server.Close)
@@ -162,5 +171,52 @@ func TestARejectedSessionIsNotReadAsAMissingSesskey(t *testing.T) {
 	}
 	if !strings.Contains(e.Hint, "browser") {
 		t.Errorf("the hint does not say where to get a new one: %q", e.Hint)
+	}
+}
+
+func TestCoursesOverASessionReportTheirProvenance(t *testing.T) {
+	// A caller has to be able to tell which route answered: the session route
+	// reaches far less, so "this is all your courses" means something
+	// different depending on how it was obtained.
+	s := newAjaxSite(t)
+	result, err := moodle.NewCourseAjaxBackend(s.session(t, "good")).
+		List(context.Background(), course.ListQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Provenance.Source != site.BackendAJAX {
+		t.Errorf("source = %q, want ajax", result.Provenance.Source)
+	}
+	if len(result.Courses) != 1 || result.Courses[0].ShortName != "CS204" {
+		t.Errorf("courses = %+v", result.Courses)
+	}
+}
+
+func TestACourseThatTracksNoProgressIsNullNotZero(t *testing.T) {
+	// The endpoint sends progress 0 alongside hasprogress false. Reporting
+	// that as 0% tells a student they have done none of a course that is not
+	// counting.
+	s := newAjaxSite(t)
+	result, err := moodle.NewCourseAjaxBackend(s.session(t, "good")).
+		List(context.Background(), course.ListQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Courses[0].Progress != nil {
+		t.Errorf("progress = %v, want null", *result.Courses[0].Progress)
+	}
+}
+
+func TestProgressIsKeptWhenTheCourseTracksIt(t *testing.T) {
+	s := newAjaxSite(t)
+	s.courses = `{"courses":[{"id":2,"shortname":"CS204","fullname":"OS",` +
+		`"progress":42,"hasprogress":true,"visible":true}]}`
+	result, err := moodle.NewCourseAjaxBackend(s.session(t, "good")).
+		List(context.Background(), course.ListQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Courses[0].Progress == nil || *result.Courses[0].Progress != 42 {
+		t.Errorf("progress = %v, want 42", result.Courses[0].Progress)
 	}
 }

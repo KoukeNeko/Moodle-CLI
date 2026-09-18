@@ -142,6 +142,30 @@ type SessionCookie struct {
 // site has changed $CFG->sessioncookie.
 const DefaultSessionCookieName = "MoodleSession"
 
+// ParseSessionCookie reads the forms people actually copy.
+//
+// Developer tools hand over the whole Cookie header as often as the pair alone
+// or the bare value, and refusing any of them would be a pointless round trip.
+func ParseSessionCookie(raw string) SessionCookie {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return SessionCookie{}
+	}
+	for _, part := range strings.Split(trimmed, ";") {
+		key, value, found := strings.Cut(strings.TrimSpace(part), "=")
+		if found && strings.EqualFold(strings.TrimSpace(key), DefaultSessionCookieName) {
+			return SessionCookie{
+				Name:  strings.TrimSpace(key),
+				Value: strings.TrimSpace(value),
+			}
+		}
+	}
+	if key, value, found := strings.Cut(trimmed, "="); found {
+		return SessionCookie{Name: strings.TrimSpace(key), Value: strings.TrimSpace(value)}
+	}
+	return SessionCookie{Name: DefaultSessionCookieName, Value: trimmed}
+}
+
 // ExchangeSession turns a browser session into a web service token.
 //
 // Moodle's launch endpoint answers a signed-in browser with a redirect to a

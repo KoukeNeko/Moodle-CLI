@@ -20,6 +20,13 @@ import (
 // configuration and the keychain.
 const EnvWSToken = "MOODLE_WS_TOKEN"
 
+// EnvSession supplies a browser session for a single run.
+//
+// It is the only way in on a site that issues no token at all, and like the
+// token variable it exists so CI and headless machines are not required to
+// have a keychain.
+const EnvSession = "MOODLE_SESSION"
+
 func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
@@ -363,12 +370,20 @@ func lookupToken(deps Deps, resolved config.Resolved) (string, error) {
 
 func envToken() string { return strings.TrimSpace(os.Getenv(EnvWSToken)) }
 
+// envSession reads a browser session from the environment.
+func envSession() string { return strings.TrimSpace(os.Getenv(EnvSession)) }
+
 // resolveSession finds the site, account and token a command should use.
 //
 // A token in the environment bypasses both the configuration and the keychain.
 // That is what makes the tool usable in CI and on headless machines, where
 // there is no keychain to store anything in — so it must not require an
 // account to have been stored first.
+// resolveSession finds the site, account and credential a command should use.
+//
+// A browser session is only looked at when there is no token: a token is the
+// better credential wherever one exists, because the AJAX endpoint a session
+// has to use exposes far fewer functions.
 func resolveSession(deps Deps, file *config.File, siteFlag, accountFlag string) (config.Resolved, string, error) {
 	if token := envToken(); token != "" {
 		resolved, err := file.Resolve(siteFlag, accountFlag)
@@ -383,6 +398,17 @@ func resolveSession(deps Deps, file *config.File, siteFlag, accountFlag string) 
 		}
 		return resolved, token, nil
 	}
+	if session := envSession(); session != "" {
+		resolved, err := file.Resolve(siteFlag, accountFlag)
+		if err != nil {
+			return config.Resolved{}, "", err
+		}
+		if resolved.Account == nil {
+			resolved.AccountName = "env"
+			resolved.Account = &config.Account{}
+		}
+		return resolved, "", nil
+	}
 	resolved, err := file.RequireAccount(siteFlag, accountFlag)
 	if err != nil {
 		return config.Resolved{}, "", err
@@ -392,6 +418,23 @@ func resolveSession(deps Deps, file *config.File, siteFlag, accountFlag string) 
 		return config.Resolved{}, "", err
 	}
 	return resolved, token, nil
+}
+
+// openSessionFor builds the session a command runs with, choosing between a
+// token and a browser session.
+func openSessionFor(deps Deps, resolved config.Resolved, token string) *auth.Session {
+	target, err := targetSite(resolved.SiteName, resolved.Site)
+	if err != nil {
+		// The caller already validated the site; reaching here would be a bug,
+		// and a nil session would panic further away from the cause.
+		return deps.Auth.OpenWithToken(site.Site{}, resolved.Account.ID, token)
+	}
+	if token == "" {
+		if cookie := envSession(); cookie != "" {
+			return deps.Auth.OpenWithSession(target, resolved.Account.ID, cookie)
+		}
+	}
+	return deps.Auth.OpenWithToken(target, resolved.Account.ID, token)
 }
 
 func setString(target **string, value string) {

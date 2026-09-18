@@ -84,12 +84,18 @@ func Run(ctx context.Context, build Build, args []string) int {
 			manual.New(),
 		),
 		Courses: func(session *auth.Session, capabilities *site.Capabilities) *course.Service {
-			// Preference order, most reliable first. The AJAX and HTML
-			// backends arrive in Phase 8; a feature with one backend is
-			// still a feature.
-			return course.NewService(
+			// Most reliable first. The web service route answers with more,
+			// and skips itself by its own requirement when there is no token;
+			// the browser-session route then takes over, which is the only way
+			// in on a site that issues no token at all.
+			backends := []course.Backend{
 				moodle.NewCourseBackend(session.Client(), session.Token(), capabilities),
-			)
+			}
+			if cookie := session.Cookie(); cookie.Value != "" {
+				backends = append(backends, moodle.NewCourseAjaxBackend(
+					moodle.NewAjaxSession(session.Client(), cookie)))
+			}
+			return course.NewService(backends...)
 		},
 		Assignments: func(session *auth.Session, _ *site.Capabilities, mode safety.Mode) *assignment.Service {
 			return assignment.NewService(

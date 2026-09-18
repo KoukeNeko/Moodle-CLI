@@ -49,11 +49,7 @@ func newFileDownloadCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			target, err := targetSite(resolved.SiteName, resolved.Site)
-			if err != nil {
-				return err
-			}
-			session := deps.Auth.OpenWithToken(target, resolved.Account.ID, token)
+			session := openSessionFor(deps, resolved, token)
 			capabilities, err := session.Capabilities(cmd.Context())
 			if err != nil {
 				return err

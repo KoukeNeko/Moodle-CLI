@@ -9,7 +9,6 @@ package browsersession
 
 import (
 	"context"
-	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -55,8 +54,8 @@ func (*Method) Probe(_ context.Context, _ site.Site, config *auth.PublicConfig) 
 }
 
 func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Credential, error) {
-	name, value := splitCookie(req.SessionCookie)
-	if value == "" {
+	cookie := moodle.ParseSessionCookie(req.SessionCookie)
+	if cookie.Value == "" {
 		return auth.Credential{}, errs.New(errs.CodeUsage,
 			"no browser session given").
 			WithHint("pass --session-cookie 'MoodleSession=…', copied from the browser " +
@@ -73,7 +72,7 @@ func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Crede
 	}
 
 	callback, err := m.newClient(req.Site).ExchangeSession(ctx,
-		moodle.SessionCookie{Name: name, Value: value}, passport, moodle.DefaultURLScheme)
+		cookie, passport, moodle.DefaultURLScheme)
 	if err != nil {
 		return auth.Credential{}, err
 	}
@@ -89,33 +88,4 @@ func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Crede
 		PrivateToken: callback.PrivateToken,
 		Method:       "browser-session",
 	}, nil
-}
-
-// splitCookie accepts either "MoodleSession=value" or a bare value.
-//
-// People copy the whole pair out of developer tools as often as the value
-// alone, and refusing one of them would be a pointless round trip.
-func splitCookie(raw string) (name, value string) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return "", ""
-	}
-	// A cookie header can carry several pairs; take the Moodle one.
-	for _, part := range strings.Split(trimmed, ";") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		key, val, found := strings.Cut(part, "=")
-		if !found {
-			continue
-		}
-		if strings.EqualFold(strings.TrimSpace(key), moodle.DefaultSessionCookieName) {
-			return strings.TrimSpace(key), strings.TrimSpace(val)
-		}
-	}
-	if key, val, found := strings.Cut(trimmed, "="); found {
-		return strings.TrimSpace(key), strings.TrimSpace(val)
-	}
-	return moodle.DefaultSessionCookieName, trimmed
 }
