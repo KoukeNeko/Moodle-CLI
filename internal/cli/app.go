@@ -117,6 +117,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newFileCommand(renderer, deps),
 		newResolveCommand(renderer),
 		newAPICommand(renderer, deps, mode),
+		newMCPCommand(deps, mode),
 		newDoctorCommand(renderer, deps),
 	)
 

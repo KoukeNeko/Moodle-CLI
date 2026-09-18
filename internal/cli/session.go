@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"context"
+
 	"github.com/KoukeNeko/moodle-cli/internal/api"
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
@@ -45,10 +47,25 @@ type Deps struct {
 	// API assembles the direct-call escape hatch. The safety mode and the
 	// caller's acceptance of a write are both per invocation.
 	API func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service
+	// ServeMCP runs the agent server. It is injected rather than built here
+	// because the server speaks a protocol, and this layer does not.
+	ServeMCP func(context.Context, MCPSession) error
 	// Interactive reports whether there is a person at the other end to
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.
 	Interactive func() bool
+}
+
+// MCPSession is everything the agent server needs for one session. It is bound
+// to one site and one account: letting a tool call choose a different site
+// would make every answer's provenance a question.
+type MCPSession struct {
+	Session      *auth.Session
+	Capabilities *site.Capabilities
+	SiteName     string
+	AccountName  string
+	// AllowWrite decides whether the writing tools exist at all.
+	AllowWrite bool
 }
 
 // targetSite converts a configuration entry into the domain type.

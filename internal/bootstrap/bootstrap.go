@@ -26,6 +26,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/file"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
+	"github.com/KoukeNeko/moodle-cli/internal/mcp"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
@@ -114,6 +115,36 @@ func Run(ctx context.Context, build Build, args []string) int {
 				moodle.NewRawCaller(session.Client(), session.Token()),
 				mode, allowWrite,
 			)
+		},
+		ServeMCP: func(ctx context.Context, session cli.MCPSession) error {
+			client, token := session.Session.Client(), session.Session.Token()
+			deps := mcp.Deps{
+				Capabilities: session.Capabilities,
+				SiteName:     session.SiteName,
+				AccountName:  session.AccountName,
+				Courses: course.NewService(
+					moodle.NewCourseBackend(client, token, session.Capabilities)),
+				Assignments: assignment.NewService(
+					moodle.NewAssignmentBackend(client, token),
+					moodle.NewAssignmentWriter(client, token),
+					// The server's own read-only state is separate from the
+					// tool surface: a writing tool that somehow ran without
+					// being offered would still be stopped here.
+					safety.Mode{ReadOnly: !session.AllowWrite},
+				),
+				Grades: grade.NewService(
+					moodle.NewGradeBackend(client, token, session.Capabilities)),
+				Calendar: calendar.NewService(moodle.NewCalendarBackend(client, token)),
+				Forums:   forum.NewService(moodle.NewForumBackend(client, token)),
+			}
+			server := mcp.NewServer(
+				// stdout is the protocol. Everything this server says to a
+				// person goes to stderr, or the client cannot parse the stream.
+				mcp.Streams{In: os.Stdin, Out: os.Stdout, Log: os.Stderr},
+				mcp.BuildInfo{Version: version},
+				mcp.Register(deps, session.AllowWrite),
+			)
+			return server.Serve(ctx)
 		},
 		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
 	}
