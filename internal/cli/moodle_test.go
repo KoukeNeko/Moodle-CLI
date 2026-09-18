@@ -9,6 +9,7 @@ import (
 
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
+	"github.com/KoukeNeko/moodle-cli/internal/calendar"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
@@ -60,6 +61,11 @@ func newFixture(t *testing.T) *fixture {
 					moodle.NewGradeBackend(session.Client(), session.Token(), capabilities),
 				)
 			},
+			Calendar: func(session *auth.Session, _ *site.Capabilities) *calendar.Service {
+				return calendar.NewService(
+					moodle.NewCalendarBackend(session.Client(), session.Token()),
+				)
+			},
 			// No terminal: a test must never be able to answer a prompt by
 			// accident, so confirmation has to be explicit.
 			Interactive: func() bool { return false },
@@ -71,6 +77,7 @@ func newFixture(t *testing.T) *fixture {
 		"mod_assign_get_assignments",
 		moodle.FunctionGradeItems,
 		moodle.FunctionCourseGrades,
+		moodle.FunctionActionEvents,
 	}
 	declared := make([]any, 0, len(f.functions))
 	for _, name := range f.functions {

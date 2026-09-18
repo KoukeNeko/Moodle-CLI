@@ -53,6 +53,9 @@ make moodle-status        # 列出目前的測試站
   而且 Moodle 一次 `save_submission` 會寫入所有啟用的外掛——只送檔案、不送
   online text，會把學生在瀏覽器裡打的字存成空的。這個行為必須測得到。
 
+- 三個作業都有截止日：A1 七天後、A2 十四天後（另有 21 天的 cutoff）、
+  **A3 已經過期一天但沒有 cutoff**——Moodle 仍然收件，只是標記遲交。沒有逾期的
+  資料，行事曆的 `overdue` 分支驗不到。
 - student1 的 A1 有一筆 85/100 的成績與評語：沒有已評分的資料，成績功能連
   「已評分」和「未評分」都分不出來，等於沒驗到。
 - 標準站：`enablewebservices`、`enablemobilewebservice`、`rest` 協定、mobile service 已啟用，

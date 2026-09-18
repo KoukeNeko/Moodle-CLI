@@ -112,6 +112,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newCourseCommand(renderer, deps),
 		newAssignmentCommand(renderer, deps, mode),
 		newGradeCommand(renderer, deps),
+		newCalendarCommand(renderer, deps),
 		newDoctorCommand(renderer, deps),
 	)
 

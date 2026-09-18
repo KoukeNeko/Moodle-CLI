@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/calendar.upcoming.schema.json",
+  "title": "moodle-cli calendar.upcoming",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "calendar.upcoming" },
+    "data": {
+      "type": "array",
+      "description": "Things still to do, earliest first. Work whose deadline has passed is included, not filtered out: it is the most important thing on the list.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "title", "activity", "kind", "module", "cmid", "course_id",
+          "course_short_name", "due_at", "overdue", "action_name",
+          "actionable", "item_count", "url"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "description": "Moodle's own sentence, such as \"Essay 1 is due\"" },
+          "activity": { "type": "string", "description": "The activity itself, without the sentence around it" },
+          "kind": { "type": "string", "description": "Moodle's event type: due, open, close and so on. Passed through, because plugins define their own." },
+          "module": { "type": "string", "description": "The activity type, such as assign" },
+          "cmid": {
+            "type": "string",
+            "description": "Course module id, which links an event back to the activity. NOT the activity's own id: an assignment with id 1 has a cmid of 2. Join it against an assignment's cmid."
+          },
+          "course_id": { "type": "string" },
+          "course_short_name": { "type": "string" },
+          "due_at": { "type": ["string", "null"], "format": "date-time" },
+          "overdue": {
+            "type": "boolean",
+            "description": "Moodle's own verdict, which accounts for extensions and cut-offs that comparing against the clock cannot see."
+          },
+          "action_name": { "type": ["string", "null"], "description": "What Moodle suggests doing, such as \"Add submission\"" },
+          "actionable": { "type": "boolean", "description": "Whether the caller can still act; an event can be listed and past acting on" },
+          "item_count": { "type": ["integer", "null"] },
+          "url": { "type": ["string", "null"], "description": "Null when Moodle's link carried a session key, which is never passed on" }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

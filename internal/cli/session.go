@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
+	"github.com/KoukeNeko/moodle-cli/internal/calendar"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
@@ -32,6 +33,8 @@ type Deps struct {
 	Assignments func(*auth.Session, *site.Capabilities, safety.Mode) *assignment.Service
 	// Grades assembles the grade use case.
 	Grades func(*auth.Session, *site.Capabilities) *grade.Service
+	// Calendar assembles the deadline use case.
+	Calendar func(*auth.Session, *site.Capabilities) *calendar.Service
 	// Interactive reports whether there is a person at the other end to
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.

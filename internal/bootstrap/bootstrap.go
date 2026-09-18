@@ -17,6 +17,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/password"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/qrlogin"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/token"
+	"github.com/KoukeNeko/moodle-cli/internal/calendar"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
@@ -88,6 +89,11 @@ func Run(ctx context.Context, build Build, args []string) int {
 		Grades: func(session *auth.Session, capabilities *site.Capabilities) *grade.Service {
 			return grade.NewService(
 				moodle.NewGradeBackend(session.Client(), session.Token(), capabilities),
+			)
+		},
+		Calendar: func(session *auth.Session, _ *site.Capabilities) *calendar.Service {
+			return calendar.NewService(
+				moodle.NewCalendarBackend(session.Client(), session.Token()),
 			)
 		},
 		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },

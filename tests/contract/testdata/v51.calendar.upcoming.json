@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "kind": "calendar.upcoming",
+  "data": [
+    {
+      "id": "3",
+      "title": "A3 statement is due",
+      "activity": "A3 statement",
+      "kind": "due",
+      "module": "assign",
+      "cmid": "4",
+      "course_id": "2",
+      "course_short_name": "CS204",
+      "due_at": "2026-09-17T08:41:56Z",
+      "overdue": true,
+      "action_name": "Add submission",
+      "actionable": true,
+      "item_count": 1,
+      "url": "http://localhost:8511/mod/assign/view.php?id=4"
+    },
+    {
+      "id": "1",
+      "title": "A1 direct submit is due",
+      "activity": "A1 direct submit",
+      "kind": "due",
+      "module": "assign",
+      "cmid": "2",
+      "course_id": "2",
+      "course_short_name": "CS204",
+      "due_at": "2026-09-25T08:41:56Z",
+      "overdue": false,
+      "action_name": "Add submission",
+      "actionable": true,
+      "item_count": 1,
+      "url": "http://localhost:8511/mod/assign/view.php?id=2"
+    },
+    {
+      "id": "2",
+      "title": "A2 submit button is due",
+      "activity": "A2 submit button",
+      "kind": "due",
+      "module": "assign",
+      "cmid": "3",
+      "course_id": "2",
+      "course_short_name": "CS204",
+      "due_at": "2026-10-02T08:41:56Z",
+      "overdue": false,
+      "action_name": "Add submission",
+      "actionable": true,
+      "item_count": 1,
+      "url": "http://localhost:8511/mod/assign/view.php?id=3"
+    }
+  ],
+  "meta": {
+    "site": "rec",
+    "account": "env",
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

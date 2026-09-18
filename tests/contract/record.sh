@@ -46,7 +46,7 @@ fi
 
 for kind in doctor site.inspect auth.status course.list \
             assignment.list assignment.show assignment.status assignment.submit \
-            grade.list grade.overview; do
+            grade.list grade.overview calendar.upcoming; do
   case "$kind" in
     doctor)            args=(doctor) ;;
     site.inspect)      args=(site inspect) ;;
@@ -54,6 +54,7 @@ for kind in doctor site.inspect auth.status course.list \
     course.list)       args=(course list) ;;
     grade.list)        args=(grade list --course "$COURSE") ;;
     grade.overview)    args=(grade overview) ;;
+    calendar.upcoming) args=(calendar upcoming) ;;
     assignment.list)   args=(assignment list) ;;
     assignment.show)   args=(assignment show "$ASSIGNMENT") ;;
     assignment.status) args=(assignment status "$ASSIGNMENT") ;;

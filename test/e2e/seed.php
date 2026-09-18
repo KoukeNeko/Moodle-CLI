@@ -81,13 +81,20 @@ echo "[seed] enrolled: " . implode(', ', array_keys($people)) . "\n";
 // nosubmissions 也要歸零：moosh 建立作業時沒有啟用任何繳交外掛，assign 那一列
 // 就被標成「不收繳交」。Moodle 5.1 實測，這時 mod_assign_get_submission_status
 // 會回 nopermission（而不是 submissionsenabled=false），完全看不出真正原因。
+// 截止日：沒有截止日就產生不出任何行事曆事件與待辦，那樣的測試站驗不出這些功能。
+// A3 故意設成已經過期但沒有 cutoff——Moodle 仍然收件，只是標記為遲交，這個分支
+// 也要測得到。
+$now = time();
 $want = [
     'A1 direct submit' => ['submissiondrafts' => 0, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0,
-                           'intro' => '<p>存檔即視為提交，不需要另外按下提交鍵。</p>'],
+                           'intro' => '<p>存檔即視為提交，不需要另外按下提交鍵。</p>',
+                           'duedate' => $now + 7 * DAYSECS],
     'A2 submit button' => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0,
-                           'intro' => '<p>存檔之後還要再按一次<strong>提交評分</strong>，否則作業停在草稿。</p>'],
+                           'intro' => '<p>存檔之後還要再按一次<strong>提交評分</strong>，否則作業停在草稿。</p>',
+                           'duedate' => $now + 14 * DAYSECS, 'cutoffdate' => $now + 21 * DAYSECS],
     'A3 statement'     => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 1, 'nosubmissions' => 0,
-                           'intro' => '<p>提交前必須同意提交聲明。</p>'],
+                           'intro' => '<p>提交前必須同意提交聲明。</p>',
+                           'duedate' => $now - DAYSECS],
 ];
 foreach ($want as $name => $fields) {
     $rec = $DB->get_record('assign', ['name' => $name]);
@@ -97,6 +104,14 @@ foreach ($want as $name => $fields) {
     }
     foreach ($fields as $field => $value) {
         $DB->set_field('assign', $field, $value, ['id' => $rec->id]);
+    }
+
+    // 改了截止日要重建事件，否則行事曆還停在舊的（或根本沒有）。
+    require_once($CFG->dirroot . '/mod/assign/locallib.php');
+    $cm = get_coursemodule_from_instance('assign', $rec->id, $course->id);
+    if ($cm) {
+        $assignobj = new assign(context_module::instance($cm->id), $cm, $course);
+        $assignobj->update_calendar($cm->id);
     }
 
     // 沒有啟用任何繳交外掛的話，Moodle 會回 submissionsenabled=false，
