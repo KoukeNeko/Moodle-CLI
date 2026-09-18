@@ -26,7 +26,13 @@ jobs:
       - run: go vet ./...
       # Unformatted code should fail the build, not get noticed in review.
       - name: gofmt
-        run: gofmt -l . | tee /dev/stderr | (! read)
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt'd:" >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
 
   build:
     strategy:

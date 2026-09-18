@@ -49,7 +49,10 @@ arch:
 	go test -count=1 ./tests/arch/
 
 lint:
-	gofmt -l . | tee /dev/stderr | (! read)
+	@unformatted=$$(gofmt -l .); \
+	if [ -n "$$unformatted" ]; then \
+		echo "these files are not gofmt'd:" >&2; echo "$$unformatted" >&2; exit 1; \
+	fi
 	go vet ./...
 
 verify: test test-race lint build
