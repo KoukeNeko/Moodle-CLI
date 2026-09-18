@@ -404,7 +404,12 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 		fmt.Fprintf(w, "Grading:   %s\n", *state.GradingStatus)
 	}
 	if !state.CanEdit {
-		fmt.Fprintln(w, "\nThis assignment can no longer be edited.")
+		// Moodle's canedit is one flag over several causes: a submission window
+		// that has not opened, a cut-off that has passed, a lock, a missing
+		// group. "No longer" picked one of them and was wrong whenever the
+		// assignment had simply not opened yet. This call does not carry the
+		// dates that would settle it, so it reports the refusal and not a cause.
+		fmt.Fprintln(w, "\nMoodle is not accepting changes to this submission.")
 	}
 	return nil
 }

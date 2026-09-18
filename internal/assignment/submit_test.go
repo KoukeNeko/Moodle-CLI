@@ -308,8 +308,8 @@ func TestAlreadySubmittedIsAConflictNotASecondSubmission(t *testing.T) {
 
 func TestAlreadyHandedInBeatsTheLockedReason(t *testing.T) {
 	// Moodle reports canedit=false once work is submitted. Reporting that as
-	// "this cannot be edited, the due date may have passed" would send the
-	// student looking for a problem that is not theirs.
+	// "this assignment cannot be edited" would send the student looking for a
+	// problem that is not theirs.
 	f := &fake{
 		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2"},
 		states: []assignment.State{
@@ -343,6 +343,14 @@ func TestLockedAssignmentIsRefusedBeforeAnythingIsSent(t *testing.T) {
 	}
 	if f.uploaded != 0 {
 		t.Error("files were uploaded for an assignment that cannot be edited")
+	}
+	// canedit=false covers a window that has not opened as well as one that
+	// has closed, and Moodle sends no date either way. Offering only the
+	// past-tense causes tells a student to go looking for a deadline that has
+	// not happened yet.
+	hint := errs.From(err).Hint
+	if !strings.Contains(hint, "not have opened") {
+		t.Errorf("the reasons offered leave out the one that is in the future: %q", hint)
 	}
 }
 

@@ -211,17 +211,22 @@ func (s *Submitter) preflight(ctx context.Context, req SubmitRequest) (Summary, 
 	}
 
 	// Order matters. Moodle also reports canedit=false once work is handed in,
-	// so testing that first would answer "the due date may have passed" to
-	// someone whose real situation is that they already submitted.
+	// so testing that first would answer "this cannot be edited" to someone
+	// whose real situation is that they already submitted.
 	if state.Status == StatusSubmitted {
 		return Summary{}, State{}, errs.New(errs.CodeConflict,
 			"this assignment has already been handed in").
 			WithHint("check it with `moodle assignment status`")
 	}
 	if !state.CanEdit {
+		// Moodle reports a window that has not opened yet exactly as it reports
+		// one that has closed, and this call carries neither date. Naming the
+		// past-tense causes alone was wrong about every assignment that had
+		// simply not opened, so all three are offered and none is asserted.
 		return Summary{}, State{}, errs.New(errs.CodePermissionDenied,
 			"this assignment cannot be edited").
-			WithHint("the due date may have passed, or the submission may be locked")
+			WithHint("it may not have opened yet, the cut-off may have passed, " +
+				"or the work may be locked; `moodle assignment show` has the dates")
 	}
 	if summary.RequiresStatement && !req.AcceptStatement && !req.DraftOnly && !req.DryRun {
 		// Ticking this on the student's behalf would be signing a declaration
