@@ -80,6 +80,12 @@ var knownErrorCodes = map[string]classification{
 	"requireloginerror":             {errs.CodePermissionDenied, "", ""},
 	"required_capability_exception": {errs.CodePermissionDenied, "", ""},
 	"cannotviewprofile":             {errs.CodePermissionDenied, "", ""},
+	// notingroup 是分組擋下來的：在獨立分組的活動上問一個自己不屬於的組，
+	// Moodle 丟 moodle_exception 而不是 required_capability_exception，所以
+	// 它不在上面那幾個碼裡。沒分類時會報成上游錯誤，訊息還是站台沒翻到的
+	// `error/notingroup`——看起來像站台壞了，而該換的是問題裡的那個組。
+	"notingroup": {errs.CodePermissionDenied, "",
+		"this account is not in that group, and the activity separates them"},
 	"autologinnotallowedtoadmins": {errs.CodePermissionDenied, "",
 		"Moodle refuses this flow for site administrators; use a normal account"},
 

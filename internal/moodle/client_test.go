@@ -353,3 +353,30 @@ func TestACapabilityTheUserLacksIsAPermissionProblem(t *testing.T) {
 		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
 	}
 }
+
+func TestAGroupTheUserIsNotInIsAPermissionProblem(t *testing.T) {
+	// Asking a separate-groups activity about a group the account is not in
+	// raises a plain moodle_exception, not required_capability_exception, so
+	// none of the capability codes cover it. Unclassified it came back as an
+	// upstream fault carrying Moodle's own untranslated "error/notingroup",
+	// which points at the site when what is wrong is the group in the request.
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("mod_assign_get_submission_status", map[string]any{})
+	server.FailException("mod_assign_get_submission_status",
+		"moodle_exception", "notingroup", "error/notingroup")
+
+	var out map[string]any
+	err := newClient(t, server).Call(context.Background(), "tok",
+		"mod_assign_get_submission_status", nil, &out)
+	if err == nil {
+		t.Fatal("a group the account is not in was treated as readable")
+	}
+	e := errs.From(err)
+	if e.Code != errs.CodePermissionDenied {
+		t.Errorf("code = %q, want permission_denied", e.Code)
+	}
+	if e.Upstream == nil || e.Upstream.ErrorCode != "notingroup" {
+		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
+	}
+}
