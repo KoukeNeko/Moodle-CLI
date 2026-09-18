@@ -2,8 +2,7 @@
 //
 // It owns transport and wire format only: which function to call, and what to
 // do with the answer, is decided above it. It never retries — retry policy
-// needs to know whether an operation writes, which lives in internal/safety
-//.
+// needs to know whether an operation writes, which lives in internal/safety.
 package moodle
 
 import (

@@ -5,7 +5,6 @@
 // standard library, so anything may depend on it without creating a cycle.
 // The mapping from these values to JSON and to process exit codes lives in
 // internal/contract/v1; this package knows nothing about presentation.
-//
 package errs
 
 import (

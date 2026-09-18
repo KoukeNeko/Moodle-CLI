@@ -1,8 +1,7 @@
 // Package config reads and writes the on-disk configuration.
 //
 // The file holds metadata only. Credentials live in the OS keychain, and this
-// package refuses to write a file that looks like it contains one
-//.
+// package refuses to write a file that looks like it contains one.
 package config
 
 import (

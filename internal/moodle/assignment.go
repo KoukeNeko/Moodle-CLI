@@ -30,8 +30,7 @@ const (
 const PathUpload = "/webservice/upload.php"
 
 // assignmentsDTO is Moodle's reply to mod_assign_get_assignments. The field
-// names were taken from real 4.5, 5.1 and 5.2 responses rather than guessed
-//.
+// names were taken from real 4.5, 5.1 and 5.2 responses rather than guessed.
 type assignmentsDTO struct {
 	Courses []struct {
 		ID          int64 `json:"id"`

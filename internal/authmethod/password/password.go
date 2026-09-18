@@ -1,8 +1,7 @@
 // Package password signs in with a Moodle username and password.
 //
 // It only works for accounts Moodle authenticates itself. An account behind
-// SSO cannot use it: the identity provider, not Moodle, holds the password
-//.
+// SSO cannot use it: the identity provider, not Moodle, holds the password.
 package password
 
 import (

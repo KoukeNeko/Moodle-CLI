@@ -389,8 +389,7 @@ func TestCourseListPagination(t *testing.T) {
 }
 
 func TestCourseListReportsWhichBackendAnswered(t *testing.T) {
-	// An agent has to be able to tell a web service answer from a scraped one
-	//.
+	// An agent has to be able to tell a web service answer from a scraped one.
 	f := newFixture(t)
 	f.withCourses(map[string]any{"id": 2, "shortname": "CS204", "fullname": "OS", "visible": 1})
 	f.addSiteAndLogin()

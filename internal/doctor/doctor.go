@@ -3,8 +3,7 @@
 // Its whole reason to exist is to tell apart the causes that look identical
 // from the outside: the network is down, the administrator disabled web
 // services, the token expired, or the site simply does not expose a function.
-// "Moodle connection failed" is the answer this package is meant to replace
-//.
+// "Moodle connection failed" is the answer this package is meant to replace.
 package doctor
 
 import (

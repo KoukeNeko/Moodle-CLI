@@ -1,7 +1,7 @@
 # 測試用 Moodle
 
-本機測試站。用 Docker，每個版本一個
-**標準站**（Web Services 開啟）與一個**變體站**（Mobile Web Services 關閉）。
+本機測試站。用 Docker，每個版本一個**標準站**（Web Services 開啟）
+與一個**變體站**（Mobile Web Services 關閉）。
 
 ## 用法
 

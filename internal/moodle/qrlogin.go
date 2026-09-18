@@ -18,8 +18,7 @@ const FunctionQRTokens = "tool_mobile_get_tokens_for_qr_login"
 // "MoodleMobile". The check exists to stop a web page from stealing a QR key
 // through XSS; a CLI is not a browser, so it protects nothing here, but
 // without it QR login simply cannot be used. Scope is therefore limited to the
-// single request, and every other request identifies this tool honestly
-//.
+// single request, and every other request identifies this tool honestly.
 const MoodleAppUserAgent = "MoodleMobile 4.5.0 (44500)"
 
 // QRLogin is the content of a Moodle login QR code.

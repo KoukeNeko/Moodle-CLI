@@ -4,8 +4,7 @@
 // steps that look like one: saving content, and handing it in for grading. A
 // client that calls only the first and reports success leaves the student
 // believing work was submitted when it is still a draft. Every path here ends
-// by reading the state back from Moodle and reporting what Moodle says
-//.
+// by reading the state back from Moodle and reporting what Moodle says.
 package assignment
 
 import (

@@ -17,8 +17,7 @@ import (
 
 // Course is one course on the wire.
 type Course struct {
-	// ID is a string: an identifier is opaque, not a number to compute with
-	//.
+	// ID is a string: an identifier is opaque, not a number to compute with.
 	ID        string   `json:"id"`
 	ShortName string   `json:"short_name"`
 	FullName  string   `json:"full_name"`

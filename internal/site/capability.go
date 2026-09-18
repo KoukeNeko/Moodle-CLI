@@ -15,8 +15,7 @@ type FunctionInfo struct {
 }
 
 // Quirks are known deviations of a particular site, keyed by name rather than
-// by version number. The release is only ever a hint for setting these
-//.
+// by version number. The release is only ever a hint for setting these.
 type Quirks struct {
 	// SiteInfoRejectsLang marks sites that fail when get_site_info is given a
 	// language argument.

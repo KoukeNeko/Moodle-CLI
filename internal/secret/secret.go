@@ -2,8 +2,7 @@
 //
 // Credentials never go in the configuration file. When no keychain is
 // available this package says so plainly rather than falling back to a
-// plaintext file, which would quietly downgrade the user's security
-//.
+// plaintext file, which would quietly downgrade the user's security.
 package secret
 
 import (

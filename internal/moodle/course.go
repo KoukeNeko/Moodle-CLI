@@ -83,8 +83,7 @@ func (b *CourseBackend) List(ctx context.Context, q course.ListQuery) (course.Li
 
 	// This function returns every course at once: Moodle offers no paging for
 	// it. The window is therefore applied here, which keeps the cursor in the
-	// contract honest even though the request itself is not paged
-	//.
+	// contract honest even though the request itself is not paged.
 	page, next := window(all, q)
 	return course.ListResult{
 		Courses:    page,

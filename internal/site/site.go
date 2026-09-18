@@ -43,8 +43,7 @@ type Site struct {
 	// BaseURL is what the user typed.
 	BaseURL *url.URL
 	// WWWRoot is the canonical root Moodle reports for itself. It can differ
-	// from BaseURL, and the SSO payload hash is computed over this one
-	//.
+	// from BaseURL, and the SSO payload hash is computed over this one.
 	WWWRoot *url.URL
 }
 

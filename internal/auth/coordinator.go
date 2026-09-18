@@ -13,8 +13,7 @@ import (
 //
 // The order lives here rather than in the methods themselves. A method can
 // only see its own situation; deciding that a token beats a password, and that
-// a password beats pasting a callback by hand, needs the whole picture
-//.
+// a password beats pasting a callback by hand, needs the whole picture.
 type Coordinator struct {
 	manager *Manager
 	methods []Method

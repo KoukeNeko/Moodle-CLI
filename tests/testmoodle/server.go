@@ -3,8 +3,7 @@
 // It exists so the failure modes that matter can be reproduced exactly and
 // offline: a Moodle exception behind HTTP 200, an expired token, a response
 // that is cut off mid-flight, and above all a request the server processed
-// whose reply never arrived — the case retry logic must never guess about
-//.
+// whose reply never arrived — the case retry logic must never guess about.
 package testmoodle
 
 import (

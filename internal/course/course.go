@@ -46,8 +46,7 @@ type ListQuery struct {
 type ListResult struct {
 	Courses []Summary
 	// Provenance tells the caller which backend answered and whether anything
-	// is missing, so an agent can tell "no value" from "could not fetch"
-	//.
+	// is missing, so an agent can tell "no value" from "could not fetch".
 	Provenance site.Provenance
 	NextCursor string
 }

@@ -31,8 +31,7 @@ func NewManager(secrets secret.Store, newClient ClientFactory) *Manager {
 }
 
 // PublicConfig is a site's pre-login configuration: enough to decide which
-// login methods are possible before any credential exists
-//.
+// login methods are possible before any credential exists.
 type PublicConfig struct {
 	SiteName string
 	WWWRoot  string
@@ -151,8 +150,7 @@ func (s *Session) Token() string { return s.token }
 // Capabilities reports what this account may do, fetching once per process.
 //
 // Nothing is cached between runs: the CLI is short-lived, and a stale idea of
-// what a site allows is worse than the one request it would save
-//.
+// what a site allows is worse than the one request it would save.
 func (s *Session) Capabilities(ctx context.Context) (*site.Capabilities, error) {
 	if s.cached != nil {
 		return s.cached, nil

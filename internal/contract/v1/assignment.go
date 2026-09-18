@@ -7,8 +7,7 @@ import (
 // The assignment payloads carry one distinction the rest of the contract does
 // not: saved work and handed-in work are different states, and a consumer must
 // be able to tell them apart without reading prose. Everything here reports
-// what Moodle said after the fact, never what the client believes it did
-//.
+// what Moodle said after the fact, never what the client believes it did.
 
 // Assignment is one assignment on the wire.
 type Assignment struct {

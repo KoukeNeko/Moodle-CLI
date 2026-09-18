@@ -18,8 +18,7 @@ const PathLaunch = "/admin/tool/mobile/launch.php"
 
 // DefaultURLScheme is the scheme Moodle redirects to when the client asks for
 // nothing else. A site administrator can force a different one, and that
-// setting is not visible before signing in
-//.
+// setting is not visible before signing in.
 const DefaultURLScheme = "moodlemobile"
 
 // NewPassport returns the one-time value that ties a callback to this login.
