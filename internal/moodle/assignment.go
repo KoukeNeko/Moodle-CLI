@@ -66,35 +66,48 @@ type assignmentsDTO struct {
 
 // submissionStatusDTO is Moodle's reply to mod_assign_get_submission_status.
 type submissionStatusDTO struct {
-	LastAttempt struct {
-		SubmissionsEnabled bool   `json:"submissionsenabled"`
-		CanEdit            bool   `json:"canedit"`
-		CanSubmit          bool   `json:"cansubmit"`
-		Locked             bool   `json:"locked"`
-		Graded             bool   `json:"graded"`
-		GradingStatus      string `json:"gradingstatus"`
-		// Submission is absent entirely until a submission record exists,
-		// which is different from one that exists and is empty: a record with
-		// status "new" is a real state Moodle reports.
-		Submission *struct {
-			ID           int64  `json:"id"`
-			Status       string `json:"status"`
-			TimeModified int64  `json:"timemodified"`
-			Plugins      []struct {
-				Type      string `json:"type"`
-				FileAreas []struct {
-					Area  string    `json:"area"`
-					Files []fileDTO `json:"files"`
-				} `json:"fileareas"`
-				// EditorFields carry what the student has already typed.
-				EditorFields []struct {
-					Name   string `json:"name"`
-					Text   string `json:"text"`
-					Format int    `json:"format"`
-				} `json:"editorfields"`
-			} `json:"plugins"`
-		} `json:"submission"`
-	} `json:"lastattempt"`
+	// GradingSummary comes back only for someone who can view grades, which
+	// is how an account on a course it does not take — a TA — finds out it is
+	// staff here rather than a participant.
+	GradingSummary *struct {
+		ParticipantCount int `json:"participantcount"`
+	} `json:"gradingsummary"`
+	// LastAttempt is a pointer because the key is absent, not false, when
+	// Moodle has no submission summary to show this user at all: a teacher or
+	// TA on a course they do not take. Reading the zero value would turn that
+	// into "submissionsenabled: false" — "this assignment is closed" — which
+	// is a different statement and a wrong one.
+	LastAttempt *lastAttemptDTO `json:"lastattempt"`
+}
+
+type lastAttemptDTO struct {
+	SubmissionsEnabled bool   `json:"submissionsenabled"`
+	CanEdit            bool   `json:"canedit"`
+	CanSubmit          bool   `json:"cansubmit"`
+	Locked             bool   `json:"locked"`
+	Graded             bool   `json:"graded"`
+	GradingStatus      string `json:"gradingstatus"`
+	// Submission is absent entirely until a submission record exists, which
+	// is different from one that exists and is empty: a record with status
+	// "new" is a real state Moodle reports.
+	Submission *struct {
+		ID           int64  `json:"id"`
+		Status       string `json:"status"`
+		TimeModified int64  `json:"timemodified"`
+		Plugins      []struct {
+			Type      string `json:"type"`
+			FileAreas []struct {
+				Area  string    `json:"area"`
+				Files []fileDTO `json:"files"`
+			} `json:"fileareas"`
+			// EditorFields carry what the student has already typed.
+			EditorFields []struct {
+				Name   string `json:"name"`
+				Text   string `json:"text"`
+				Format int    `json:"format"`
+			} `json:"editorfields"`
+		} `json:"plugins"`
+	} `json:"submission"`
 }
 
 // fileDTO is how Moodle describes a file it is holding. The same shape comes
@@ -267,6 +280,20 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 	}
 
 	last := dto.LastAttempt
+	if last == nil {
+		// No submission summary at all. Moodle shows one to a participant
+		// when it has something to say, so its absence here means this
+		// account is not a student on this assignment.
+		if dto.GradingSummary != nil {
+			return assignment.State{}, errs.New(errs.CodeUnavailable,
+				"you are staff on this assignment, not a student on the course").
+				WithHint(fmt.Sprintf(
+					"there is no submission of yours here; the site counts %d to grade",
+					dto.GradingSummary.ParticipantCount))
+		}
+		return assignment.State{}, errs.New(errs.CodeUnavailable,
+			"this site did not report a submission status for you on this assignment")
+	}
 	state := assignment.State{
 		Status:        assignment.StatusNew,
 		CanEdit:       last.CanEdit,

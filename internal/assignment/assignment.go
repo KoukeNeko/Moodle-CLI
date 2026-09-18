@@ -115,8 +115,12 @@ type Detail struct {
 // State is the caller's current submission for an assignment.
 type State struct {
 	Status Status
-	// CanEdit and CanSubmit are Moodle's own verdicts. They account for cut-off
-	// dates, group membership and permissions, which a client cannot infer.
+	// CanEdit and CanSubmit are Moodle's own verdicts. CanEdit accounts for
+	// cut-off dates, group membership and permissions, which a client cannot
+	// infer. CanSubmit is narrower than its name suggests: Moodle sets it when
+	// there is saved work waiting to be handed in, so it is false on an
+	// assignment nothing has been saved to yet. It is not permission to
+	// submit, and nothing here gates on it.
 	CanEdit   bool
 	CanSubmit bool
 	// GradingStatus is Moodle's word for whether it has been marked.

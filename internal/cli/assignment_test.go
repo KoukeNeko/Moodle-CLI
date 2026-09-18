@@ -672,3 +672,40 @@ func TestAssignmentStatusListsWhatMoodleActuallyHolds(t *testing.T) {
 		t.Errorf("files = %+v", doc.Data.Files)
 	}
 }
+
+func TestNoSubmissionSummaryIsNotAnAssignmentThatClosed(t *testing.T) {
+	// Moodle omits lastattempt entirely for an account that is not a student
+	// on the assignment — a TA on a course they do not take. The zero value
+	// underneath reads as submissionsenabled=false, which would come out as
+	// "this assignment is not accepting submissions": a wrong statement about
+	// the assignment instead of a true one about the account.
+	a := newAssignmentFixture(t, true, false)
+	a.status = map[string]any{
+		"gradingsummary": map[string]any{"participantcount": 31},
+		"warnings":       []any{},
+	}
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitUnavailable {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitUnavailable, stdout+stderr)
+	}
+	if !strings.Contains(stderr, "staff") {
+		t.Errorf("the message does not say why there is nothing to report:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "not accepting submissions") {
+		t.Errorf("an absent summary was reported as a closed assignment:\n%s", stderr)
+	}
+}
+
+func TestNoSubmissionSummaryAndNoGradingSummaryStillSaysWhich(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+	a.status = map[string]any{"warnings": []any{}}
+
+	_, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitUnavailable {
+		t.Fatalf("exit %d, want %d", code, v1.ExitUnavailable)
+	}
+	if strings.Contains(stderr, "not accepting submissions") {
+		t.Errorf("an absent summary was reported as a closed assignment:\n%s", stderr)
+	}
+}
