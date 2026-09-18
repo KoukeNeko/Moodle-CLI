@@ -110,14 +110,22 @@ func Run(ctx context.Context, build Build, args []string) int {
 			)
 		},
 		Calendar: func(session *auth.Session, _ *site.Capabilities) *calendar.Service {
-			return calendar.NewService(
-				moodle.NewCalendarBackend(session.Client(), session.Token()),
-			)
+			return calendar.NewService(pickBackends(session,
+				func() calendar.Backend {
+					return moodle.NewCalendarBackend(session.Client(), session.Token())
+				},
+				func(s *moodle.AjaxSession) calendar.Backend {
+					return moodle.NewCalendarAjaxBackend(s)
+				})...)
 		},
 		Forums: func(session *auth.Session, _ *site.Capabilities) *forum.Service {
-			return forum.NewService(
-				moodle.NewForumBackend(session.Client(), session.Token()),
-			)
+			return forum.NewService(pickBackends(session,
+				func() forum.Backend {
+					return moodle.NewForumBackend(session.Client(), session.Token())
+				},
+				func(s *moodle.AjaxSession) forum.Backend {
+					return moodle.NewForumAjaxBackend(s)
+				})...)
 		},
 		Files: func(session *auth.Session, capabilities *site.Capabilities) *file.Downloader {
 			return file.NewDownloader(
@@ -173,6 +181,20 @@ func Run(ctx context.Context, build Build, args []string) int {
 		deps,
 	)
 	return app.Execute(ctx, args)
+}
+
+// pickBackends puts the web service route first and adds the browser-session
+// route when there is a session to use.
+//
+// The web service route skips itself for want of a token, so on a site that
+// issues none the session route is what answers.
+func pickBackends[T any](session *auth.Session, ws func() T, ajax func(*moodle.AjaxSession) T) []T {
+	backends := []T{ws()}
+	if cookie := session.Cookie(); cookie.Value != "" {
+		backends = append(backends,
+			ajax(moodle.NewAjaxSession(session.Client(), cookie)))
+	}
+	return backends
 }
 
 // readPassword reads from the terminal without echoing. When stdin is not a

@@ -45,26 +45,28 @@ type actionEventsDTO struct {
 
 // CalendarBackend reads the calendar over the web service API.
 type CalendarBackend struct {
-	client *Client
-	token  string
+	route route
 }
 
 // NewCalendarBackend builds the web service backend for the calendar.
 func NewCalendarBackend(client *Client, token string) *CalendarBackend {
-	return &CalendarBackend{client: client, token: token}
+	return &CalendarBackend{route: wsRoute{client: client, token: token}}
 }
 
-func (b *CalendarBackend) Name() site.BackendKind { return site.BackendWS }
+// NewCalendarAjaxBackend builds the browser-session backend. The endpoint
+// answers with the same shape, so only the route differs.
+func NewCalendarAjaxBackend(session *AjaxSession) *CalendarBackend {
+	return &CalendarBackend{route: ajaxRoute{session: session}}
+}
+
+func (b *CalendarBackend) Name() site.BackendKind { return b.route.kind() }
 
 func (b *CalendarBackend) Requirement() site.Requirement {
-	return site.Requirement{
-		AnyFunction: []string{FunctionActionEvents},
-		Credential:  site.CredentialWSToken,
-	}
+	return b.route.requirement([]string{FunctionActionEvents})
 }
 
 func (b *CalendarBackend) Upcoming(ctx context.Context, q calendar.Query) (calendar.Result, error) {
-	params := Params{}
+	params := map[string]any{}
 	// timesortfrom is deliberately left unset. Moodle then keeps returning an
 	// action event after its deadline has passed, until the work is done —
 	// which is exactly the list a student needs. Starting the window at "now"
@@ -77,13 +79,13 @@ func (b *CalendarBackend) Upcoming(ctx context.Context, q calendar.Query) (calen
 	}
 
 	var dto actionEventsDTO
-	if err := b.client.Call(ctx, b.token, FunctionActionEvents, params, &dto); err != nil {
+	if err := b.route.call(ctx, FunctionActionEvents, params, &dto); err != nil {
 		return calendar.Result{}, err
 	}
 
 	result := calendar.Result{
 		Events:     []calendar.Event{},
-		Provenance: site.NewProvenance(site.BackendWS),
+		Provenance: site.NewProvenance(b.route.kind()),
 	}
 	for _, raw := range dto.Events {
 		event := calendar.Event{

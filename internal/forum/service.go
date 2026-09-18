@@ -11,45 +11,70 @@ import (
 )
 
 // Service reads forums.
+//
+// It owns which route to try and in what order. Only reading a thread works
+// over a browser session — listing forums and their discussions is not exposed
+// there — so the routes differ in what they can answer, not only in speed.
 type Service struct {
-	backend Backend
+	backends []Backend
 }
 
-// NewService builds the use case.
-func NewService(backend Backend) *Service { return &Service{backend: backend} }
+// NewService builds the use case. The order is the preference order.
+func NewService(backends ...Backend) *Service { return &Service{backends: backends} }
+
+// try runs one question across the routes in order.
+func try[T any](s *Service, capabilities *site.Capabilities, what string,
+	call func(Backend) (T, error), partial func(*T)) (T, error) {
+	attempts := make([]site.Attempt[T], 0, len(s.backends))
+	for _, backend := range s.backends {
+		attempts = append(attempts, site.Attempt[T]{
+			Kind:        backend.Name(),
+			Requirement: backend.Requirement(),
+			Call:        func() (T, error) { return call(backend) },
+		})
+	}
+
+	outcome, err := site.Try(capabilities, attempts)
+	if err != nil {
+		var zero T
+		return zero, errs.From(err).WithHint("cannot " + what + " on this site; " +
+			errs.From(err).Hint)
+	}
+	if outcome.Drift {
+		partial(&outcome.Result)
+	}
+	return outcome.Result, nil
+}
 
 // List returns the forums of the given courses, or of every course when none
 // are named.
 func (s *Service) List(ctx context.Context, capabilities *site.Capabilities, courseIDs []string) (ListResult, error) {
-	if err := s.check(capabilities); err != nil {
-		return ListResult{}, err
-	}
-	return s.backend.List(ctx, courseIDs)
+	return try(s, capabilities, "list forums",
+		func(b Backend) (ListResult, error) { return b.List(ctx, courseIDs) },
+		func(r *ListResult) { r.Provenance.Partial = true })
 }
 
 // Discussions returns one forum's threads. The reference may be a forum id or
 // a Moodle address.
 func (s *Service) Discussions(ctx context.Context, capabilities *site.Capabilities, ref string) (DiscussionsResult, error) {
-	if err := s.check(capabilities); err != nil {
-		return DiscussionsResult{}, err
-	}
 	id, err := s.locateForum(ctx, capabilities, ref)
 	if err != nil {
 		return DiscussionsResult{}, err
 	}
-	return s.backend.Discussions(ctx, id)
+	return try(s, capabilities, "list discussions",
+		func(b Backend) (DiscussionsResult, error) { return b.Discussions(ctx, id) },
+		func(r *DiscussionsResult) { r.Provenance.Partial = true })
 }
 
 // Thread returns one discussion's posts, in reading order.
 func (s *Service) Thread(ctx context.Context, capabilities *site.Capabilities, ref string) (ThreadResult, error) {
-	if err := s.check(capabilities); err != nil {
-		return ThreadResult{}, err
-	}
 	id, err := locateDiscussion(ref)
 	if err != nil {
 		return ThreadResult{}, err
 	}
-	return s.backend.Thread(ctx, id)
+	return try(s, capabilities, "read the discussion",
+		func(b Backend) (ThreadResult, error) { return b.Thread(ctx, id) },
+		func(r *ThreadResult) { r.Provenance.Partial = true })
 }
 
 // locateForum turns what the caller typed into a forum id.
@@ -77,7 +102,7 @@ func (s *Service) locateForum(ctx context.Context, capabilities *site.Capabiliti
 			WithHint("for a single thread use `moodle forum read` with its address")
 	}
 
-	list, err := s.backend.List(ctx, nil)
+	list, err := s.List(ctx, capabilities, nil)
 	if err != nil {
 		return "", err
 	}
@@ -112,15 +137,4 @@ func locateDiscussion(ref string) (string, error) {
 			WithHint("copy the address of the thread itself, which looks like .../mod/forum/discuss.php?d=…")
 	}
 	return resource.DiscussionID, nil
-}
-
-func (s *Service) check(capabilities *site.Capabilities) error {
-	ok, why := s.backend.Requirement().SatisfiedBy(capabilities)
-	if ok {
-		return nil
-	}
-	return errs.New(errs.CodeUnavailable, "cannot read forums on this site").
-		WithReason(errs.ReasonCapability).
-		WithHint(string(s.backend.Name()) + ": " + why +
-			"\nrun `moodle doctor` to see what this site offers")
 }

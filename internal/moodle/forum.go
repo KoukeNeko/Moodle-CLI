@@ -75,26 +75,30 @@ type postsDTO struct {
 
 // ForumBackend reads forums over the web service API.
 type ForumBackend struct {
-	client *Client
-	token  string
+	route route
 }
 
 // NewForumBackend builds the web service backend for forums.
 func NewForumBackend(client *Client, token string) *ForumBackend {
-	return &ForumBackend{client: client, token: token}
+	return &ForumBackend{route: wsRoute{client: client, token: token}}
 }
 
-func (b *ForumBackend) Name() site.BackendKind { return site.BackendWS }
+// NewForumAjaxBackend builds the browser-session backend.
+//
+// Only reading a thread works over this route: listing forums and their
+// discussions is not exposed there, and each will say so when asked.
+func NewForumAjaxBackend(session *AjaxSession) *ForumBackend {
+	return &ForumBackend{route: ajaxRoute{session: session}}
+}
+
+func (b *ForumBackend) Name() site.BackendKind { return b.route.kind() }
 
 func (b *ForumBackend) Requirement() site.Requirement {
-	return site.Requirement{
-		AnyFunction: []string{FunctionForums},
-		Credential:  site.CredentialWSToken,
-	}
+	return b.route.requirement([]string{FunctionForums})
 }
 
 func (b *ForumBackend) List(ctx context.Context, courseIDs []string) (forum.ListResult, error) {
-	params := Params{}
+	params := map[string]any{}
 	if len(courseIDs) > 0 {
 		ids := make([]any, 0, len(courseIDs))
 		for _, raw := range courseIDs {
@@ -109,13 +113,13 @@ func (b *ForumBackend) List(ctx context.Context, courseIDs []string) (forum.List
 	}
 
 	var dto []forumDTO
-	if err := b.client.Call(ctx, b.token, FunctionForums, params, &dto); err != nil {
+	if err := b.route.call(ctx, FunctionForums, params, &dto); err != nil {
 		return forum.ListResult{}, err
 	}
 
 	result := forum.ListResult{
 		Forums:     []forum.Forum{},
-		Provenance: site.NewProvenance(site.BackendWS),
+		Provenance: site.NewProvenance(b.route.kind()),
 	}
 	for _, item := range dto {
 		result.Forums = append(result.Forums, forum.Forum{
@@ -143,15 +147,15 @@ func (b *ForumBackend) Discussions(ctx context.Context, forumID string) (forum.D
 	}
 
 	var dto discussionsDTO
-	if err := b.client.Call(ctx, b.token, FunctionForumDiscussion,
-		Params{"forumid": id}, &dto); err != nil {
+	if err := b.route.call(ctx, FunctionForumDiscussion,
+		map[string]any{"forumid": id}, &dto); err != nil {
 		return forum.DiscussionsResult{}, err
 	}
 
 	result := forum.DiscussionsResult{
 		ForumID:     forumID,
 		Discussions: []forum.Discussion{},
-		Provenance:  site.NewProvenance(site.BackendWS),
+		Provenance:  site.NewProvenance(b.route.kind()),
 	}
 	for _, item := range dto.Discussions {
 		result.Discussions = append(result.Discussions, forum.Discussion{
@@ -180,15 +184,15 @@ func (b *ForumBackend) Thread(ctx context.Context, discussionID string) (forum.T
 	}
 
 	var dto postsDTO
-	if err := b.client.Call(ctx, b.token, FunctionForumPosts,
-		Params{"discussionid": id}, &dto); err != nil {
+	if err := b.route.call(ctx, FunctionForumPosts,
+		map[string]any{"discussionid": id}, &dto); err != nil {
 		return forum.ThreadResult{}, err
 	}
 
 	result := forum.ThreadResult{
 		DiscussionID: discussionID,
 		Posts:        []forum.Post{},
-		Provenance:   site.NewProvenance(site.BackendWS),
+		Provenance:   site.NewProvenance(b.route.kind()),
 	}
 	for _, item := range dto.Posts {
 		post := forum.Post{

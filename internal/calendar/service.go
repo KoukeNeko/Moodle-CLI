@@ -8,22 +8,37 @@ import (
 )
 
 // Service reads the calendar.
+//
+// It owns which route to try and in what order. There is no central
+// dispatcher: a feature knows its own alternatives, and a shared one would
+// have to learn them for every feature.
 type Service struct {
-	backend Backend
+	backends []Backend
 }
 
-// NewService builds the use case.
-func NewService(backend Backend) *Service { return &Service{backend: backend} }
+// NewService builds the use case. The order is the preference order.
+func NewService(backends ...Backend) *Service { return &Service{backends: backends} }
 
 // Upcoming returns what the caller still has to do.
 func (s *Service) Upcoming(ctx context.Context, capabilities *site.Capabilities, q Query) (Result, error) {
-	ok, why := s.backend.Requirement().SatisfiedBy(capabilities)
-	if !ok {
-		return Result{}, errs.New(errs.CodeUnavailable,
-			"cannot read the calendar on this site").
-			WithReason(errs.ReasonCapability).
-			WithHint(string(s.backend.Name()) + ": " + why +
-				"\nrun `moodle doctor` to see what this site offers")
+	attempts := make([]site.Attempt[Result], 0, len(s.backends))
+	for _, backend := range s.backends {
+		attempts = append(attempts, site.Attempt[Result]{
+			Kind:        backend.Name(),
+			Requirement: backend.Requirement(),
+			Call:        func() (Result, error) { return backend.Upcoming(ctx, q) },
+		})
 	}
-	return s.backend.Upcoming(ctx, q)
+
+	outcome, err := site.Try(capabilities, attempts)
+	if err != nil {
+		return Result{}, errs.From(err).WithHint(
+			"cannot read the calendar on this site; " + errs.From(err).Hint)
+	}
+	if outcome.Drift {
+		// An earlier route could not read the site. The answer is good, but
+		// the caller should know something drifted.
+		outcome.Result.Provenance.Partial = true
+	}
+	return outcome.Result, nil
 }
