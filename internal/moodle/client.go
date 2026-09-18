@@ -42,6 +42,9 @@ type Client struct {
 	httpClient *http.Client
 	userAgent  string
 	trace      io.Writer
+	// limiter paces requests so this client is not a burden on a site it does
+	// not own. It is shared by every call through this client.
+	limiter *limiter
 }
 
 // Option configures a Client.
@@ -62,6 +65,12 @@ func WithUserAgent(agent string) Option {
 }
 
 // WithTrace writes redacted request and response lines for debugging.
+// WithPacing sets how often requests may go out. A zero MinInterval disables
+// pacing, which is what a test usually wants.
+func WithPacing(pacing Pacing) Option {
+	return func(c *Client) { c.limiter = newLimiter(pacing) }
+}
+
 func WithTrace(w io.Writer) Option {
 	return func(c *Client) { c.trace = w }
 }
@@ -207,6 +216,9 @@ func (c *Client) postJSON(ctx context.Context, endpoint string, body []byte, fun
 // anything worth holding in memory. The caller owns the body and must close
 // it.
 func (c *Client) stream(request *http.Request, function string) (*http.Response, error) {
+	if err := c.limiter.wait(request.Context()); err != nil {
+		return nil, networkError(request.Context(), err, function)
+	}
 	request.Header.Set("User-Agent", c.userAgent)
 
 	response, err := c.httpClient.Do(request)
@@ -218,12 +230,16 @@ func (c *Client) stream(request *http.Request, function string) (*http.Response,
 		// what makes the failure explainable.
 		body, _ := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
 		response.Body.Close()
+		c.noteBackoff(response)
 		return nil, httpStatusError(response, body, function)
 	}
 	return response, nil
 }
 
 func (c *Client) send(request *http.Request, function string) ([]byte, error) {
+	if err := c.limiter.wait(request.Context()); err != nil {
+		return nil, networkError(request.Context(), err, function)
+	}
 	request.Header.Set("User-Agent", c.userAgent)
 	request.Header.Set("Accept", "application/json")
 
@@ -249,9 +265,38 @@ func (c *Client) send(request *http.Request, function string) ([]byte, error) {
 	c.traceResponse(response, body)
 
 	if response.StatusCode != http.StatusOK {
+		c.noteBackoff(response)
 		return nil, httpStatusError(response, body, function)
 	}
 	return body, nil
+}
+
+// noteBackoff lets a site slow this client down.
+//
+// Being asked to wait is not a suggestion, and the ask outlives the request
+// that received it: the next call waits too, rather than every caller
+// discovering the same 429 for itself.
+func (c *Client) noteBackoff(response *http.Response) {
+	if c.limiter == nil {
+		return
+	}
+	switch response.StatusCode {
+	case http.StatusTooManyRequests, http.StatusServiceUnavailable:
+	default:
+		return
+	}
+	now := time.Now()
+	delay, named := retryAfter(response.Header, now)
+	if !named {
+		// Asked for quiet without saying how long. A short pause is the
+		// cooperative reading; guessing a long one would be worse than the
+		// site asking again.
+		delay = 5 * time.Second
+	}
+	if delay > maxRetryAfter {
+		delay = maxRetryAfter
+	}
+	c.limiter.pause(now.Add(delay))
 }
 
 // decode turns a REST body into out, failing on a Moodle exception first.
@@ -313,17 +358,59 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 		code = errs.CodeNotFound
 		hint = "check the site URL points at a Moodle installation"
 	case response.StatusCode == http.StatusTooManyRequests:
-		code = errs.CodeNetwork
+		code = errs.CodeUnavailable
+		reason = errs.ReasonRateLimited
+		hint = "the site is asking for fewer requests; " + waitAdvice(response)
+	case response.StatusCode == http.StatusServiceUnavailable:
+		code = errs.CodeUnavailable
+		hint = "the site is temporarily unavailable; " + waitAdvice(response)
 	case response.StatusCode >= 500:
 		code = errs.CodeUpstream
 	}
-	err := errs.New(code, fmt.Sprintf("Moodle answered %s with HTTP %d",
-		function, response.StatusCode)).WithHint(hint)
+
+	message := fmt.Sprintf("Moodle answered %s with HTTP %d", function, response.StatusCode)
+	// Moodle often explains itself in the body of an HTTP error. Throwing that
+	// away leaves the user with a number and nothing to act on.
+	if detail := describeErrorBody(body); detail != "" {
+		message += ": " + detail
+	}
+	err := errs.New(code, message).WithHint(hint)
 	if reason != "" {
 		err = err.WithReason(reason)
 	}
-	_ = body
 	return err
+}
+
+// waitAdvice turns Retry-After into something a person can act on.
+func waitAdvice(response *http.Response) string {
+	delay, named := retryAfter(response.Header, time.Now())
+	if !named {
+		return "try again in a moment"
+	}
+	return "try again in " + delay.Round(time.Second).String()
+}
+
+// describeErrorBody pulls a usable sentence out of an HTTP error body.
+func describeErrorBody(body []byte) string {
+	trimmed := strings.TrimSpace(string(body))
+	if trimmed == "" {
+		return ""
+	}
+	// An exception has a message worth quoting; an HTML error page does not.
+	if strings.HasPrefix(trimmed, "{") {
+		var ex exception
+		if err := json.Unmarshal(body, &ex); err == nil && !ex.empty() {
+			return firstNonEmpty(ex.Message, ex.Error, ex.ErrorCode)
+		}
+	}
+	if strings.HasPrefix(strings.ToLower(trimmed), "<") {
+		return ""
+	}
+	const limit = 160
+	if len(trimmed) > limit {
+		return trimmed[:limit] + "…"
+	}
+	return trimmed
 }
 
 func networkError(ctx context.Context, cause error, function string) error {

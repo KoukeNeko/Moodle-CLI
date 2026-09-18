@@ -60,6 +60,9 @@ func Run(ctx context.Context, build Build, args []string) int {
 		return moodle.NewClient(target,
 			moodle.WithHTTPClient(httpClient),
 			moodle.WithUserAgent(moodle.DefaultUserAgent(version)),
+			// A Moodle is usually a shared university service, and the thing
+			// driving this client may be a loop.
+			moodle.WithPacing(moodle.DefaultPacing),
 		)
 	}
 	manager := auth.NewManager(secret.Keyring{}, newClient)

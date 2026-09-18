@@ -60,6 +60,10 @@ const (
 	ReasonTokenExpired           Reason = "token_expired"
 	ReasonMobileServicesDisabled Reason = "mobile_services_disabled"
 	ReasonCredentialMissing      Reason = "credential_missing"
+	// ReasonRateLimited means the site asked for fewer requests. It is a
+	// reason to wait, never a reason to retry a write: the request may have
+	// been refused before it ran or after.
+	ReasonRateLimited Reason = "rate_limited"
 )
 
 // Outcome says whether the effect of a request is known. An ambiguous outcome
