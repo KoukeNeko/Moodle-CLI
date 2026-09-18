@@ -46,6 +46,7 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 		callback      string
 		passport      string
 		qr            string
+		sessionCookie string
 	)
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -93,14 +94,15 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 			}
 
 			credential, err := deps.Login.Authenticate(cmd.Context(), auth.Request{
-				Site:     target,
-				Username: username,
-				Password: password,
-				Callback: callback,
-				Passport: passport,
-				QR:       qr,
-				Token:    token,
-				In:       cmd.InOrStdin(),
+				Site:          target,
+				Username:      username,
+				Password:      password,
+				Callback:      callback,
+				Passport:      passport,
+				QR:            qr,
+				SessionCookie: sessionCookie,
+				Token:         token,
+				In:            cmd.InOrStdin(),
 				// Prompts are diagnostics: stdout carries the result only.
 				Out: r.Streams.Err,
 			}, methodName)
@@ -159,7 +161,8 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&siteFlag, "site", "", "site to sign in to")
 	cmd.Flags().StringVar(&accountName, "account", "", "name for this account (defaults to the Moodle username)")
-	cmd.Flags().StringVar(&methodName, "method", "", "login method: token, password, qr or manual")
+	cmd.Flags().StringVar(&methodName, "method", "",
+		"login method: token, password, qr, browser-session or manual")
 	cmd.Flags().StringVar(&token, "token", "", "an existing web service token")
 	cmd.Flags().BoolVar(&tokenStdin, "token-stdin", false, "read the token from stdin")
 	cmd.Flags().StringVar(&username, "username", "", "Moodle username (password method)")
@@ -167,6 +170,8 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 	cmd.Flags().StringVar(&callback, "callback", "", "a pasted <scheme>://token=... callback URL (manual method)")
 	cmd.Flags().StringVar(&passport, "passport", "", "the passport used to start the login, so the callback can be verified")
 	cmd.Flags().StringVar(&qr, "qr", "", "the decoded content of a login QR code (qr method)")
+	cmd.Flags().StringVar(&sessionCookie, "session-cookie", "",
+		"a session your browser already holds, as MoodleSession=… (browser-session method)")
 	return cmd
 }
 

@@ -50,6 +50,10 @@ type Request struct {
 	// QR is the decoded content of a login QR code.
 	QR string
 
+	// SessionCookie is a session a browser already holds, as either
+	// "MoodleSession=value" or the bare value.
+	SessionCookie string
+
 	// Token is an existing web service token.
 	Token string
 

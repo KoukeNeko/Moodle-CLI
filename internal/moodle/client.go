@@ -210,6 +210,29 @@ func (c *Client) postJSON(ctx context.Context, endpoint string, body []byte, fun
 	return c.send(request, function)
 }
 
+// redirectResponse sends a request and hands back the redirect rather than
+// following it.
+//
+// The launch endpoint answers with a custom scheme that Go cannot fetch, and
+// the answer is the Location header itself. Following it would at best waste a
+// request and at worst send the session cookie somewhere else.
+func (c *Client) redirectResponse(request *http.Request, function string) (*http.Response, error) {
+	if err := c.limiter.wait(request.Context()); err != nil {
+		return nil, networkError(request.Context(), err, function)
+	}
+	request.Header.Set("User-Agent", c.userAgent)
+
+	noRedirect := *c.httpClient
+	noRedirect.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	response, err := noRedirect.Do(request)
+	if err != nil {
+		return nil, networkError(request.Context(), err, function)
+	}
+	return response, nil
+}
+
 // stream sends a request and hands back the open response.
 //
 // Unlike send it does not read the body, because a download can be larger than

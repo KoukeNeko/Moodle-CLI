@@ -1,12 +1,14 @@
 package moodle
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -124,4 +126,62 @@ func VerifyPassport(callback TokenCallback, wwwRoot, passport string) error {
 				callback.SiteHash, wwwRoot))
 	}
 	return nil
+}
+
+// SessionCookie is a browser session this tool has been given.
+//
+// It is the credential a logged-in browser holds. Handing it to the wrong host
+// hands over the account, so it is only ever sent to the site it came from.
+type SessionCookie struct {
+	// Name is usually MoodleSession, but a site can rename it.
+	Name  string
+	Value string
+}
+
+// DefaultSessionCookieName is what Moodle calls its session cookie unless a
+// site has changed $CFG->sessioncookie.
+const DefaultSessionCookieName = "MoodleSession"
+
+// ExchangeSession turns a browser session into a web service token.
+//
+// Moodle's launch endpoint answers a signed-in browser with a redirect to a
+// custom scheme carrying the token. There is no need to follow it — and no way
+// to, since Go cannot fetch a "moodlemobile://" URL — so the redirect is read
+// rather than obeyed.
+//
+// This is the whole of what a browser session buys: one exchange, after which
+// the session is not needed again. The token that comes back is an ordinary
+// web service token with no shorter life than any other.
+func (c *Client) ExchangeSession(ctx context.Context, cookie SessionCookie, passport, urlScheme string) (TokenCallback, error) {
+	if strings.TrimSpace(cookie.Value) == "" {
+		return TokenCallback{}, errs.New(errs.CodeUsage, "no session cookie given")
+	}
+	name := strings.TrimSpace(cookie.Name)
+	if name == "" {
+		name = DefaultSessionCookieName
+	}
+
+	target := LaunchURL(c.site.Endpoint(""), MobileService, passport, urlScheme)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return TokenCallback{}, errs.Wrap(errs.CodeInternal, err, "cannot build the launch request")
+	}
+	request.AddCookie(&http.Cookie{Name: name, Value: cookie.Value})
+
+	response, err := c.redirectResponse(request, "launch.php")
+	if err != nil {
+		return TokenCallback{}, err
+	}
+	defer response.Body.Close()
+
+	location := response.Header.Get("Location")
+	if response.StatusCode < 300 || response.StatusCode > 399 || location == "" {
+		// Moodle answers a request it does not recognise as signed in by
+		// serving the login page, which is a 200 rather than a redirect.
+		return TokenCallback{}, errs.New(errs.CodeAuthentication,
+			"the site did not accept that browser session").
+			WithReason(errs.ReasonTokenExpired).
+			WithHint("the session may have expired, or it may belong to a different site")
+	}
+	return ParseTokenCallback(location)
 }

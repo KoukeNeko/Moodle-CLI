@@ -14,6 +14,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/api"
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/browsersession"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/manual"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/password"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/qrlogin"
@@ -76,6 +77,10 @@ func Run(ctx context.Context, build Build, args []string) int {
 			token.New(),
 			password.New(newClient, readPassword),
 			qrlogin.New(newClient),
+			// Never chosen automatically: it needs a session cookie handed
+			// over, and a credential that powerful is not something to go
+			// looking for on someone's behalf.
+			browsersession.New(newClient),
 			manual.New(),
 		),
 		Courses: func(session *auth.Session, capabilities *site.Capabilities) *course.Service {
