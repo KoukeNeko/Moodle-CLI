@@ -188,6 +188,21 @@ func (b *ForumBackend) Thread(ctx context.Context, discussionID string) (forum.T
 		map[string]any{"discussionid": id}, &dto); err != nil {
 		return forum.ThreadResult{}, err
 	}
+	if len(dto.Posts) == 0 {
+		// A thread the account cannot read is answered with a successful call
+		// and an empty list, not an error: a separate-groups forum does this to
+		// anyone outside the group, and a Q&A forum to anyone who has not
+		// posted yet. Passing the empty list on would say "nothing was written
+		// here" about a thread that was never read.
+		//
+		// Nothing is lost by refusing. A discussion is created around its
+		// opening post and keeps it, so an empty list cannot be an empty
+		// thread, and a discussion that does not exist is an error rather than
+		// an empty reply.
+		return forum.ThreadResult{}, errs.New(errs.CodePermissionDenied,
+			"this account cannot read discussion "+discussionID).
+			WithHint("the site returned it without the opening post every discussion has")
+	}
 
 	result := forum.ThreadResult{
 		DiscussionID: discussionID,

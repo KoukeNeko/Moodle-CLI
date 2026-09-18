@@ -285,11 +285,29 @@ func TestAForumWithNothingInItSaysSo(t *testing.T) {
 		t.Errorf("a forum with no threads should say so:\n%s", stdout)
 	}
 
-	stdout, _, code = f.run("forum", "read", "1")
-	if code != v1.ExitOK {
-		t.Fatalf("exit %d", code)
+}
+
+func TestAThreadHeldBackByItsGroupIsNotAnEmptyThread(t *testing.T) {
+	// 獨立分組的論壇對「這串不是你那組的」回的是一次**成功**的呼叫加一個空陣列，
+	// 沒有任何 warning。照原樣印出去，就變成對一串讀都沒讀到的討論說「這裡沒有東西」。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.withForum()
+	f.server.HandleValue(moodle.FunctionForumPosts, map[string]any{
+		"posts": []any{}, "forumid": 2, "courseid": 2, "warnings": []any{},
+	})
+
+	stdout, stderr, code := f.run("forum", "read", "1")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitPermissionDenied, stderr)
 	}
-	if !strings.Contains(stdout, "Nothing in this thread") {
-		t.Errorf("an empty thread should say so:\n%s", stdout)
+	if stdout != "" {
+		t.Errorf("a refusal wrote to stdout:\n%s", stdout)
+	}
+	if strings.Contains(stderr, "Nothing in this thread") {
+		t.Errorf("a thread the account cannot read was reported as an empty one:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "opening post") {
+		t.Errorf("the message does not say why an empty reply settles it:\n%s", stderr)
 	}
 }
