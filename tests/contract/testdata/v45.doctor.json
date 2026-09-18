@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "kind": "doctor",
+  "data": {
+    "site": "rec",
+    "site_url": "http://localhost:8451",
+    "account": "env",
+    "ok": true,
+    "checks": [
+      {
+        "name": "Site reachable",
+        "status": "ok",
+        "detail": "Dockerized_Moodle",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Web services",
+        "status": "ok",
+        "detail": "enabled",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Login methods",
+        "status": "ok",
+        "detail": "token, password",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Authentication",
+        "status": "ok",
+        "detail": "Sam Student (student1)",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Moodle version",
+        "status": "ok",
+        "detail": "4.5.12 (Build: 20260608)",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "File download",
+        "status": "ok",
+        "detail": "allowed",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "File upload",
+        "status": "ok",
+        "detail": "allowed",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Course listing",
+        "status": "ok",
+        "detail": "available",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Assignments",
+        "status": "ok",
+        "detail": "available",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Assignment submission",
+        "status": "ok",
+        "detail": "available",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Grades",
+        "status": "ok",
+        "detail": "available",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Calendar",
+        "status": "ok",
+        "detail": "available",
+        "reason": null,
+        "hint": null
+      },
+      {
+        "name": "Forums",
+        "status": "ok",
+        "detail": "available",
+        "reason": null,
+        "hint": null
+      }
+    ]
+  },
+  "meta": {
+    "site": null,
+    "account": null,
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

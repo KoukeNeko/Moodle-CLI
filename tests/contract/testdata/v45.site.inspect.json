@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "kind": "site.inspect",
+  "data": {
+    "site": "rec",
+    "site_url": "http://localhost:8451",
+    "site_name": "Dockerized_Moodle",
+    "release": "4.5.12 (Build: 20260608)",
+    "username": "student1",
+    "user_id": "4",
+    "can_upload": true,
+    "can_download": true,
+    "function_count": 437,
+    "functions": []
+  },
+  "meta": {
+    "site": null,
+    "account": null,
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

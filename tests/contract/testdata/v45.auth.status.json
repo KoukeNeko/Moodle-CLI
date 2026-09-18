@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "kind": "auth.status",
+  "data": {
+    "site": "rec",
+    "account": "env",
+    "username": null,
+    "user_id": null,
+    "full_name": null,
+    "site_name": "Dockerized_Moodle",
+    "release": "4.5.12 (Build: 20260608)",
+    "valid": true
+  },
+  "meta": {
+    "site": null,
+    "account": null,
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}
