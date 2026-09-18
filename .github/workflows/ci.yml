@@ -24,6 +24,9 @@ jobs:
       # would replay a stale pass after a boundary had been broken.
       - run: go test -count=1 -race ./...
       - run: go vet ./...
+      # Unformatted code should fail the build, not get noticed in review.
+      - name: gofmt
+        run: gofmt -l . | tee /dev/stderr | (! read)
 
   build:
     strategy:

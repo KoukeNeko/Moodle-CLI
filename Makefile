@@ -20,7 +20,7 @@ help:
 	@echo "  make test                  單元與契約測試"
 	@echo "  make test-race             同上，開 race detector"
 	@echo "  make arch                  只跑 import 邊界檢查"
-	@echo "  make lint                  go vet"
+	@echo "  make lint                  gofmt 檢查 + go vet"
 	@echo "  make verify                test + test-race + lint + build"
 	@echo
 	@echo "測試環境（見 test/e2e/README.md）："
@@ -49,6 +49,7 @@ arch:
 	go test -count=1 ./tests/arch/
 
 lint:
+	gofmt -l . | tee /dev/stderr | (! read)
 	go vet ./...
 
 verify: test test-race lint build

@@ -68,12 +68,12 @@ type UpstreamBody struct {
 // ErrorBody is the error detail. Message and Hint are English prose for
 // humans; programs branch on Code, Reason and Outcome.
 type ErrorBody struct {
-	Code      errs.Code    `json:"code"`
-	Reason    *errs.Reason `json:"reason"`
-	Outcome   errs.Outcome `json:"outcome"`
-	Retryable bool         `json:"retryable"`
-	Message   string       `json:"message"`
-	Hint      *string      `json:"hint"`
+	Code      errs.Code     `json:"code"`
+	Reason    *errs.Reason  `json:"reason"`
+	Outcome   errs.Outcome  `json:"outcome"`
+	Retryable bool          `json:"retryable"`
+	Message   string        `json:"message"`
+	Hint      *string       `json:"hint"`
 	Upstream  *UpstreamBody `json:"upstream"`
 }
 
