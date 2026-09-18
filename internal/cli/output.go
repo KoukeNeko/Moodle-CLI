@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -54,6 +55,16 @@ func (r Renderer) Render(res Result) error {
 	return res.Human(r.Streams.Out)
 }
 
+// reported marks a failure whose output has already been written. Doctor
+// prints its report and then has to exit non-zero; without this it would emit
+// a second JSON document and break the one-document rule.
+type reported struct{ code int }
+
+func (r reported) Error() string { return "already reported" }
+
+// Reported wraps an exit code for a failure that has already been rendered.
+func Reported(code int) error { return reported{code: code} }
+
 // RenderError writes a failed result and returns the process exit code.
 //
 // With --json the error envelope goes to stdout, so a consumer parses one
@@ -62,6 +73,10 @@ func (r Renderer) Render(res Result) error {
 func (r Renderer) RenderError(err error) int {
 	if err == nil {
 		return v1.ExitOK
+	}
+	var already reported
+	if errors.As(err, &already) {
+		return already.code
 	}
 	if r.Format == FormatJSON {
 		if writeErr := r.writeJSON(v1.NewErrorEnvelope(err)); writeErr != nil {

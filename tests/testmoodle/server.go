@@ -72,6 +72,7 @@ func New() *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/webservice/rest/server.php", s.handleREST)
 	mux.HandleFunc("/login/token.php", s.handleToken)
+	mux.HandleFunc("/lib/ajax/service-nologin.php", s.handleNoLogin)
 	s.server = httptest.NewServer(mux)
 	return s
 }
@@ -167,6 +168,48 @@ func (s *Server) handleREST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, value)
+}
+
+// handleNoLogin serves the functions Moodle exposes without a token, such as
+// the pre-login site configuration. The reply is an array with one entry per
+// call, which is a different shape from the REST endpoint.
+func (s *Server) handleNoLogin(w http.ResponseWriter, r *http.Request) {
+	function := r.URL.Query().Get("info")
+
+	s.mu.Lock()
+	s.requests = append(s.requests, Request{Function: function})
+	handler, known := s.functions[function]
+	failure := s.failures[function]
+	s.mu.Unlock()
+
+	if failure != "" {
+		s.writeFailure(w, failure)
+		return
+	}
+	if !known {
+		writeJSON(w, []map[string]any{{
+			"error": "unknown function",
+			"exception": map[string]any{
+				"exception": "moodle_exception",
+				"errorcode": "accessexception",
+				"message":   "Access control exception",
+			},
+		}})
+		return
+	}
+	value, err := handler(r.URL.Query())
+	if err != nil {
+		writeJSON(w, []map[string]any{{
+			"error": err.Error(),
+			"exception": map[string]any{
+				"exception": "moodle_exception",
+				"errorcode": "invalidparameter",
+				"message":   err.Error(),
+			},
+		}})
+		return
+	}
+	writeJSON(w, []map[string]any{{"error": false, "data": value}})
 }
 
 func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {

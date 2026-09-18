@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/site.list.schema.json",
+  "title": "moodle-cli site.list",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "site.list" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "id", "base_url", "backend", "current", "accounts"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "id": { "type": "string" },
+          "base_url": { "type": "string" },
+          "backend": { "enum": ["auto", "ws-only"] },
+          "current": { "type": "boolean" },
+          "accounts": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

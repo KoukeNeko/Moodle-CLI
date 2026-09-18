@@ -30,7 +30,7 @@ type App struct {
 }
 
 // New builds the command tree.
-func New(build BuildInfo, streams Streams) *App {
+func New(build BuildInfo, streams Streams, deps Deps) *App {
 	if streams.Out == nil {
 		streams.Out = os.Stdout
 	}
@@ -77,10 +77,16 @@ func New(build BuildInfo, streams Streams) *App {
 	root.PersistentFlags().BoolVar(&pretty, "pretty", false,
 		"indent JSON output")
 
+	siteCmd := newSiteCommand(renderer, deps)
+	siteCmd.AddCommand(newSiteInspectCommand(renderer, deps))
+
 	root.AddCommand(
 		newVersionCommand(renderer, build),
 		newSchemaCommand(renderer),
 		newCommandsCommand(renderer, func() *cobra.Command { return root }),
+		siteCmd,
+		newAuthCommand(renderer, deps),
+		newDoctorCommand(renderer, deps),
 	)
 
 	app.root = root

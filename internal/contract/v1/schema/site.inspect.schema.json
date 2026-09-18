@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/site.inspect.schema.json",
+  "title": "moodle-cli site.inspect",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "site.inspect" },
+    "data": {
+      "type": "object",
+      "required": ["site", "site_url", "site_name", "release", "username", "user_id",
+                   "can_upload", "can_download", "function_count", "functions"],
+      "additionalProperties": false,
+      "properties": {
+        "site": { "type": "string" },
+        "site_url": { "type": "string" },
+        "site_name": { "type": "string" },
+        "release": { "type": "string" },
+        "username": { "type": "string" },
+        "user_id": { "type": "string", "description": "Ids are strings" },
+        "can_upload": { "type": "boolean" },
+        "can_download": { "type": "boolean" },
+        "function_count": { "type": "integer" },
+        "functions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

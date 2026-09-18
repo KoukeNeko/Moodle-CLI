@@ -5,22 +5,41 @@ import (
 	"context"
 	"encoding/json"
 	"io/fs"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
+	"github.com/KoukeNeko/moodle-cli/internal/moodle"
+	"github.com/KoukeNeko/moodle-cli/internal/secret"
+	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
 // run executes the CLI with args and returns stdout, stderr and the exit code.
+//
+// Commands get an isolated configuration file and an in-process keychain, so
+// a test never touches the developer's real setup.
 func run(t *testing.T, args ...string) (stdout, stderr string, code int) {
+	t.Helper()
+	return runWith(t, cli.Deps{
+		ConfigPath: filepath.Join(t.TempDir(), "config.yaml"),
+		Auth: auth.NewManager(secret.NewMemory(), func(target site.Site) *moodle.Client {
+			return moodle.NewClient(target)
+		}),
+	}, args...)
+}
+
+func runWith(t *testing.T, deps cli.Deps, args ...string) (stdout, stderr string, code int) {
 	t.Helper()
 	var out, errOut bytes.Buffer
 	app := cli.New(
 		cli.BuildInfo{Version: "1.2.3", Commit: "abc123", BuildDate: "2026-09-18T00:00:00Z"},
 		cli.Streams{Out: &out, Err: &errOut},
+		deps,
 	)
 	code = app.Execute(context.Background(), args)
 	return out.String(), errOut.String(), code

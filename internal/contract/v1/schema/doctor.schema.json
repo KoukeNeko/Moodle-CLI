@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/doctor.schema.json",
+  "title": "moodle-cli doctor",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "doctor" },
+    "data": {
+      "type": "object",
+      "required": ["site", "site_url", "account", "ok", "checks"],
+      "additionalProperties": false,
+      "properties": {
+        "site": { "type": "string" },
+        "site_url": { "type": "string" },
+        "account": { "type": ["string", "null"] },
+        "ok": { "type": "boolean" },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "status", "detail", "reason", "hint"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "enum": ["ok", "warning", "failed", "skipped"] },
+              "detail": { "type": "string" },
+              "reason": { "type": ["string", "null"] },
+              "hint": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

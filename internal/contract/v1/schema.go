@@ -33,8 +33,10 @@ func SchemaKinds() []string {
 
 // Schema returns the JSON Schema document for a kind.
 func Schema(kind string) ([]byte, error) {
-	// Reject separators so a kind can never escape the embedded directory.
-	if kind == "" || strings.ContainsAny(kind, "/\\.") {
+	// Kinds legitimately contain dots ("auth.login"), so only path separators
+	// and parent references are rejected — a kind must never be able to
+	// escape the embedded directory.
+	if kind == "" || strings.ContainsAny(kind, "/\\") || strings.Contains(kind, "..") {
 		return nil, fmt.Errorf("unknown schema kind %q", kind)
 	}
 	data, err := schemaFS.ReadFile("schema/" + kind + schemaSuffix)
