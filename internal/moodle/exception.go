@@ -12,6 +12,10 @@ type exception struct {
 	Exception string `json:"exception"`
 	ErrorCode string `json:"errorcode"`
 	Message   string `json:"message"`
+	// Error carries the human text on /login/token.php, which reports failure
+	// with "error" where the REST endpoint uses "message". Without this the
+	// wording Moodle chose is lost and the user sees only a generic line.
+	Error     string `json:"error"`
 	DebugInfo string `json:"debuginfo"`
 }
 
@@ -81,9 +85,12 @@ func (e exception) asError(function string) error {
 	upstream := &errs.Upstream{
 		Exception: e.Exception,
 		ErrorCode: e.ErrorCode,
-		Message:   e.Message,
+		Message:   firstNonEmpty(e.Message, e.Error),
 	}
 	message := e.Message
+	if message == "" {
+		message = e.Error
+	}
 	if message == "" {
 		message = fmt.Sprintf("Moodle rejected %s", function)
 	}
@@ -108,4 +115,13 @@ func (e exception) asError(function string) error {
 		Upstream: upstream,
 	}
 	return out
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
-	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/tests/testmoodle"
 )
@@ -28,14 +28,14 @@ func newFixture(t *testing.T) *fixture {
 	server := testmoodle.New()
 	t.Cleanup(server.Close)
 
+	manager := testManager()
 	f := &fixture{
 		t:      t,
 		server: server,
 		deps: cli.Deps{
 			ConfigPath: filepath.Join(t.TempDir(), "config.yaml"),
-			Auth: auth.NewManager(secret.NewMemory(), func(target site.Site) *moodle.Client {
-				return moodle.NewClient(target)
-			}),
+			Auth:       manager,
+			Login:      testCoordinator(manager),
 			Courses: func(session *auth.Session, capabilities *site.Capabilities) *course.Service {
 				return course.NewService(
 					moodle.NewCourseBackend(session.Client(), session.Token(), capabilities),
@@ -60,6 +60,11 @@ func newFixture(t *testing.T) *fixture {
 func (f *fixture) run(args ...string) (stdout, stderr string, code int) {
 	f.t.Helper()
 	return runWith(f.t, f.deps, args...)
+}
+
+func (f *fixture) runWithStdin(stdin string, args ...string) (stdout, stderr string, code int) {
+	f.t.Helper()
+	return runWithInput(f.t, f.deps, stdin, args...)
 }
 
 // addSiteAndLogin gets the fixture to the signed-in state most tests need.
@@ -401,5 +406,137 @@ func TestCourseListSaysWhatIsMissingWhenTheSiteCannotDoIt(t *testing.T) {
 	validate(t, "error", stdout)
 	if !strings.Contains(stdout, moodle.FunctionUserCourses) {
 		t.Errorf("the error should name the missing function:\n%s", stdout)
+	}
+}
+
+func TestLoginWithPassword(t *testing.T) {
+	f := newFixture(t)
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+	// The fake site issues "token-for-<username>" and accepts it afterwards.
+	stdout, stderr, code := f.runWithStdin("Student123!\n",
+		"auth", "login", "--method", "password", "--username", "student1", "--password-stdin")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s%s", code, stdout, stderr)
+	}
+	if _, _, statusCode := f.run("auth", "status"); statusCode != v1.ExitOK {
+		t.Errorf("status after password login: exit %d", statusCode)
+	}
+}
+
+func TestLoginWithPastedCallback(t *testing.T) {
+	// The fallback that works everywhere, including where no URL scheme can
+	// be registered.
+	f := newFixture(t)
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+	callback := "moodlemobile://token=" + base64.StdEncoding.EncodeToString(
+		[]byte("anyhash:::good-token"))
+
+	stdout, stderr, code := f.run("auth", "login", "--method", "manual", "--callback", callback)
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "manual") {
+		t.Errorf("the method should be reported:\n%s", stdout)
+	}
+}
+
+func TestLoginRejectsACallbackFromAnotherLogin(t *testing.T) {
+	// A pasted callback carrying a hash for some other site or passport must
+	// not be accepted when this process generated the passport.
+	f := newFixture(t)
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+	callback := "moodlemobile://token=" + base64.StdEncoding.EncodeToString(
+		[]byte("a-hash-from-somewhere-else:::stolen-token"))
+
+	_, _, code := f.run("auth", "login", "--method", "manual",
+		"--callback", callback, "--passport", "my-passport")
+	if code != v1.ExitValidation {
+		t.Fatalf("exit %d, want %d", code, v1.ExitValidation)
+	}
+}
+
+func TestOnlyTheQRExchangeClaimsToBeTheMoodleApp(t *testing.T) {
+	// Moodle rejects the QR endpoint unless the caller says it is the app.
+	// That claim must not leak into any other request.
+	f := newFixture(t)
+	f.server.HandleValue(moodle.FunctionQRTokens, map[string]any{
+		"token": "good-token", "privatetoken": "",
+	})
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+	qr := f.server.URL() + "?qrlogin=KEY123&userid=4"
+	if _, stderr, code := f.run("auth", "login", "--method", "qr", "--qr", qr); code != v1.ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+
+	var sawApp, sawOwn bool
+	for _, request := range f.server.Requests() {
+		isApp := strings.Contains(request.UserAgent, "MoodleMobile")
+		if request.Function == moodle.FunctionQRTokens {
+			sawApp = isApp
+			continue
+		}
+		if isApp {
+			t.Errorf("%s was sent with the Moodle app User-Agent (%q)",
+				request.Function, request.UserAgent)
+		}
+		if strings.Contains(request.UserAgent, "moodle-cli") {
+			sawOwn = true
+		}
+	}
+	if !sawApp {
+		t.Error("the QR exchange did not claim to be the Moodle app, so Moodle would refuse it")
+	}
+	if !sawOwn {
+		t.Error("no request identified this tool honestly")
+	}
+}
+
+func TestAuthMethodsReportsWhatTheSiteSupports(t *testing.T) {
+	f := newFixture(t)
+	f.server.HandleValue(moodle.FunctionPublicConfig, map[string]any{
+		"sitename": "Test Moodle", "enablewebservices": 1, "enablemobilewebservice": 1,
+		"showloginform": 1, "tool_mobile_qrcodetype": 0,
+	})
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+	stdout, _, code := f.run("auth", "methods", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, stdout)
+	}
+	validate(t, "auth.methods", stdout)
+	if !strings.Contains(stdout, `"name":"qr"`) || !strings.Contains(stdout, `"availability":"unavailable"`) {
+		t.Errorf("QR should be reported unavailable when the site has it off:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, `"name":"password"`) || !strings.Contains(stdout, `"availability":"available"`) {
+		t.Errorf("password should be available on this site:\n%s", stdout)
+	}
+}
+
+func TestAuthMethodsOnAnUnreachableSiteReportsUnknownNotUnavailable(t *testing.T) {
+	// "I could not tell" is not "no": an offline site must not look like one
+	// that forbids every login method.
+	f := newFixture(t)
+	if _, _, code := f.run("site", "add", "dead", "http://127.0.0.1:1"); code != 0 {
+		t.Fatal("site add failed")
+	}
+	stdout, _, code := f.run("auth", "methods", "--site", "dead", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, stdout)
+	}
+	validate(t, "auth.methods", stdout)
+	if strings.Contains(stdout, `"availability":"unavailable"`) {
+		t.Errorf("an unreachable site must not mark methods unavailable:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, `"availability":"unknown"`) {
+		t.Errorf("expected unknown verdicts:\n%s", stdout)
 	}
 }

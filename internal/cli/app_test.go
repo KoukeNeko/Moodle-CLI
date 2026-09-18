@@ -12,6 +12,10 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/manual"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/password"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/qrlogin"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/token"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
@@ -27,18 +31,40 @@ func run(t *testing.T, args ...string) (stdout, stderr string, code int) {
 	t.Helper()
 	return runWith(t, cli.Deps{
 		ConfigPath: filepath.Join(t.TempDir(), "config.yaml"),
-		Auth: auth.NewManager(secret.NewMemory(), func(target site.Site) *moodle.Client {
-			return moodle.NewClient(target)
-		}),
+		Auth:       testManager(),
+		Login:      testCoordinator(testManager()),
 	}, args...)
+}
+
+// testManager and testCoordinator build the auth stack a test needs, with an
+// in-process keychain so a test never touches the developer's real one.
+func testManager() *auth.Manager {
+	return auth.NewManager(secret.NewMemory(), func(target site.Site) *moodle.Client {
+		return moodle.NewClient(target)
+	})
+}
+
+func testCoordinator(manager *auth.Manager) *auth.Coordinator {
+	newClient := func(target site.Site) *moodle.Client { return moodle.NewClient(target) }
+	return auth.NewCoordinator(manager,
+		token.New(),
+		password.New(newClient, nil),
+		qrlogin.New(newClient),
+		manual.New(),
+	)
 }
 
 func runWith(t *testing.T, deps cli.Deps, args ...string) (stdout, stderr string, code int) {
 	t.Helper()
+	return runWithInput(t, deps, "", args...)
+}
+
+func runWithInput(t *testing.T, deps cli.Deps, stdin string, args ...string) (stdout, stderr string, code int) {
+	t.Helper()
 	var out, errOut bytes.Buffer
 	app := cli.New(
 		cli.BuildInfo{Version: "1.2.3", Commit: "abc123", BuildDate: "2026-09-18T00:00:00Z"},
-		cli.Streams{Out: &out, Err: &errOut},
+		cli.Streams{In: strings.NewReader(stdin), Out: &out, Err: &errOut},
 		deps,
 	)
 	code = app.Execute(context.Background(), args)

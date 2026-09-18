@@ -26,6 +26,8 @@ const (
 // The split is a contract rule, not a convenience: stdout carries only the
 // requested data, stderr only progress and diagnostics.
 type Streams struct {
+	// In is where a command reads piped input, such as a token or password.
+	In  io.Reader
 	Out io.Writer
 	Err io.Writer
 }

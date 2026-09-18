@@ -71,6 +71,9 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 	// Help and usage text are diagnostics, not data: they belong on stderr.
 	root.SetOut(streams.Err)
 	root.SetErr(streams.Err)
+	if streams.In != nil {
+		root.SetIn(streams.In)
+	}
 
 	root.PersistentFlags().BoolVar(&asJSON, "json", false,
 		"emit the versioned JSON contract on stdout")

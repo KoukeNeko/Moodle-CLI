@@ -37,6 +37,9 @@ type Request struct {
 	Function string
 	Token    string
 	Params   url.Values
+	// UserAgent is recorded so a test can prove that the Moodle app identity
+	// is claimed for the QR exchange and for nothing else.
+	UserAgent string
 }
 
 // Failure makes a function misbehave in a specific way.
@@ -142,7 +145,10 @@ func (s *Server) handleREST(w http.ResponseWriter, r *http.Request) {
 	token := r.Form.Get("wstoken")
 
 	s.mu.Lock()
-	s.requests = append(s.requests, Request{Function: function, Token: token, Params: r.Form})
+	s.requests = append(s.requests, Request{
+		Function: function, Token: token, Params: r.Form,
+		UserAgent: r.Header.Get("User-Agent"),
+	})
 	handler, known := s.functions[function]
 	failure := s.failures[function]
 	tokenKnown := s.tokens[token]
@@ -177,7 +183,9 @@ func (s *Server) handleNoLogin(w http.ResponseWriter, r *http.Request) {
 	function := r.URL.Query().Get("info")
 
 	s.mu.Lock()
-	s.requests = append(s.requests, Request{Function: function})
+	s.requests = append(s.requests, Request{
+		Function: function, UserAgent: r.Header.Get("User-Agent"),
+	})
 	handler, known := s.functions[function]
 	failure := s.failures[function]
 	s.mu.Unlock()

@@ -9,10 +9,17 @@ import (
 	"context"
 	"os"
 
+	"golang.org/x/term"
+
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/manual"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/password"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/qrlogin"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/token"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -29,7 +36,7 @@ type Build struct {
 // code. It is the only entry point cmd/moodle needs.
 func Run(ctx context.Context, build Build, args []string) int {
 	version := valueOr(build.Version, "dev")
-	streams := cli.Streams{Out: os.Stdout, Err: os.Stderr}
+	streams := cli.Streams{In: os.Stdin, Out: os.Stdout, Err: os.Stderr}
 
 	configPath, err := config.DefaultPath()
 	if err != nil {
@@ -41,14 +48,25 @@ func Run(ctx context.Context, build Build, args []string) int {
 
 	// One HTTP client for the whole process, so connections are reused.
 	httpClient := moodle.NewHTTPClient()
+	newClient := func(target site.Site) *moodle.Client {
+		return moodle.NewClient(target,
+			moodle.WithHTTPClient(httpClient),
+			moodle.WithUserAgent(moodle.DefaultUserAgent(version)),
+		)
+	}
+	manager := auth.NewManager(secret.Keyring{}, newClient)
+
 	deps := cli.Deps{
 		ConfigPath: configPath,
-		Auth: auth.NewManager(secret.Keyring{}, func(target site.Site) *moodle.Client {
-			return moodle.NewClient(target,
-				moodle.WithHTTPClient(httpClient),
-				moodle.WithUserAgent(moodle.DefaultUserAgent(version)),
-			)
-		}),
+		Auth:       manager,
+		// Preference order: least disruptive first. A method that needs the
+		// user to paste something is never chosen automatically.
+		Login: auth.NewCoordinator(manager,
+			token.New(),
+			password.New(newClient, readPassword),
+			qrlogin.New(newClient),
+			manual.New(),
+		),
 		Courses: func(session *auth.Session, capabilities *site.Capabilities) *course.Service {
 			// Preference order, most reliable first. The AJAX and HTML
 			// backends arrive in Phase 8; a feature with one backend is
@@ -69,6 +87,22 @@ func Run(ctx context.Context, build Build, args []string) int {
 		deps,
 	)
 	return app.Execute(ctx, args)
+}
+
+// readPassword reads from the terminal without echoing. When stdin is not a
+// terminal there is nothing to hide the typing from, so the caller is told to
+// pipe the password instead of having it appear on screen.
+func readPassword() (string, error) {
+	fd := int(os.Stdin.Fd())
+	if !term.IsTerminal(fd) {
+		return "", errs.New(errs.CodeUsage, "stdin is not a terminal").
+			WithHint("use --password-stdin to pipe the password in")
+	}
+	raw, err := term.ReadPassword(fd)
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
 }
 
 func valueOr(value, fallback string) string {

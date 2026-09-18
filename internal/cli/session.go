@@ -15,6 +15,9 @@ import (
 type Deps struct {
 	ConfigPath string
 	Auth       *auth.Manager
+	// Login decides which sign-in method to use. The order lives in the
+	// coordinator, not in the methods.
+	Login *auth.Coordinator
 	// Courses assembles the course use case for a session. The composition
 	// root supplies it because deciding which backends exist, and in which
 	// order, is a wiring decision — and because building them means naming

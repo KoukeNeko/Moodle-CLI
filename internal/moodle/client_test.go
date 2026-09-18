@@ -252,3 +252,28 @@ func TestRedaction(t *testing.T) {
 		t.Errorf("harmless headers should survive, got %q", clean.Get("Accept"))
 	}
 }
+
+func TestTokenEndpointErrorKeepsMoodlesOwnWording(t *testing.T) {
+	// /login/token.php reports failure with "error", where the REST endpoint
+	// uses "message". Reading only "message" loses the wording Moodle chose
+	// and leaves the user with a generic line instead of "Invalid login".
+	server := testmoodle.New()
+	defer server.Close()
+
+	// The fake server's token endpoint rejects an empty password this way.
+	client := newClient(t, server)
+	_, _, err := client.LoginToken(context.Background(), "student1", "", moodle.MobileService)
+	if err == nil {
+		t.Fatal("an invalid login was accepted")
+	}
+	e := errs.From(err)
+	if e.Code != errs.CodeAuthentication {
+		t.Errorf("code = %q, want authentication", e.Code)
+	}
+	if !strings.Contains(e.Message, "Invalid login") {
+		t.Errorf("Moodle's own wording was lost: %q", e.Message)
+	}
+	if e.Upstream == nil || e.Upstream.ErrorCode != "invalidlogin" {
+		t.Errorf("upstream errorcode not preserved: %+v", e.Upstream)
+	}
+}

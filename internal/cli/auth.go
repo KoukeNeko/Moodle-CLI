@@ -1,12 +1,15 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
+	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -24,6 +27,7 @@ func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 	}
 	cmd.AddCommand(
 		newAuthLoginCommand(r, deps),
+		newAuthMethodsCommand(r, deps),
 		newAuthStatusCommand(r, deps),
 		newAuthLogoutCommand(r, deps),
 	)
@@ -32,10 +36,16 @@ func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 	var (
-		siteFlag    string
-		accountName string
-		token       string
-		tokenStdin  bool
+		siteFlag      string
+		accountName   string
+		methodName    string
+		token         string
+		tokenStdin    bool
+		username      string
+		passwordStdin bool
+		callback      string
+		passport      string
+		qr            string
 	)
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -48,17 +58,25 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if tokenStdin {
-				read, err := io.ReadAll(cmd.InOrStdin())
+				read, err := readAll(cmd.InOrStdin())
 				if err != nil {
 					return errs.Wrap(errs.CodeUsage, err, "cannot read the token from stdin")
 				}
-				token = strings.TrimSpace(string(read))
+				token = read
+				if methodName == "" {
+					methodName = "token"
+				}
 			}
-			if token == "" {
-				// Phase 4 adds password, QR and browser SSO; until then say so
-				// rather than pretending a default exists.
-				return errs.New(errs.CodeUsage, "no credential given").
-					WithHint("pass --token <token>, or --token-stdin to read it from a pipe")
+			password := ""
+			if passwordStdin {
+				read, err := readAll(cmd.InOrStdin())
+				if err != nil {
+					return errs.Wrap(errs.CodeUsage, err, "cannot read the password from stdin")
+				}
+				password = read
+				if methodName == "" {
+					methodName = "password"
+				}
 			}
 
 			file, err := config.Load(deps.ConfigPath)
@@ -74,9 +92,25 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				return err
 			}
 
-			// Verify before storing: a credential that does not work should
+			credential, err := deps.Login.Authenticate(cmd.Context(), auth.Request{
+				Site:     target,
+				Username: username,
+				Password: password,
+				Callback: callback,
+				Passport: passport,
+				QR:       qr,
+				Token:    token,
+				In:       cmd.InOrStdin(),
+				// Prompts are diagnostics: stdout carries the result only.
+				Out: r.Streams.Err,
+			}, methodName)
+			if err != nil {
+				return err
+			}
+
+			// Verify before storing: a credential that does not work must
 			// never be written to the keychain as though it did.
-			session := deps.Auth.OpenWithToken(target, "", token)
+			session := deps.Auth.OpenWithToken(target, "", credential.Token)
 			capabilities, err := session.Capabilities(cmd.Context())
 			if err != nil {
 				return err
@@ -93,13 +127,13 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				UserID:         capabilities.UserID,
 				Username:       capabilities.Username,
 				DisplayName:    capabilities.FullName,
-				AuthMethod:     "token",
+				AuthMethod:     credential.Method,
 				CredentialKind: site.CredentialWSToken,
 			})
-			if err := deps.Auth.StoreToken(resolved.Site.ID, account.ID, token); err != nil {
+			if err := deps.Auth.StoreToken(resolved.Site.ID, account.ID, credential.Token); err != nil {
 				return err
 			}
-			if capabilities.SiteName != "" && resolved.Site.WWWRoot == "" {
+			if resolved.Site.WWWRoot == "" {
 				resolved.Site.WWWRoot = target.BaseURL.String()
 			}
 			file.Current.Site = resolved.SiteName
@@ -118,16 +152,96 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 
 			return r.Render(Result{
 				Envelope: v1.NewEnvelope("auth.login", status, v1.NewMeta(v1.SourceWS)),
-				Human: humanLine("Signed in to %s as %s (%s).",
-					capabilities.SiteName, capabilities.FullName, capabilities.Username),
+				Human: humanLine("Signed in to %s as %s (%s) using %s.",
+					capabilities.SiteName, capabilities.FullName, capabilities.Username, credential.Method),
 			})
 		},
 	}
 	cmd.Flags().StringVar(&siteFlag, "site", "", "site to sign in to")
 	cmd.Flags().StringVar(&accountName, "account", "", "name for this account (defaults to the Moodle username)")
+	cmd.Flags().StringVar(&methodName, "method", "", "login method: token, password, qr or manual")
 	cmd.Flags().StringVar(&token, "token", "", "an existing web service token")
 	cmd.Flags().BoolVar(&tokenStdin, "token-stdin", false, "read the token from stdin")
+	cmd.Flags().StringVar(&username, "username", "", "Moodle username (password method)")
+	cmd.Flags().BoolVar(&passwordStdin, "password-stdin", false, "read the password from stdin")
+	cmd.Flags().StringVar(&callback, "callback", "", "a pasted <scheme>://token=... callback URL (manual method)")
+	cmd.Flags().StringVar(&passport, "passport", "", "the passport used to start the login, so the callback can be verified")
+	cmd.Flags().StringVar(&qr, "qr", "", "the decoded content of a login QR code (qr method)")
 	return cmd
+}
+
+// methodInfo describes one login method for `auth methods`.
+type methodInfo struct {
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Availability string  `json:"availability"`
+	Reason       *string `json:"reason"`
+}
+
+func newAuthMethodsCommand(r *Renderer, deps Deps) *cobra.Command {
+	var siteFlag string
+	cmd := &cobra.Command{
+		Use:         "methods",
+		Short:       "Show which login methods this site supports",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{annotationKind: "auth.methods"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			file, err := config.Load(deps.ConfigPath)
+			if err != nil {
+				return err
+			}
+			resolved, err := file.Resolve(siteFlag, "")
+			if err != nil {
+				return err
+			}
+			target, err := targetSite(resolved.SiteName, resolved.Site)
+			if err != nil {
+				return err
+			}
+			// A site that cannot be reached is not an error here: every method
+			// then reports "unknown", which is the honest answer.
+			publicConfig, _ := deps.Auth.Probe(target).PublicConfig(cmd.Context())
+
+			infos := []methodInfo{}
+			for _, candidate := range deps.Login.Candidates(cmd.Context(), target, publicConfig) {
+				info := methodInfo{
+					Name:         candidate.Method.Name(),
+					Description:  candidate.Method.Describe(),
+					Availability: string(candidate.Probe.Availability),
+				}
+				setString(&info.Reason, candidate.Probe.Reason)
+				infos = append(infos, info)
+			}
+
+			return r.Render(Result{
+				Envelope: v1.NewEnvelope("auth.methods", infos, v1.NewMeta(v1.SourceWS)),
+				Human:    func(w io.Writer) error { return writeMethods(w, infos) },
+			})
+		},
+	}
+	cmd.Flags().StringVar(&siteFlag, "site", "", "site to check")
+	return cmd
+}
+
+func writeMethods(w io.Writer, infos []methodInfo) error {
+	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "METHOD\tSTATUS\tDESCRIPTION")
+	for _, info := range infos {
+		status := info.Availability
+		if info.Reason != nil {
+			status += " (" + *info.Reason + ")"
+		}
+		fmt.Fprintf(table, "%s\t%s\t%s\n", info.Name, status, info.Description)
+	}
+	return table.Flush()
+}
+
+func readAll(r io.Reader) (string, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 func newAuthStatusCommand(r *Renderer, deps Deps) *cobra.Command {

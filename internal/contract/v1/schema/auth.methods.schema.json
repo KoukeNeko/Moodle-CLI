@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/auth.methods.schema.json",
+  "title": "moodle-cli auth.methods",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "auth.methods" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "availability", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "availability": {
+            "enum": ["available", "unavailable", "unknown"],
+            "description": "unknown is not no: the site may simply not have answered"
+          },
+          "reason": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

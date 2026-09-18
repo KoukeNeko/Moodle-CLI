@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
@@ -131,24 +132,18 @@ func (c *Client) LoginToken(ctx context.Context, username, password, service str
 		return "", "", err
 	}
 
+	// decode already turns token.php's failure shape into an error: it reports
+	// an errorcode like any other Moodle response.
 	var reply struct {
 		Token        string `json:"token"`
 		PrivateToken string `json:"privatetoken"`
-		// token.php reports failure with these rather than the usual
-		// exception shape.
-		Error     string `json:"error"`
-		ErrorCode string `json:"errorcode"`
 	}
 	if err := decode(body, "login/token.php", &reply); err != nil {
 		return "", "", err
 	}
-	if reply.Error != "" || reply.ErrorCode != "" {
-		ex := exception{
-			Exception: "moodle_exception",
-			ErrorCode: reply.ErrorCode,
-			Message:   reply.Error,
-		}
-		return "", "", ex.asError("login/token.php")
+	if reply.Token == "" {
+		return "", "", errs.New(errs.CodeUpstream, "the site returned no token").
+			WithReason(errs.ReasonProtocolDrift)
 	}
 	return reply.Token, reply.PrivateToken, nil
 }
