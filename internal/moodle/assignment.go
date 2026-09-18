@@ -209,8 +209,9 @@ func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
 				DueDate:  unixTime(item.DueDate),
 				CutOff:   unixTime(item.CutOffDate),
 				// These two decide whether saving content is enough, or
-				// whether a second call is needed to hand the work in.
-				SubmissionDrafts:  item.SubmissionDrafts == 1,
+				// whether a second call is needed to hand the work in. This
+				// route always knows; the page-reading one leaves it nil.
+				SubmissionDrafts:  boolPtr(item.SubmissionDrafts == 1),
 				RequiresStatement: item.RequireSubmissionStatement == 1,
 			}
 			for _, config := range item.Configs {
@@ -493,3 +494,7 @@ func (w *AssignmentWriter) SubmitForGrading(ctx context.Context, assignmentID st
 	}
 	return nil
 }
+
+// boolPtr marks a setting this route can actually see, as against one a
+// page-reading route has to leave unknown.
+func boolPtr(value bool) *bool { return &value }

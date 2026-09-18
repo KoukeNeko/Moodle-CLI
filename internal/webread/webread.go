@@ -128,13 +128,28 @@ func byTag(name string) func(node) bool {
 }
 
 // text returns the element's visible text, collapsed to single spaces.
-func (n node) text() string {
+func (n node) text() string { return n.textExcept() }
+
+// textExcept returns the visible text, skipping subtrees carrying any of the
+// given classes.
+//
+// Moodle hides labels for screen readers inside the same element as the name —
+// "Announcements" and "Forum" are one string otherwise. The classes marking
+// them are generated, so skipping by class works whatever the site's language.
+func (n node) textExcept(skip ...string) string {
 	if n.Node == nil {
 		return ""
 	}
 	var b strings.Builder
 	var walk func(*html.Node)
 	walk = func(current *html.Node) {
+		if current.Type == html.ElementNode {
+			for _, class := range skip {
+				if (node{current}).hasClass(class) {
+					return
+				}
+			}
+		}
 		if current.Type == html.TextNode {
 			b.WriteString(current.Data)
 		}

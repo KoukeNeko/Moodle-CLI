@@ -42,7 +42,12 @@ type Summary struct {
 	// SubmissionDrafts reports whether Moodle keeps a separate draft state.
 	// When it does, saving content is not handing it in, and a second call is
 	// required.
-	SubmissionDrafts bool
+	//
+	// Nil means the route that answered could not see the setting — reading a
+	// page cannot. It is kept distinct from false because the difference is
+	// whether saved work is already submitted, and guessing either way would
+	// tell a student something untrue about coursework.
+	SubmissionDrafts *bool
 	// RequiresStatement reports whether the student must accept a submission
 	// statement. Agreeing on the student's behalf would be signing something
 	// for them, so the caller has to pass their consent explicitly.
@@ -56,8 +61,14 @@ type Summary struct {
 	Plugins []string
 }
 
-// NeedsHandIn reports whether saving content leaves the work as a draft.
-func (s Summary) NeedsHandIn() bool { return s.SubmissionDrafts }
+// NeedsHandIn reports whether saving content leaves the work as a draft, and
+// whether that is known at all.
+func (s Summary) NeedsHandIn() (needs, known bool) {
+	if s.SubmissionDrafts == nil {
+		return false, false
+	}
+	return *s.SubmissionDrafts, true
+}
 
 // HasPlugin reports whether a submission plugin is switched on.
 func (s Summary) HasPlugin(name string) bool {

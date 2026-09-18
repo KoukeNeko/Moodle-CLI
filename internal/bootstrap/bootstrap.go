@@ -97,12 +97,25 @@ func Run(ctx context.Context, build Build, args []string) int {
 			}
 			return course.NewService(backends...)
 		},
-		Assignments: func(session *auth.Session, _ *site.Capabilities, mode safety.Mode) *assignment.Service {
-			return assignment.NewService(
+		Assignments: func(session *auth.Session, capabilities *site.Capabilities, mode safety.Mode) *assignment.Service {
+			// The web service route comes first and is the only one trusted to
+			// submit. On a site with no token it skips itself, and reading
+			// falls to the pages — the only remaining source, since
+			// assignments are not exposed over the AJAX endpoint either.
+			backends := []assignment.Backend{
 				moodle.NewAssignmentBackend(session.Client(), session.Token()),
+			}
+			if cookie := session.Cookie(); cookie.Value != "" {
+				ajax := moodle.NewAjaxSession(session.Client(), cookie)
+				backends = append(backends, moodle.NewAssignHTMLBackend(
+					moodle.NewPageReader(session.Client(), cookie),
+					func(ctx context.Context) ([]string, error) {
+						return courseIDs(ctx, capabilities, ajax)
+					}))
+			}
+			return assignment.NewService(
 				moodle.NewAssignmentWriter(session.Client(), session.Token()),
-				mode,
-			)
+				mode, backends...)
 		},
 		Grades: func(session *auth.Session, capabilities *site.Capabilities) *grade.Service {
 			return grade.NewService(
@@ -147,12 +160,12 @@ func Run(ctx context.Context, build Build, args []string) int {
 				Courses: course.NewService(
 					moodle.NewCourseBackend(client, token, session.Capabilities)),
 				Assignments: assignment.NewService(
-					moodle.NewAssignmentBackend(client, token),
 					moodle.NewAssignmentWriter(client, token),
 					// The server's own read-only state is separate from the
 					// tool surface: a writing tool that somehow ran without
 					// being offered would still be stopped here.
 					safety.Mode{ReadOnly: !session.AllowWrite},
+					moodle.NewAssignmentBackend(client, token),
 				),
 				Grades: grade.NewService(
 					moodle.NewGradeBackend(client, token, session.Capabilities)),
@@ -181,6 +194,22 @@ func Run(ctx context.Context, build Build, args []string) int {
 		deps,
 	)
 	return app.Execute(ctx, args)
+}
+
+// courseIDs lists the caller's courses for a route that cannot enumerate them.
+//
+// Reading a page finds the activities in a course but not which courses there
+// are; that answer comes from the endpoint a browser session can use.
+func courseIDs(ctx context.Context, capabilities *site.Capabilities, ajax *moodle.AjaxSession) ([]string, error) {
+	result, err := moodle.NewCourseAjaxBackend(ajax).List(ctx, course.ListQuery{})
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(result.Courses))
+	for _, item := range result.Courses {
+		ids = append(ids, item.ID)
+	}
+	return ids, nil
 }
 
 // pickBackends puts the web service route first and adds the browser-session

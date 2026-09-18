@@ -20,8 +20,12 @@ type Assignment struct {
 	CutOff   *string `json:"cut_off_date"`
 	// NeedsHandIn says whether saving content leaves the work as a draft. A
 	// consumer that ignores it will report unsubmitted work as submitted.
-	NeedsHandIn       bool `json:"needs_hand_in"`
-	RequiresStatement bool `json:"requires_statement"`
+	//
+	// Null means the route that answered could not see the setting: reading a
+	// page cannot. It is not false — the difference is whether saved work is
+	// already submitted.
+	NeedsHandIn       *bool `json:"needs_hand_in"`
+	RequiresStatement bool  `json:"requires_statement"`
 	// SubmissionPlugins are the kinds of content the assignment accepts. A
 	// caller checks for "file" here rather than assuming every assignment
 	// takes one.
@@ -40,6 +44,15 @@ func AssignmentList(result assignment.ListResult, siteName, accountName string) 
 		MetaFrom(result.Provenance, siteName, accountName))
 }
 
+// handIn reports the setting, or null when the route could not see it.
+func handIn(item assignment.Summary) *bool {
+	needs, known := item.NeedsHandIn()
+	if !known {
+		return nil
+	}
+	return &needs
+}
+
 func newAssignment(item assignment.Summary) Assignment {
 	out := Assignment{
 		ID:                item.ID,
@@ -48,7 +61,7 @@ func newAssignment(item assignment.Summary) Assignment {
 		Name:              item.Name,
 		DueDate:           Timestamp(item.DueDate),
 		CutOff:            Timestamp(item.CutOff),
-		NeedsHandIn:       item.NeedsHandIn(),
+		NeedsHandIn:       handIn(item),
 		RequiresStatement: item.RequiresStatement,
 		SubmissionPlugins: item.Plugins,
 	}

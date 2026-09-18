@@ -180,7 +180,7 @@ func TestAssignmentListSaysWhichOnesNeedHandingIn(t *testing.T) {
 	if len(doc.Data) != 1 {
 		t.Fatalf("got %d assignments, want 1", len(doc.Data))
 	}
-	if !doc.Data[0].NeedsHandIn {
+	if doc.Data[0].NeedsHandIn == nil || !*doc.Data[0].NeedsHandIn {
 		t.Error("an assignment that keeps drafts was reported as needing no hand-in")
 	}
 	if doc.Data[0].MaxBytes != nil {

@@ -111,8 +111,17 @@ func (s *Submitter) Submit(ctx context.Context, req SubmitRequest) (SubmitResult
 	})
 
 	// Whether handing in is a separate act is the assignment's decision, not
-	// ours, and it is read from the site rather than assumed.
-	needsHandIn := summary.NeedsHandIn() && !req.DraftOnly
+	// ours, and it is read from the site rather than assumed. The submitting
+	// route always knows; a route that does not would have been refused
+	// before reaching here.
+	drafts, known := summary.NeedsHandIn()
+	if !known {
+		return result, errs.New(errs.CodeUnavailable,
+			"cannot tell whether this assignment needs a separate hand-in").
+			WithReason(errs.ReasonCapability).
+			WithHint("submitting needs a web service token, or the result could not be reported truthfully")
+	}
+	needsHandIn := drafts && !req.DraftOnly
 
 	if req.DryRun {
 		result.Outcome = OutcomePlanned
@@ -360,7 +369,7 @@ func skipReason(summary Summary, req SubmitRequest) string {
 	if req.DraftOnly {
 		return "asked to save as a draft only"
 	}
-	if !summary.NeedsHandIn() {
+	if drafts, known := summary.NeedsHandIn(); known && !drafts {
 		return "this assignment accepts work as soon as it is saved"
 	}
 	return ""

@@ -3,40 +3,83 @@
   "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.list.schema.json",
   "title": "moodle-cli assignment.list",
   "type": "object",
-  "required": ["schema_version", "kind", "data", "meta"],
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "const": 1 },
-    "kind": { "const": "assignment.list" },
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "assignment.list"
+    },
     "data": {
       "type": "array",
-      "items": { "$ref": "#/$defs/assignment" }
+      "items": {
+        "$ref": "#/$defs/assignment"
+      }
     },
-    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
   },
   "$defs": {
     "assignment": {
       "type": "object",
       "required": [
-        "id", "course_id", "cmid", "name", "due_date", "cut_off_date",
-        "needs_hand_in", "requires_statement", "submission_plugins",
-        "max_files", "max_bytes"
+        "id",
+        "course_id",
+        "cmid",
+        "name",
+        "due_date",
+        "cut_off_date",
+        "needs_hand_in",
+        "requires_statement",
+        "submission_plugins",
+        "max_files",
+        "max_bytes"
       ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "description": "Opaque identifier; a string, never a number" },
-        "course_id": { "type": "string" },
-        "cmid": { "type": "string", "description": "Course module id, for building a link to the activity" },
-        "name": { "type": "string" },
-        "due_date": { "type": ["string", "null"], "format": "date-time" },
+        "id": {
+          "type": "string",
+          "description": "Opaque identifier; a string, never a number"
+        },
+        "course_id": {
+          "type": "string"
+        },
+        "cmid": {
+          "type": "string",
+          "description": "Course module id, for building a link to the activity"
+        },
+        "name": {
+          "type": "string"
+        },
+        "due_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
         "cut_off_date": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "format": "date-time",
           "description": "After this, Moodle refuses the submission outright; the due date only marks it late."
         },
         "needs_hand_in": {
-          "type": "boolean",
-          "description": "True when saving content leaves the work as a draft, so a separate hand-in is required. A consumer that ignores this will report unsubmitted work as submitted."
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether saving content leaves the work as a draft, so a separate hand-in is required. Null means the route that answered could not see the setting — reading a page cannot — which is not the same as false."
         },
         "requires_statement": {
           "type": "boolean",
@@ -44,11 +87,24 @@
         },
         "submission_plugins": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Submission plugins the assignment has switched on, as Moodle names them (file, onlinetext, comments). Moodle saves all of them in one call, so a submission has to carry data for each."
         },
-        "max_files": { "type": ["integer", "null"], "description": "Null when the site sets no limit, which is not a limit of zero" },
-        "max_bytes": { "type": ["integer", "null"] }
+        "max_files": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Null when the site sets no limit, which is not a limit of zero"
+        },
+        "max_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
       }
     }
   }

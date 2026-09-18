@@ -53,9 +53,9 @@ func newFixture(t *testing.T) *fixture {
 			},
 			Assignments: func(session *auth.Session, _ *site.Capabilities, mode safety.Mode) *assignment.Service {
 				return assignment.NewService(
-					moodle.NewAssignmentBackend(session.Client(), session.Token()),
 					moodle.NewAssignmentWriter(session.Client(), session.Token()),
 					mode,
+					moodle.NewAssignmentBackend(session.Client(), session.Token()),
 				)
 			},
 			Grades: func(session *auth.Session, capabilities *site.Capabilities) *grade.Service {

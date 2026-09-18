@@ -39,13 +39,15 @@ type fakeAssignments struct {
 	state     assignment.State
 }
 
+func drafts(value bool) *bool { return &value }
+
 func (fakeAssignments) Name() site.BackendKind        { return site.BackendWS }
 func (fakeAssignments) Requirement() site.Requirement { return site.Requirement{} }
 
 func (f *fakeAssignments) summary() assignment.Summary {
 	return assignment.Summary{
 		ID: "7", CMID: "12", CourseID: "2", Name: "Essay 1",
-		SubmissionDrafts: true, Plugins: []string{assignment.PluginFile},
+		SubmissionDrafts: drafts(true), Plugins: []string{assignment.PluginFile},
 	}
 }
 
@@ -131,8 +133,8 @@ func build(t *testing.T, allowWrite bool) (*mcp.Registry, *fakeAssignments, *fak
 		SiteName:     "school",
 		AccountName:  "student1",
 		Courses:      course.NewService(fakeCourses{}),
-		Assignments: assignment.NewService(assignments, assignments,
-			safety.Mode{ReadOnly: !allowWrite}),
+		Assignments: assignment.NewService(assignments,
+			safety.Mode{ReadOnly: !allowWrite}, assignments),
 		Grades:   grade.NewService(fakeGrades{}),
 		Calendar: calendar.NewService(clock),
 		Forums:   forum.NewService(fakeForums{}),
@@ -215,8 +217,8 @@ func TestTheWritingToolIsRefusedByTheUseCaseToo(t *testing.T) {
 	_ = registry
 	deps := mcp.Deps{
 		Capabilities: site.NewCapabilities(),
-		Assignments: assignment.NewService(assignments, assignments,
-			safety.Mode{ReadOnly: true}),
+		Assignments: assignment.NewService(assignments,
+			safety.Mode{ReadOnly: true}, assignments),
 	}
 	// Registering with writing allowed while the use case stays read-only is
 	// the mismatch being tested.

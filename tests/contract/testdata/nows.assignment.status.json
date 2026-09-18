@@ -1,0 +1,1 @@
+{"schema_version":1,"kind":"assignment.status","data":{"assignment_id":"3","status":"draft","handed_in":false,"can_edit":true,"can_submit":true,"grading_status":"notgraded","modified_at":null,"file_count":0,"files":[]},"meta":{"site":"nows","account":"env","source":"html","partial":false,"missing":[],"next_cursor":null}}

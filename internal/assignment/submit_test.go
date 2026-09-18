@@ -87,6 +87,10 @@ func (f *fake) SubmitForGrading(_ context.Context, _ string, accept bool) error 
 	return f.handInErr
 }
 
+// drafts builds the pointer the model uses, so a test can say "this
+// assignment keeps drafts" without repeating the address-of dance.
+func drafts(value bool) *bool { return &value }
+
 // filePlugin is the minimum an assignment must have for this tool to submit
 // to it at all.
 var filePlugin = []string{assignment.PluginFile}
@@ -109,7 +113,7 @@ func TestSavingIsNotHandingIn(t *testing.T) {
 	// draft state needs a second call, and a client that stops after saving
 	// leaves the student believing the work was handed in.
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: true},
+		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: drafts(true)},
 		states: []assignment.State{
 			editable(assignment.StatusNew),
 			editable(assignment.StatusSubmitted),
@@ -137,7 +141,7 @@ func TestADraftIsNeverReportedAsHandedIn(t *testing.T) {
 	// Moodle says the work is still a draft. Whatever this code believes it
 	// did, the report follows Moodle.
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: true},
+		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: drafts(true)},
 		states: []assignment.State{
 			editable(assignment.StatusNew),
 			editable(assignment.StatusDraft), // read-back disagrees
@@ -160,7 +164,9 @@ func TestADraftIsNeverReportedAsHandedIn(t *testing.T) {
 
 func TestAssignmentThatNeedsNoHandInSkipsThatStep(t *testing.T) {
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "1", Name: "A1", SubmissionDrafts: false},
+		summary: assignment.Summary{
+			Plugins: filePlugin, ID: "1", Name: "A1", SubmissionDrafts: drafts(false),
+		},
 		states: []assignment.State{
 			editable(assignment.StatusNew),
 			editable(assignment.StatusSubmitted),
@@ -186,7 +192,7 @@ func TestSubmissionStatementIsNeverAcceptedForTheStudent(t *testing.T) {
 	f := &fake{
 		summary: assignment.Summary{
 			Plugins: filePlugin,
-			ID:      "3", Name: "A3", SubmissionDrafts: true, RequiresStatement: true,
+			ID:      "3", Name: "A3", SubmissionDrafts: drafts(true), RequiresStatement: true,
 		},
 		states: []assignment.State{editable(assignment.StatusNew)},
 	}
@@ -209,7 +215,7 @@ func TestAcceptedStatementIsPassedThrough(t *testing.T) {
 	f := &fake{
 		summary: assignment.Summary{
 			Plugins: filePlugin,
-			ID:      "3", Name: "A3", SubmissionDrafts: true, RequiresStatement: true,
+			ID:      "3", Name: "A3", SubmissionDrafts: drafts(true), RequiresStatement: true,
 		},
 		states: []assignment.State{
 			editable(assignment.StatusNew),
@@ -231,7 +237,7 @@ func TestAcceptedStatementIsPassedThrough(t *testing.T) {
 func TestDryRunSendsNothing(t *testing.T) {
 	// Not "reports that it sent nothing": sends nothing.
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: true},
+		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: drafts(true)},
 		states:  []assignment.State{editable(assignment.StatusNew)},
 	}
 	result, err := assignment.NewSubmitter(f, f, safety.Mode{DryRun: true}).
@@ -282,7 +288,7 @@ func TestReadOnlyModeBlocksTheWrite(t *testing.T) {
 
 func TestAlreadySubmittedIsAConflictNotASecondSubmission(t *testing.T) {
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: true},
+		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: drafts(true)},
 		states:  []assignment.State{editable(assignment.StatusSubmitted)},
 	}
 	_, err := assignment.NewSubmitter(f, f, safety.Mode{}).
@@ -345,7 +351,7 @@ func TestAmbiguousSaveIsResolvedByReadingTheStateBack(t *testing.T) {
 	// applied it; reading the state is the only way to find out, and it must
 	// not be retried blindly.
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: true},
+		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: drafts(true)},
 		states: []assignment.State{
 			editable(assignment.StatusNew),
 			editable(assignment.StatusDraft), // it did land
@@ -371,7 +377,7 @@ func TestAmbiguousSaveThatCannotBeResolvedStaysAmbiguous(t *testing.T) {
 	// The state could not be read either. Guessing here would be the worst
 	// possible answer, so the caller is told it is unknown.
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: true},
+		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: drafts(true)},
 		states:  []assignment.State{editable(assignment.StatusNew)},
 		saveErr: errs.New(errs.CodeNetwork, "the response was lost").Ambiguous(),
 	}
@@ -431,7 +437,7 @@ func TestTooManyFilesIsCaughtLocally(t *testing.T) {
 
 func TestDraftOnlySkipsHandingIn(t *testing.T) {
 	f := &fake{
-		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: true},
+		summary: assignment.Summary{Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: drafts(true)},
 		states: []assignment.State{
 			editable(assignment.StatusNew),
 			editable(assignment.StatusDraft),
@@ -458,7 +464,7 @@ func TestSubmittingFilesDoesNotEraseTypedText(t *testing.T) {
 	// Whatever the student typed in the browser has to go back unchanged.
 	f := &fake{
 		summary: assignment.Summary{
-			ID: "4", Name: "A4",
+			ID: "4", Name: "A4", SubmissionDrafts: drafts(false),
 			Plugins: []string{assignment.PluginFile, assignment.PluginOnlineText},
 		},
 		states: []assignment.State{
@@ -498,7 +504,8 @@ func TestSubmittingFilesDoesNotEraseTypedText(t *testing.T) {
 func TestAssignmentWithoutFileSubmissionsIsRefusedEarly(t *testing.T) {
 	f := &fake{
 		summary: assignment.Summary{
-			ID: "5", Name: "A5", Plugins: []string{assignment.PluginOnlineText},
+			ID: "5", Name: "A5", SubmissionDrafts: drafts(false),
+			Plugins: []string{assignment.PluginOnlineText},
 		},
 		states: []assignment.State{editable(assignment.StatusNew)},
 	}
@@ -516,7 +523,9 @@ func TestAssignmentWithoutFileSubmissionsIsRefusedEarly(t *testing.T) {
 
 func TestNoDraftAreaIsAllocatedWhenThereIsNoOnlineText(t *testing.T) {
 	f := &fake{
-		summary: assignment.Summary{ID: "1", Name: "A1", Plugins: filePlugin},
+		summary: assignment.Summary{
+			ID: "1", Name: "A1", Plugins: filePlugin, SubmissionDrafts: drafts(false),
+		},
 		states: []assignment.State{
 			editable(assignment.StatusNew),
 			editable(assignment.StatusSubmitted),
@@ -542,7 +551,7 @@ func TestDryRunDescribesTheStatementRequirementInsteadOfRefusing(t *testing.T) {
 	f := &fake{
 		summary: assignment.Summary{
 			Plugins: filePlugin,
-			ID:      "3", Name: "A3", SubmissionDrafts: true, RequiresStatement: true,
+			ID:      "3", Name: "A3", SubmissionDrafts: drafts(true), RequiresStatement: true,
 		},
 		states: []assignment.State{editable(assignment.StatusNew)},
 	}
@@ -565,5 +574,30 @@ func TestDryRunDescribesTheStatementRequirementInsteadOfRefusing(t *testing.T) {
 	}
 	if !said {
 		t.Error("the plan does not mention that the statement must be accepted")
+	}
+}
+
+func TestAnAssignmentWhoseHandInRuleIsUnknownIsNotSubmitted(t *testing.T) {
+	// A route that cannot see submissiondrafts cannot tell whether saving is
+	// enough. Submitting anyway would report a draft as handed in, which is
+	// the one mistake this package exists to prevent — so it refuses instead.
+	f := &fake{
+		summary: assignment.Summary{
+			Plugins: filePlugin, ID: "2", Name: "A2", SubmissionDrafts: nil,
+		},
+		states: []assignment.State{editable(assignment.StatusNew)},
+	}
+	_, err := assignment.NewSubmitter(f, f, safety.Mode{}).
+		Submit(context.Background(), assignment.SubmitRequest{
+			AssignmentID: "2", Files: []string{tempFile(t)},
+		})
+	if err == nil {
+		t.Fatal("work was submitted without knowing whether it would count as handed in")
+	}
+	if code := errs.From(err).Code; code != errs.CodeUnavailable {
+		t.Errorf("code = %q, want unavailable", code)
+	}
+	if f.saved != 0 || f.handedIn != 0 {
+		t.Errorf("%d save(s) and %d hand-in(s) reached the site", f.saved, f.handedIn)
 	}
 }

@@ -71,8 +71,11 @@
           "format": "date-time"
         },
         "needs_hand_in": {
-          "type": "boolean",
-          "description": "True when saving content leaves the work as a draft, so a separate hand-in is required."
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether saving content leaves the work as a draft, so a separate hand-in is required. Null means the route that answered could not see the setting — reading a page cannot — which is not the same as false."
         },
         "requires_statement": {
           "type": "boolean"

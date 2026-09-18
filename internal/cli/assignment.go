@@ -293,10 +293,14 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment) error {
 			due = (*item.DueDate)[:10]
 		}
 		// Spelling this out is the point: on these assignments, saving work is
-		// not submitting it.
-		handIn := "not needed"
-		if item.NeedsHandIn {
-			handIn = "required"
+		// not submitting it. When the route could not see the setting, say so
+		// rather than pick the reassuring answer.
+		handIn := "unknown"
+		if item.NeedsHandIn != nil {
+			handIn = "not needed"
+			if *item.NeedsHandIn {
+				handIn = "required"
+			}
 		}
 		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", item.ID, item.Name, due, handIn)
 	}
@@ -332,9 +336,12 @@ func writeAssignmentDetail(w io.Writer, detail v1.AssignmentDetail) error {
 	if len(detail.SubmissionPlugins) > 0 {
 		row("Accepts", strings.Join(detail.SubmissionPlugins, ", "))
 	}
-	handIn := "not needed; saving submits it"
-	if detail.NeedsHandIn {
-		handIn = "required after saving"
+	handIn := "unknown — this route cannot see the setting"
+	if detail.NeedsHandIn != nil {
+		handIn = "not needed; saving submits it"
+		if *detail.NeedsHandIn {
+			handIn = "required after saving"
+		}
 	}
 	row("Hand-in", handIn)
 	if detail.RequiresStatement {
