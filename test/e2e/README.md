@@ -81,6 +81,53 @@ QR 登入與 autologin 需要 HTTPS——Moodle 對 http 直接回 `httpsrequire
 
 `tls/` 不入版控：私鑰不該進 git，每台機器自己產一份。
 
+## 測試用的 OS keychain
+
+憑證只進 OS keychain、設定檔永不存憑證是這個工具的硬規則，而 `moodle auth login`
+是唯一會寫憑證的地方。headless 主機上沒有 `org.freedesktop.secrets`，那條路會停在
+「無法寫入 keychain」——規則最重要的那一半在測試裡等於沒驗到。
+
+`keyring` 服務補上這一塊：D-Bus session bus 開在 `test/e2e/run/bus`（綁定掛載，
+所以主機連得到；容器之間不能共用抽象 socket，unix socket 可以）。它沒有 profile，
+因為每個版本都需要，而且只有約 60MB。
+
+金鑰圈以**空密碼**解鎖：拋棄式容器、不對外開放、裡面不會有真的憑證。
+
+```bash
+export DBUS_SESSION_BUS_ADDRESS=unix:path=$PWD/test/e2e/run/bus
+./bin/moodle auth login --method token --token …
+./bin/moodle course list          # 不必再帶任何環境變數
+```
+
+`gnome-keyring-daemon` 以前景模式跑，由 entrypoint 的 `wait` 顧著：它一死 shell
+就結束、容器結束，`restart: unless-stopped` 把它拉起來。healthcheck 問的是
+「`org.freedesktop.secrets` 有主嗎」，不是「bus 活著嗎」——金鑰圈死掉時 bus 還在，
+只檢查 bus 會讓容器一直顯示 healthy。
+
+## 四學期碩士班：全功能逐字紀錄
+
+```bash
+make moodle-up V=v52
+test/e2e/seed-masters.sh                  # 四學期的情境資料（可重複執行）
+test/e2e/full-run.sh                      # 標準站
+test/e2e/full-run.sh --nows               # 連 Mobile WS 關閉的變體站也跑
+```
+
+情境是一位四學期的碩士生，**後兩學期同時是大學部課程的助教**——同一個帳號在不同
+課程有不同角色。單一功能的測試不會碰到那種組合，而那正是會出錯的地方：助教在
+CS1001 看得到別人的繳交，但沒有 `mod/assign:viewownsubmissionsummary`，Moodle 於是
+完全不回 `lastattempt` 那個鍵。
+
+紀錄寫到 `test/e2e/logs/<時間>/`：
+
+- `transcript.log` — 每個命令的完整命令列、stdout、stderr 與結束碼
+- `summary.tsv` — `結束碼 → 命令` 的清單，用來核對每一個非零結束碼是不是刻意的
+
+憑證經過 `redact()`：這些站台的密碼是公開的，但「紀錄裡不該出現 token」這件事本身
+不該因為站台是測試站就破例。
+
+腳本**不判斷對錯**，它產生的是可讀的證據；判斷留給讀的人與上面的驗收腳本。
+
 ## 交作業流程的驗收
 
 ```bash
@@ -139,6 +186,10 @@ curl -s http://localhost:8521/webservice/rest/server.php \
 12. **`assign.nosubmissions` 要歸零。** moosh 建作業時沒有啟用任何繳交外掛，那一列就被
     標成「不收繳交」。這時 `mod_assign_get_submission_status` 回的是 `nopermission`，
     而不是 `submissionsenabled=false`——訊息完全指向錯誤的方向（權限），查很久。
+13. **nginx 的健康檢查要用 `127.0.0.1`，不是 `localhost`。** 容器裡 `localhost` 先解析到
+    `::1`，而 nginx 只聽 IPv4，於是 wget 拿到 Connection refused、`tls-proxy` 永遠顯示
+    unhealthy。一直顯示 unhealthy 的健康檢查比沒有還糟：它教人忽略那個欄位，而 QR 登入
+    其實是好的。
 
 ## 已驗證
 
