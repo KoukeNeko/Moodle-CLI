@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -62,6 +63,17 @@ type assignmentsDTO struct {
 			} `json:"configs"`
 		} `json:"assignments"`
 	} `json:"courses"`
+	// Warnings name what Moodle left out instead of refusing the whole call.
+	// A course this account cannot reach, and an activity it cannot see inside
+	// one it can, both come back here on an otherwise successful reply — so a
+	// caller that ignores them reports a short list as though it were the
+	// whole one.
+	Warnings []struct {
+		Item        string `json:"item"`
+		ItemID      int64  `json:"itemid"`
+		WarningCode string `json:"warningcode"`
+		Message     string `json:"message"`
+	} `json:"warnings"`
 }
 
 // submissionStatusDTO is Moodle's reply to mod_assign_get_submission_status.
@@ -184,10 +196,55 @@ func (b *AssignmentBackend) List(ctx context.Context, courseIDs []string) (assig
 	for _, detail := range b.details(dto) {
 		out = append(out, detail.Summary)
 	}
-	return assignment.ListResult{
+
+	result := assignment.ListResult{
 		Assignments: out,
 		Provenance:  site.NewProvenance(site.BackendWS),
-	}, nil
+	}
+	if len(dto.Warnings) > 0 {
+		// The reply was filtered: Moodle answers a course it will not list with
+		// a warning rather than an error. Returning the short list unchanged
+		// would say "this course has no assignments" about one that was never
+		// read.
+		if len(out) == 0 {
+			if unenrolled, unreachable := leftOutCourses(dto); len(unreachable) > 0 {
+				return assignment.ListResult{}, errs.New(errs.CodePermissionDenied,
+					fmt.Sprintf("course %s is not one this account can read",
+						strings.Join(unreachable, ", "))).
+					WithHint("the site left it out of the reply")
+			} else if len(unenrolled) > 0 {
+				// Not the same statement: an account can hold no enrolment on
+				// a course and still read it — a manager does — but this call
+				// lists a course only for an account enrolled on it.
+				return assignment.ListResult{}, errs.New(errs.CodePermissionDenied,
+					fmt.Sprintf("this account is not enrolled on course %s",
+						strings.Join(unenrolled, ", "))).
+					WithHint("the site lists a course here only for an account enrolled on it")
+			}
+		}
+		result.Provenance.Partial = true
+	}
+	return result, nil
+}
+
+// leftOutCourses splits the courses a reply left out by why it left them out.
+//
+// Moodle's warningcode carries the distinction: 2 for a course the account is
+// not enrolled on, 1 for one it cannot reach at all. Reporting both as one
+// would put a wrong reason in front of whoever reads it.
+func leftOutCourses(dto assignmentsDTO) (unenrolled, unreachable []string) {
+	for _, warning := range dto.Warnings {
+		if warning.Item != "course" {
+			continue
+		}
+		id := strconv.FormatInt(warning.ItemID, 10)
+		if warning.WarningCode == "2" {
+			unenrolled = append(unenrolled, id)
+			continue
+		}
+		unreachable = append(unreachable, id)
+	}
+	return unenrolled, unreachable
 }
 
 // Show returns everything one assignment says about itself.

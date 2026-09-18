@@ -709,3 +709,99 @@ func TestNoSubmissionSummaryAndNoGradingSummaryStillSaysWhich(t *testing.T) {
 		t.Errorf("an absent summary was reported as a closed assignment:\n%s", stderr)
 	}
 }
+
+func TestACourseTheAccountCannotReadIsNotAnEmptyCourse(t *testing.T) {
+	// Moodle 對「這門課你看不到」的回答是一次**成功**的呼叫加一筆 warning，
+	// 不是錯誤。把空清單照原樣傳上去，就變成對一門讀不到的課說「這裡沒有作業」。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionAssignments, map[string]any{
+		"courses": []any{},
+		"warnings": []any{map[string]any{
+			"item": "course", "itemid": 2, "warningcode": "2",
+			"message": "User is not enrolled or does not have requested capability",
+		}},
+	})
+
+	stdout, stderr, code := a.run("assignment", "list", "--course", "2")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitPermissionDenied, stderr)
+	}
+	if stdout != "" {
+		t.Errorf("a refusal wrote to stdout:\n%s", stdout)
+	}
+	if strings.Contains(stderr, "No assignments") {
+		t.Errorf("a course the account cannot read was reported as an empty one:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "not enrolled") {
+		t.Errorf("warning code 2 is about enrolment, and saying so is what "+
+			"tells a manager they could still read the course:\n%s", stderr)
+	}
+}
+
+func TestACourseWithNoAccessRightsIsNotCalledUnenrolled(t *testing.T) {
+	// 代碼 1 是 validate_context 擋下來的，跟「沒選課」是兩回事。講成沒選課，
+	// 就會把一個連課程頁都打不開的帳號，說成只差一筆選課紀錄。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionAssignments, map[string]any{
+		"courses": []any{},
+		"warnings": []any{map[string]any{
+			"item": "course", "itemid": 2, "warningcode": "1",
+			"message": "No access rights in course context",
+		}},
+	})
+
+	_, stderr, code := a.run("assignment", "list", "--course", "2")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("exit %d, want %d", code, v1.ExitPermissionDenied)
+	}
+	if strings.Contains(stderr, "not enrolled") {
+		t.Errorf("a course the account cannot reach was reported as one it "+
+			"merely is not enrolled on:\n%s", stderr)
+	}
+}
+
+func TestOneUnreadableCourseAmongReadableOnesIsMarkedPartial(t *testing.T) {
+	// 讀得到的那門課的資料不該被丟掉，但答案不完整這件事必須看得出來——
+	// 契約裡的 meta.partial 就是為此存在的。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionAssignments, map[string]any{
+		"courses": []any{map[string]any{
+			"id": 15, "shortname": "CS5006",
+			"assignments": []any{map[string]any{
+				"id": 7, "cmid": 12, "course": 15, "name": "Essay 1",
+				"duedate": 1789000000, "cutoffdate": 0,
+				"intro": "", "introformat": 1, "grade": 100,
+				"allowsubmissionsfromdate": 0, "maxattempts": -1, "timelimit": 0,
+				"teamsubmission": 0, "blindmarking": 0,
+				"introattachments": []any{}, "configs": pluginConfigs(nil),
+				"submissiondrafts": boolToInt(true), "requiresubmissionstatement": 0,
+			}},
+		}},
+		"warnings": []any{map[string]any{
+			"item": "course", "itemid": 2, "warningcode": "2",
+			"message": "User is not enrolled or does not have requested capability",
+		}},
+	})
+
+	stdout, stderr, code := a.run("assignment", "list", "--course", "2", "--course", "15", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d, %s", code, stderr)
+	}
+	validate(t, "assignment.list", stdout)
+
+	var doc struct {
+		Data []v1.Assignment `json:"data"`
+		Meta struct {
+			Partial bool `json:"partial"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Data) != 1 {
+		t.Fatalf("got %d assignments, want the one readable course's", len(doc.Data))
+	}
+	if !doc.Meta.Partial {
+		t.Error("a list missing a course the account cannot read was reported as complete")
+	}
+}
