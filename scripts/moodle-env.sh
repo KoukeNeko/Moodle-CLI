@@ -55,6 +55,11 @@ cmd_up() {
 
 憑證是本機自簽的，要讓工具信任它就設這個環境變數（不需要任何略過檢查的旗標）：
   export SSL_CERT_FILE=$REPO_DIR/test/e2e/tls/ca.crt
+
+`moodle auth login` 需要 OS keychain，而 headless 主機沒有。keyring 容器已經
+跟著起來了，把 session bus 指過去就能用：
+
+  export DBUS_SESSION_BUS_ADDRESS=unix:path=$REPO_DIR/test/e2e/run/bus
 EOF
     return
   fi
@@ -73,6 +78,11 @@ EOF
 取得 token：
   curl -s http://localhost:$std_port/login/token.php \\
     -d username=student1 -d password=Student123! -d service=moodle_mobile_app
+
+`moodle auth login` 需要 OS keychain，而 headless 主機沒有。keyring 容器已經
+跟著起來了，把 session bus 指過去就能用：
+
+  export DBUS_SESSION_BUS_ADDRESS=unix:path=$REPO_DIR/test/e2e/run/bus
 EOF
 }
 

@@ -31,3 +31,9 @@ config.local.*
 
 # 測試憑證：私鑰不該進 git，每台機器自己產一份（make-certs.sh）。
 test/e2e/tls/
+
+# 全功能逐字紀錄的輸出
+test/e2e/logs/
+
+# keyring 容器的 session bus socket（執行時產生）
+test/e2e/run/

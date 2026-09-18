@@ -31,6 +31,35 @@ x-moodle: &moodle
     start_period: 30s
 
 services:
+  # ---- 測試用的 OS keychain ----
+  #
+  # 沒有 profile：它跟 Moodle 版本無關，而且每個版本都需要——`moodle auth login`
+  # 是唯一會寫憑證的地方，headless 主機上沒有 Secret Service 就完全測不到。
+  # 體積很小（約 60MB），不必跟著「一次只起一個版本」的規則。
+  #
+  # session bus 的 socket 開在 test/e2e/run/，主機用 DBUS_SESSION_BUS_ADDRESS
+  # 連進來。金鑰圈以空密碼解鎖：拋棄式，只供測試。
+  keyring:
+    build: ./keyring
+    image: moodle-cli-keyring:local
+    # 這裡也設一次：healthcheck 是另外 exec 進去的，不會繼承 entrypoint 的環境。
+    environment:
+      DBUS_SESSION_BUS_ADDRESS: unix:path=/run/keyring/bus
+    volumes: ["./run:/run/keyring"]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      # 問 bus「org.freedesktop.secrets 有主嗎」，而不是只問 bus 活著沒：
+      # 金鑰圈死掉時 bus 還在，只檢查 bus 會讓容器一直顯示 healthy，
+      # 而 auth login 卻卡在寫不進去。
+      test: ["CMD", "dbus-send", "--session", "--print-reply",
+             "--dest=org.freedesktop.DBus", "/org/freedesktop/DBus",
+             "org.freedesktop.DBus.GetNameOwner", "string:org.freedesktop.secrets"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
   # ---- Moodle 4.5 LTS ----
   v45-std:
     <<: *moodle
