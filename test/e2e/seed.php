@@ -43,7 +43,9 @@ if ($mode === 'std') {
     set_config('webserviceprotocols', 'rest');
     $DB->set_field('external_services', 'enabled', 1, ['shortname' => MOODLE_OFFICIAL_MOBILE_SERVICE]);
     assign_capability('webservice/rest:use', CAP_ALLOW, $authuserrole->id, $systemcontext->id, true);
-    echo "[seed] web services enabled (rest + mobile service + webservice/rest:use)\n";
+    // QR 登入。在 http 站上開著也有用：Moodle 會回 httpsrequired，那條路也要驗得到。
+    set_config('qrcodetype', 2, 'tool_mobile');
+    echo "[seed] web services enabled (rest + mobile service + webservice/rest:use + QR login)\n";
 } else {
     set_config('enablewebservices', 0);
     set_config('enablemobilewebservice', 0);

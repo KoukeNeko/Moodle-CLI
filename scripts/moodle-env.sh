@@ -21,13 +21,20 @@ ports_for() {
     v45) echo "8451 8452" ;;
     v51) echo "8511 8512" ;;
     v52) echo "8521 8522" ;;
-    *) echo "unknown version: $1 (expected v45|v51|v52)" >&2; return 2 ;;
+    # HTTPS 站只有一個，沒有變體站。
+    tls) echo "8443 -" ;;
+    *) echo "unknown version: $1 (expected v45|v51|v52|tls)" >&2; return 2 ;;
   esac
 }
 
 cmd_up() {
-  local ver="${1:?usage: moodle-env.sh up <v45|v51|v52>}"
+  local ver="${1:?usage: moodle-env.sh up <v45|v51|v52|tls>}"
   read -r std_port nows_port <<<"$(ports_for "$ver")"
+
+  if [ "$ver" = "tls" ]; then
+    # 憑證要先有，nginx 才起得來。
+    "$REPO_DIR/test/e2e/make-certs.sh"
+  fi
 
   echo "==> 啟動 $ver（首次安裝 Moodle 需數分鐘）"
   # --wait 會等到 compose 的 healthcheck 通過才返回，不必自己輪詢。
@@ -35,6 +42,21 @@ cmd_up() {
     echo "ERROR: 容器未能就緒，以下是 log：" >&2
     dc --profile "$ver" logs --no-color --tail 50 >&2
     exit 1
+  fi
+
+  if [ "$ver" = "tls" ]; then
+    "$REPO_DIR/test/e2e/seed.sh" "$(dc ps -q v52-tls)" std
+    cat <<EOF
+
+就緒：
+  HTTPS 站  https://localhost:$std_port
+
+帳號：admin/Admin123!  teacher1/Teacher123!  student1/Student123!
+
+憑證是本機自簽的，要讓工具信任它就設這個環境變數（不需要任何略過檢查的旗標）：
+  export SSL_CERT_FILE=$REPO_DIR/test/e2e/tls/ca.crt
+EOF
+    return
   fi
 
   "$REPO_DIR/test/e2e/seed.sh" "$(dc ps -q "${ver}-std")"  std

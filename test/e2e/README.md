@@ -66,6 +66,21 @@ make moodle-status        # 列出目前的測試站
 - 標準站：`enablewebservices`、`enablemobilewebservice`、`rest` 協定、mobile service 已啟用，
   且「已驗證使用者」角色已授予 `webservice/rest:use`。
 
+## HTTPS 站（QR 登入、SSO）
+
+```bash
+make moodle-up V=tls                 # 產生本機 CA + 起 Moodle 與 TLS 終端
+test/e2e/accept-qrlogin.sh
+```
+
+QR 登入與 autologin 需要 HTTPS——Moodle 對 http 直接回 `httpsrequired`，所以那些
+路徑在上面的站台上驗不到。憑證由 `make-certs.sh` 產生一個只存在於本機的 CA，測試
+設 `SSL_CERT_FILE` 去信任它。**工具本身沒有、也不該有「略過憑證檢查」的旗標**：
+那種旗標一旦存在就會有人在正式環境用它，而這裡走的是真正的 TLS 驗證路徑
+（驗收腳本第一條就是確認不給 CA 時連線會被拒絕）。
+
+`tls/` 不入版控：私鑰不該進 git，每台機器自己產一份。
+
 ## 交作業流程的驗收
 
 ```bash
@@ -108,16 +123,20 @@ curl -s http://localhost:8521/webservice/rest/server.php \
    noemailever 的提示）。那是雜訊不是錯誤，`seed.sh` 把 stderr 導到
    `/tmp/moodle-seed-<container>.log`，並以實際查詢結果作為成功判準。
 7. **改設定後要清快取**，否則 PHP opcache 與 Moodle 的服務／權限快取會讓修改看似無效。
-8. **SQLite 上 moosh 會撞 `mdl_sessions.sid` 的唯一鍵。** moosh 反覆啟動會累積 session 列，
+8. **反向代理不可以轉發客戶端的 Host。** Moodle 在 `reverseproxy` 模式下要求 Host
+   指向伺服器的**內部**名稱；收到與 `wwwroot` 相同的 Host 時，它判定有人繞過 proxy
+   直連，丟出 `reverseproxyabused`。另外 `REVERSEPROXY` 只管 host/port，scheme 要
+   靠 `SSLPROXY`，少了它 AJAX 呼叫會回 `unsupportedredirect`。
+9. **SQLite 上 moosh 會撞 `mdl_sessions.sid` 的唯一鍵。** moosh 反覆啟動會累積 session 列，
    之後的呼叫全部失敗（Moodle 4.5 實測會讓 `course-enrol`、`activity-add` 整批無聲失敗，
    最後只建出空課程）。`seed.sh` 因此在每次 moosh 前跑 `admin/cli/kill_all_sessions.php`。
-9. **`moosh course-enrol` 會只做一半。** Moodle 4.5 實測：`user_enrolments` 寫進去了，
+10. **`moosh course-enrol` 會只做一半。** Moodle 4.5 實測：`user_enrolments` 寫進去了，
    `role_assignments` 卻沒有，而且 moosh 仍然回非零。那樣的站台學生連 `mod/assign:view`
    都沒有，作業列表是空的，但每張表看起來都「有資料」，極難查。選課因此改由
    `seed.php` 用 Moodle API 做，驗證關卡也改看角色指派數而不是選課數。
-10. **選課起始日不能是「現在」。** Moodle 只認已經開始的選課，剛好在這一秒開始的會被
+11. **選課起始日不能是「現在」。** Moodle 只認已經開始的選課，剛好在這一秒開始的會被
     當成還沒生效，佈建完立刻查就會看到一門課都沒有。`seed.php` 一律往前挪一天。
-11. **`assign.nosubmissions` 要歸零。** moosh 建作業時沒有啟用任何繳交外掛，那一列就被
+12. **`assign.nosubmissions` 要歸零。** moosh 建作業時沒有啟用任何繳交外掛，那一列就被
     標成「不收繳交」。這時 `mod_assign_get_submission_status` 回的是 `nopermission`，
     而不是 `submissionsenabled=false`——訊息完全指向錯誤的方向（權限），查很久。
 
