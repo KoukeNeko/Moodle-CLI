@@ -12,6 +12,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -23,6 +24,10 @@ type fixture struct {
 	t      *testing.T
 	server *testmoodle.Server
 	deps   cli.Deps
+	// functions is what the fake site says it offers, so a test can check the
+	// reported count against it instead of against a number that goes stale
+	// the moment a feature is added.
+	functions []string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -50,20 +55,32 @@ func newFixture(t *testing.T) *fixture {
 					mode,
 				)
 			},
+			Grades: func(session *auth.Session, capabilities *site.Capabilities) *grade.Service {
+				return grade.NewService(
+					moodle.NewGradeBackend(session.Client(), session.Token(), capabilities),
+				)
+			},
 			// No terminal: a test must never be able to answer a prompt by
 			// accident, so confirmation has to be explicit.
 			Interactive: func() bool { return false },
 		},
 	}
 	// A working site by default; individual tests break what they need to.
+	f.functions = []string{
+		moodle.FunctionUserCourses,
+		"mod_assign_get_assignments",
+		moodle.FunctionGradeItems,
+		moodle.FunctionCourseGrades,
+	}
+	declared := make([]any, 0, len(f.functions))
+	for _, name := range f.functions {
+		declared = append(declared, map[string]any{"name": name, "version": "2026091800"})
+	}
 	server.HandleValue(moodle.FunctionSiteInfo, map[string]any{
 		"sitename": "Test Moodle", "username": "student1", "firstname": "Sam",
 		"lastname": "Student", "userid": 4, "release": "5.2.3",
 		"downloadfiles": 1, "uploadfiles": 1,
-		"functions": []any{
-			map[string]any{"name": moodle.FunctionUserCourses, "version": "2026091800"},
-			map[string]any{"name": "mod_assign_get_assignments", "version": "2026091800"},
-		},
+		"functions": declared,
 	})
 	server.AddToken("good-token")
 	return f
@@ -154,8 +171,17 @@ func TestSiteInspectReportsCapabilities(t *testing.T) {
 		t.Fatalf("exit %d", code)
 	}
 	validate(t, "site.inspect", stdout)
-	if !strings.Contains(stdout, `"function_count":2`) {
-		t.Errorf("function count missing from %s", stdout)
+
+	var doc struct {
+		Data struct {
+			FunctionCount int `json:"function_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc.Data.FunctionCount != len(f.functions) {
+		t.Errorf("function_count = %d, want %d", doc.Data.FunctionCount, len(f.functions))
 	}
 }
 

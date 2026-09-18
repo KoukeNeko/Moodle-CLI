@@ -121,6 +121,22 @@ foreach ($want as $name => $fields) {
     echo "[seed] $name -> submissiondrafts={$fields['submissiondrafts']} requiresubmissionstatement={$fields['requiresubmissionstatement']} submission plugins enabled\n";
 }
 
+// 給 student1 的 A1 一個成績與評語：沒有已評分的資料，成績相關的功能連「已評分」
+// 和「未評分」都分不出來，等於沒驗到。用 gradelib 直接寫進成績簿，那正是
+// gradereport_* 讀的地方。
+require_once($CFG->libdir . '/gradelib.php');
+$graded = $DB->get_record('assign', ['name' => 'A1 direct submit', 'course' => $course->id]);
+$student1 = $DB->get_record('user', ['username' => 'student1']);
+if ($graded && $student1) {
+    grade_update('mod/assign', $course->id, 'mod', 'assign', $graded->id, 0, [
+        'userid'         => $student1->id,
+        'rawgrade'       => 85.0,
+        'feedback'       => '<p>條理清楚，但沒有討論 starvation。</p>',
+        'feedbackformat' => FORMAT_HTML,
+    ]);
+    echo "[seed] student1 的 A1 已評分 85/100（含評語）\n";
+}
+
 // 權限、服務定義與模組設定都有快取，改完要清。
 purge_all_caches();
 echo "[seed] caches purged\n";

@@ -53,6 +53,8 @@ make moodle-status        # 列出目前的測試站
   而且 Moodle 一次 `save_submission` 會寫入所有啟用的外掛——只送檔案、不送
   online text，會把學生在瀏覽器裡打的字存成空的。這個行為必須測得到。
 
+- student1 的 A1 有一筆 85/100 的成績與評語：沒有已評分的資料，成績功能連
+  「已評分」和「未評分」都分不出來，等於沒驗到。
 - 標準站：`enablewebservices`、`enablemobilewebservice`、`rest` 協定、mobile service 已啟用，
   且「已驗證使用者」角色已授予 `webservice/rest:use`。
 

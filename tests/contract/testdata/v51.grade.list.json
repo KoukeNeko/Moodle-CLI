@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "kind": "grade.list",
+  "data": {
+    "course_id": "2",
+    "items": [
+      {
+        "id": "2",
+        "name": "A1 direct submit",
+        "kind": "activity",
+        "module": "assign",
+        "cmid": "2",
+        "grade": 85,
+        "grade_min": 0,
+        "grade_max": 100,
+        "display": "85.00",
+        "percentage": 85,
+        "feedback": "<p>條理清楚，但沒有討論 starvation。</p>",
+        "feedback_format": 1,
+        "graded_at": "2026-09-18T08:34:11Z",
+        "hidden": false,
+        "locked": false
+      },
+      {
+        "id": "3",
+        "name": "A2 submit button",
+        "kind": "activity",
+        "module": "assign",
+        "cmid": "3",
+        "grade": null,
+        "grade_min": 0,
+        "grade_max": 100,
+        "display": "-",
+        "percentage": null,
+        "feedback": null,
+        "feedback_format": null,
+        "graded_at": null,
+        "hidden": false,
+        "locked": false
+      },
+      {
+        "id": "4",
+        "name": "A3 statement",
+        "kind": "activity",
+        "module": "assign",
+        "cmid": "4",
+        "grade": null,
+        "grade_min": 0,
+        "grade_max": 100,
+        "display": "-",
+        "percentage": null,
+        "feedback": null,
+        "feedback_format": null,
+        "graded_at": null,
+        "hidden": false,
+        "locked": false
+      }
+    ],
+    "total": {
+      "id": "1",
+      "name": "",
+      "kind": "course",
+      "module": null,
+      "cmid": null,
+      "grade": 85,
+      "grade_min": 0,
+      "grade_max": 100,
+      "display": "85.00",
+      "percentage": 85,
+      "feedback": null,
+      "feedback_format": null,
+      "graded_at": "2026-09-18T08:34:11Z",
+      "hidden": false,
+      "locked": false
+    }
+  },
+  "meta": {
+    "site": "rec",
+    "account": "env",
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

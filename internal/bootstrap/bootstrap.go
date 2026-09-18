@@ -21,6 +21,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
+	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
@@ -82,6 +83,11 @@ func Run(ctx context.Context, build Build, args []string) int {
 				moodle.NewAssignmentBackend(session.Client(), session.Token()),
 				moodle.NewAssignmentWriter(session.Client(), session.Token()),
 				mode,
+			)
+		},
+		Grades: func(session *auth.Session, capabilities *site.Capabilities) *grade.Service {
+			return grade.NewService(
+				moodle.NewGradeBackend(session.Client(), session.Token(), capabilities),
 			)
 		},
 		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },

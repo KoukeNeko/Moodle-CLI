@@ -28,6 +28,9 @@ SAMPLE=$(mktemp -d)/report.pdf
 printf '%%PDF-1.4 sample\n' > "$SAMPLE"
 # Pick one this account has not handed in: the plan for an assignment that is
 # already submitted is a conflict, not a plan.
+COURSE=$("$REPO_DIR/bin/moodle" course list --json \
+  | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"][0]["id"])')
+
 ASSIGNMENT=""
 for candidate in $("$REPO_DIR/bin/moodle" assignment list --json \
   | python3 -c 'import json,sys;[print(a["id"]) for a in json.load(sys.stdin)["data"]]'); do
@@ -42,12 +45,15 @@ if [ -z "$ASSIGNMENT" ]; then
 fi
 
 for kind in doctor site.inspect auth.status course.list \
-            assignment.list assignment.show assignment.status assignment.submit; do
+            assignment.list assignment.show assignment.status assignment.submit \
+            grade.list grade.overview; do
   case "$kind" in
     doctor)            args=(doctor) ;;
     site.inspect)      args=(site inspect) ;;
     auth.status)       args=(auth status) ;;
     course.list)       args=(course list) ;;
+    grade.list)        args=(grade list --course "$COURSE") ;;
+    grade.overview)    args=(grade overview) ;;
     assignment.list)   args=(assignment list) ;;
     assignment.show)   args=(assignment show "$ASSIGNMENT") ;;
     assignment.status) args=(assignment status "$ASSIGNMENT") ;;

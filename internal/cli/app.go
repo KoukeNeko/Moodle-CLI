@@ -111,6 +111,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newAuthCommand(renderer, deps),
 		newCourseCommand(renderer, deps),
 		newAssignmentCommand(renderer, deps, mode),
+		newGradeCommand(renderer, deps),
 		newDoctorCommand(renderer, deps),
 	)
 

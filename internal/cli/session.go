@@ -5,6 +5,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
@@ -29,6 +30,8 @@ type Deps struct {
 	// in per invocation because --dry-run is a property of the command line,
 	// and the guard that enforces it has to be built with it.
 	Assignments func(*auth.Session, *site.Capabilities, safety.Mode) *assignment.Service
+	// Grades assembles the grade use case.
+	Grades func(*auth.Session, *site.Capabilities) *grade.Service
 	// Interactive reports whether there is a person at the other end to
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/grade.overview.schema.json",
+  "title": "moodle-cli grade.overview",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "grade.overview" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["course_id", "grade", "display"],
+        "additionalProperties": false,
+        "properties": {
+          "course_id": { "type": "string" },
+          "grade": { "type": ["number", "null"], "description": "Null when nothing in the course has been graded yet" },
+          "display": {
+            "type": "string",
+            "description": "Moodle's own rendering. This call carries no maximum, so there is deliberately no percentage here."
+          }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}
