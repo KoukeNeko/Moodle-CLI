@@ -118,9 +118,16 @@ func Run(ctx context.Context, build Build, args []string) int {
 				mode, backends...)
 		},
 		Grades: func(session *auth.Session, capabilities *site.Capabilities) *grade.Service {
-			return grade.NewService(
+			backends := []grade.Backend{
 				moodle.NewGradeBackend(session.Client(), session.Token(), capabilities),
-			)
+			}
+			if cookie := session.Cookie(); cookie.Value != "" {
+				// Grades are exposed over no endpoint a session can reach, so
+				// the report page is the only remaining source.
+				backends = append(backends, moodle.NewGradeHTMLBackend(
+					moodle.NewPageReader(session.Client(), cookie)))
+			}
+			return grade.NewService(backends...)
 		},
 		Calendar: func(session *auth.Session, _ *site.Capabilities) *calendar.Service {
 			return calendar.NewService(pickBackends(session,
