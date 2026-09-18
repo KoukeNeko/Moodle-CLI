@@ -107,7 +107,7 @@ func (s *Service) List(ctx context.Context, capabilities *site.Capabilities, q L
 			sawDrift = true
 		}
 		lastError = err
-		skipped = append(skipped, string(backend.Name())+": "+errs.From(err).Error())
+		skipped = append(skipped, site.Describe(backend.Name(), err))
 	}
 
 	return ListResult{}, unavailable(skipped, lastError)

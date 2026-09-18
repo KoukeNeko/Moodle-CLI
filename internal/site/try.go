@@ -60,8 +60,7 @@ func Try[T any](capabilities *Capabilities, attempts []Attempt[T]) (Outcome[T], 
 			outcome.Drift = true
 		}
 		lastError = err
-		outcome.Tried = append(outcome.Tried,
-			string(attempt.Kind)+": "+errs.From(err).Error())
+		outcome.Tried = append(outcome.Tried, Describe(attempt.Kind, err))
 	}
 
 	return outcome, Unavailable(outcome.Tried, lastError)
@@ -97,6 +96,23 @@ func Explain(err error, what string) error {
 		hint += "; " + failure.Hint
 	}
 	return failure.WithHint(hint)
+}
+
+// Describe writes one route's entry for the "tried:" list.
+//
+// The hint is part of the entry because that is what the entry is for: a route
+// that failed usually has something more specific to say than its headline —
+// which capability the site withheld, how many it would have counted — and the
+// list is the only place any of it reaches the reader. Dropping it left the
+// careful part of a refusal invisible, so the message read the same whether or
+// not anyone had worked out why.
+func Describe(kind BackendKind, err error) string {
+	failure := errs.From(err)
+	entry := string(kind) + ": " + failure.Error()
+	if failure.Hint != "" {
+		entry += " (" + failure.Hint + ")"
+	}
+	return entry
 }
 
 func join(items []string) string {
