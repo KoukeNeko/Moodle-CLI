@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/file.download.schema.json",
+  "title": "moodle-cli file.download",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "file.download" },
+    "data": {
+      "type": "object",
+      "required": ["path", "size", "replaced"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Where the bytes ended up, so a script need not guess the name the site chose"
+        },
+        "size": { "type": "integer" },
+        "replaced": { "type": "boolean", "description": "Something was already there and is now gone" }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/calendar"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/file"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -35,6 +36,8 @@ type Deps struct {
 	Grades func(*auth.Session, *site.Capabilities) *grade.Service
 	// Calendar assembles the deadline use case.
 	Calendar func(*auth.Session, *site.Capabilities) *calendar.Service
+	// Files assembles the download use case.
+	Files func(*auth.Session, *site.Capabilities) *file.Downloader
 	// Interactive reports whether there is a person at the other end to
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.

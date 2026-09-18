@@ -11,6 +11,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/KoukeNeko/moodle-cli/internal/file"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
@@ -96,6 +97,8 @@ type Detail struct {
 	MaxAttempts    int
 	TeamSubmission bool
 	BlindMarking   bool
+	// Attachments are the files the teacher attached to the description.
+	Attachments []file.Ref
 }
 
 // State is the caller's current submission for an assignment.
@@ -113,6 +116,9 @@ type State struct {
 	// takes online text. It is read so that submitting files can put it back
 	// unchanged instead of blanking it.
 	OnlineText *OnlineText
+	// Files are what has actually been handed in, so a caller can check that
+	// what Moodle holds is what they meant to send.
+	Files []file.Ref
 	// Provenance tells the caller which backend answered.
 	Provenance site.Provenance
 }

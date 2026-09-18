@@ -37,10 +37,14 @@ type Capabilities struct {
 	Release     string
 	Version     string
 	SiteName    string
-	UserID      string
-	Username    string
-	FullName    string
-	Quirks      Quirks
+	// SiteURL is the root the site builds its own links from. It is not
+	// necessarily the address the user configured, and file links come from
+	// this one.
+	SiteURL  string
+	UserID   string
+	Username string
+	FullName string
+	Quirks   Quirks
 }
 
 // NewCapabilities returns an empty, usable set.

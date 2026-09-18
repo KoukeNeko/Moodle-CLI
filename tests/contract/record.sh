@@ -28,6 +28,9 @@ SAMPLE=$(mktemp -d)/report.pdf
 printf '%%PDF-1.4 sample\n' > "$SAMPLE"
 # Pick one this account has not handed in: the plan for an assignment that is
 # already submitted is a conflict, not a plan.
+SCRATCH=$(mktemp -d)
+trap 'rm -rf "$SCRATCH"' EXIT
+
 COURSE=$("$REPO_DIR/bin/moodle" course list --json \
   | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"][0]["id"])')
 
@@ -44,9 +47,25 @@ if [ -z "$ASSIGNMENT" ]; then
   exit 1
 fi
 
+# Record assignment.show from one that has an attachment, so the recording
+# covers that field on every version. Picking whichever happened to be
+# unsubmitted left one version's fixture silently empty.
+WITH_ATTACHMENT=""
+ATTACHMENT=""
+for candidate in $("$REPO_DIR/bin/moodle" assignment list --json \
+  | python3 -c 'import json,sys;[print(a["id"]) for a in json.load(sys.stdin)["data"]]'); do
+  url=$("$REPO_DIR/bin/moodle" assignment show "$candidate" --json \
+    | python3 -c 'import json,sys;a=json.load(sys.stdin)["data"]["attachments"];print(a[0]["url"] if a else "")')
+  if [ -n "$url" ]; then WITH_ATTACHMENT="$candidate"; ATTACHMENT="$url"; break; fi
+done
+if [ -z "$ATTACHMENT" ]; then
+  echo "no assignment has an attachment; re-seed the site" >&2
+  exit 1
+fi
+
 for kind in doctor site.inspect auth.status course.list \
             assignment.list assignment.show assignment.status assignment.submit \
-            grade.list grade.overview calendar.upcoming; do
+            grade.list grade.overview calendar.upcoming file.download; do
   case "$kind" in
     doctor)            args=(doctor) ;;
     site.inspect)      args=(site inspect) ;;
@@ -55,8 +74,11 @@ for kind in doctor site.inspect auth.status course.list \
     grade.list)        args=(grade list --course "$COURSE") ;;
     grade.overview)    args=(grade overview) ;;
     calendar.upcoming) args=(calendar upcoming) ;;
+    # A real download, into a scratch directory that is thrown away: the point
+    # is that the recorded document comes from bytes that actually moved.
+    file.download)     args=(file download "$ATTACHMENT" --dir "$SCRATCH" --force) ;;
     assignment.list)   args=(assignment list) ;;
-    assignment.show)   args=(assignment show "$ASSIGNMENT") ;;
+    assignment.show)   args=(assignment show "$WITH_ATTACHMENT") ;;
     assignment.status) args=(assignment status "$ASSIGNMENT") ;;
     assignment.submit) args=(assignment submit "$ASSIGNMENT" "$SAMPLE" --dry-run) ;;
   esac

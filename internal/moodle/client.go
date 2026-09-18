@@ -201,6 +201,28 @@ func (c *Client) postJSON(ctx context.Context, endpoint string, body []byte, fun
 	return c.send(request, function)
 }
 
+// stream sends a request and hands back the open response.
+//
+// Unlike send it does not read the body, because a download can be larger than
+// anything worth holding in memory. The caller owns the body and must close
+// it.
+func (c *Client) stream(request *http.Request, function string) (*http.Response, error) {
+	request.Header.Set("User-Agent", c.userAgent)
+
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return nil, networkError(request.Context(), err, function)
+	}
+	if response.StatusCode != http.StatusOK {
+		// The body is the error message here, and it is small; reading it is
+		// what makes the failure explainable.
+		body, _ := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes))
+		response.Body.Close()
+		return nil, httpStatusError(response, body, function)
+	}
+	return response, nil
+}
+
 func (c *Client) send(request *http.Request, function string) ([]byte, error) {
 	request.Header.Set("User-Agent", c.userAgent)
 	request.Header.Set("Accept", "application/json")

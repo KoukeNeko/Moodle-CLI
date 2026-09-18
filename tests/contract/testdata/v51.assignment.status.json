@@ -8,8 +8,9 @@
     "can_edit": true,
     "can_submit": false,
     "grading_status": "notgraded",
-    "modified_at": "2026-09-18T08:41:59Z",
-    "file_count": 0
+    "modified_at": "2026-09-18T08:53:29Z",
+    "file_count": 0,
+    "files": []
   },
   "meta": {
     "site": "rec",

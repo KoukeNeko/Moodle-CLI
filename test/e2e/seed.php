@@ -136,6 +136,22 @@ foreach ($want as $name => $fields) {
     echo "[seed] $name -> submissiondrafts={$fields['submissiondrafts']} requiresubmissionstatement={$fields['requiresubmissionstatement']} submission plugins enabled\n";
 }
 
+// A1 掛一個說明附件：沒有附件，下載流程與 introattachments 的欄位形狀都驗不到。
+$a1 = $DB->get_record('assign', ['name' => 'A1 direct submit', 'course' => $course->id]);
+if ($a1) {
+    $a1cm = get_coursemodule_from_instance('assign', $a1->id, $course->id);
+    $a1context = context_module::instance($a1cm->id);
+    $fs = get_file_storage();
+    if (!$fs->file_exists($a1context->id, 'mod_assign', 'introattachment', 0, '/', 'rubric.txt')) {
+        $fs->create_file_from_string((object) [
+            'contextid' => $a1context->id, 'component' => 'mod_assign',
+            'filearea' => 'introattachment', 'itemid' => 0,
+            'filepath' => '/', 'filename' => 'rubric.txt',
+        ], "1. 正確性 40%\n2. 效率 30%\n3. 說明 30%\n");
+        echo "[seed] A1 已附上 rubric.txt\n";
+    }
+}
+
 // 給 student1 的 A1 一個成績與評語：沒有已評分的資料，成績相關的功能連「已評分」
 // 和「未評分」都分不出來，等於沒驗到。用 gradelib 直接寫進成績簿，那正是
 // gradereport_* 讀的地方。

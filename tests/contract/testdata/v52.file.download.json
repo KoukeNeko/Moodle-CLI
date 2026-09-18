@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "kind": "file.download",
+  "data": {
+    "path": "/tmp/tmp.GJ8ZJP4bty/rubric.txt",
+    "size": 45,
+    "replaced": false
+  },
+  "meta": {
+    "site": "rec",
+    "account": "env",
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

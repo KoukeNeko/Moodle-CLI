@@ -3,35 +3,130 @@
   "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.status.schema.json",
   "title": "moodle-cli assignment.status",
   "type": "object",
-  "required": ["schema_version", "kind", "data", "meta"],
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "const": 1 },
-    "kind": { "const": "assignment.status" },
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "assignment.status"
+    },
     "data": {
       "type": "object",
       "required": [
-        "assignment_id", "status", "handed_in", "can_edit", "can_submit",
-        "grading_status", "modified_at", "file_count"
+        "assignment_id",
+        "status",
+        "handed_in",
+        "can_edit",
+        "can_submit",
+        "grading_status",
+        "modified_at",
+        "file_count",
+        "files"
       ],
       "additionalProperties": false,
       "properties": {
-        "assignment_id": { "type": "string" },
+        "assignment_id": {
+          "type": "string"
+        },
         "status": {
-          "enum": ["new", "draft", "submitted", "unknown"],
+          "enum": [
+            "new",
+            "draft",
+            "submitted",
+            "unknown"
+          ],
           "description": "draft means content is saved but is NOT being marked. unknown means the site reported a state this build does not recognise; it is deliberately not folded into one of the others."
         },
         "handed_in": {
           "type": "boolean",
           "description": "True only when Moodle reports the work as submitted. This is the question most callers are actually asking."
         },
-        "can_edit": { "type": "boolean" },
-        "can_submit": { "type": "boolean" },
-        "grading_status": { "type": ["string", "null"], "description": "Moodle's own word, passed through unchanged" },
-        "modified_at": { "type": ["string", "null"], "format": "date-time" },
-        "file_count": { "type": "integer" }
+        "can_edit": {
+          "type": "boolean"
+        },
+        "can_submit": {
+          "type": "boolean"
+        },
+        "grading_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Moodle's own word, passed through unchanged"
+        },
+        "modified_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "file_count": {
+          "type": "integer"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "description": "What Moodle actually holds, so a caller can check that what was received is what they meant to send"
+        }
       }
     },
-    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "required": [
+        "name",
+        "path",
+        "size",
+        "mime_type",
+        "url",
+        "modified_at",
+        "external"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string",
+          "description": "Folder within the file area, \"/\" at the top; two files in one area can share a name in different folders"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "description": "Fetch it with `moodle file download`, which attaches the credential only for this site"
+        },
+        "modified_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "external": {
+          "type": "boolean",
+          "description": "Held by another service, such as a linked cloud drive; the site's own token does not necessarily open it"
+        }
+      }
+    }
   }
 }

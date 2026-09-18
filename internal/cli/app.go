@@ -113,6 +113,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newAssignmentCommand(renderer, deps, mode),
 		newGradeCommand(renderer, deps),
 		newCalendarCommand(renderer, deps),
+		newFileCommand(renderer, deps),
 		newDoctorCommand(renderer, deps),
 	)
 

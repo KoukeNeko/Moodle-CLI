@@ -44,6 +44,12 @@ func newAssignmentFixture(t *testing.T, drafts, statement bool, extraPlugins ...
 				// -1 means "as many attempts as you like", not minus one.
 				"maxattempts": -1, "timelimit": 0,
 				"teamsubmission": 0, "blindmarking": 0,
+				"introattachments": []any{map[string]any{
+					"filename": "rubric.txt", "filepath": "/", "filesize": 45,
+					"fileurl":      "https://moodle.example.edu/webservice/pluginfile.php/16/mod_assign/introattachment/0/rubric.txt",
+					"timemodified": 1789000000, "mimetype": "text/plain",
+					"isexternalfile": false,
+				}},
 				"submissiondrafts":           boolToInt(drafts),
 				"requiresubmissionstatement": boolToInt(statement),
 				"configs":                    pluginConfigs(extraPlugins),
@@ -123,7 +129,13 @@ func lastAttempt(status string, files []any) map[string]any {
 func filesPayload(names []any) []any {
 	out := make([]any, 0, len(names))
 	for _, name := range names {
-		out = append(out, map[string]any{"filename": name})
+		out = append(out, map[string]any{
+			"filename": name, "filepath": "/", "filesize": 27,
+			"fileurl": "https://moodle.example.edu/webservice/pluginfile.php/16/" +
+				"assignsubmission_file/submission_files/1/" + name.(string),
+			"timemodified": 1789000100, "mimetype": "application/pdf",
+			"isexternalfile": false,
+		})
 	}
 	return out
 }
@@ -608,5 +620,55 @@ func TestAssignmentShowOnAnUnknownIdIsNotFound(t *testing.T) {
 	_, _, code := a.run("assignment", "show", "999")
 	if code != v1.ExitNotFound {
 		t.Errorf("exit %d, want %d", code, v1.ExitNotFound)
+	}
+}
+
+func TestAssignmentShowListsItsAttachments(t *testing.T) {
+	// A description that says "see the rubric" is no use without the rubric.
+	a := newAssignmentFixture(t, true, false)
+	stdout, stderr, code := a.run("assignment", "show", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d, %s", code, stderr)
+	}
+	validate(t, "assignment.show", stdout)
+
+	var doc struct {
+		Data v1.AssignmentDetail `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Data.Attachments) != 1 {
+		t.Fatalf("got %d attachments, want 1", len(doc.Data.Attachments))
+	}
+	attachment := doc.Data.Attachments[0]
+	if attachment.Name != "rubric.txt" || attachment.URL == "" {
+		t.Errorf("attachment = %+v", attachment)
+	}
+	if attachment.External {
+		t.Error("a file held by the site was marked external")
+	}
+}
+
+func TestAssignmentStatusListsWhatMoodleActuallyHolds(t *testing.T) {
+	// The count alone does not let anyone check that what arrived is what they
+	// meant to send.
+	a := newAssignmentFixture(t, true, false)
+	a.status = lastAttempt("submitted", []any{"report.pdf"})
+
+	stdout, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", stdout)
+
+	var doc struct {
+		Data v1.SubmissionState `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Data.Files) != 1 || doc.Data.Files[0].Name != "report.pdf" {
+		t.Errorf("files = %+v", doc.Data.Files)
 	}
 }

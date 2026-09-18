@@ -6,7 +6,7 @@
     "course_id": "2",
     "cmid": "2",
     "name": "A1 direct submit",
-    "due_date": "2026-09-25T08:42:36Z",
+    "due_date": "2026-09-25T08:54:09Z",
     "cut_off_date": null,
     "needs_hand_in": false,
     "requires_statement": false,
@@ -24,6 +24,17 @@
     "max_attempts": 1,
     "team_submission": false,
     "blind_marking": false,
+    "attachments": [
+      {
+        "name": "rubric.txt",
+        "path": "/",
+        "size": 45,
+        "mime_type": "text/plain",
+        "url": "http://localhost:8451/webservice/pluginfile.php/15/mod_assign/introattachment/0/rubric.txt",
+        "modified_at": "2026-09-18T08:54:09Z",
+        "external": false
+      }
+    ],
     "submission": {
       "assignment_id": "1",
       "status": "new",
@@ -31,8 +42,9 @@
       "can_edit": true,
       "can_submit": false,
       "grading_status": "notgraded",
-      "modified_at": "2026-09-18T08:42:40Z",
-      "file_count": 0
+      "modified_at": "2026-09-18T08:54:13Z",
+      "file_count": 0,
+      "files": []
     }
   },
   "meta": {

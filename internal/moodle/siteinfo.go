@@ -26,7 +26,10 @@ type siteInfoDTO struct {
 	FullName  string `json:"fullname"`
 	UserID    int64  `json:"userid"`
 	Release   string `json:"release"`
-	Version   string `json:"version"`
+	// SiteURL is the root Moodle builds its own links from, which can differ
+	// from the address the user typed. File URLs are built from this one.
+	SiteURL string `json:"siteurl"`
+	Version string `json:"version"`
 	// Moodle sends 0 or 1 here, not a JSON boolean.
 	DownloadFiles int `json:"downloadfiles"`
 	UploadFiles   int `json:"uploadfiles"`
@@ -69,6 +72,7 @@ func (c *Client) SiteInfo(ctx context.Context, token string, accountID site.ID) 
 	capabilities.AccountID = accountID
 	capabilities.Credential = site.CredentialWSToken
 	capabilities.SiteName = dto.SiteName
+	capabilities.SiteURL = dto.SiteURL
 	capabilities.Username = dto.Username
 	capabilities.FullName = fullName(dto)
 	capabilities.Release = dto.Release

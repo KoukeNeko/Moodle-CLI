@@ -2,6 +2,7 @@ package v1
 
 import (
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
+	"github.com/KoukeNeko/moodle-cli/internal/file"
 )
 
 // The assignment payloads carry one distinction the rest of the contract does
@@ -82,10 +83,44 @@ type AssignmentDetail struct {
 	// TimeLimitSeconds is null when there is no limit.
 	TimeLimitSeconds *int `json:"time_limit_seconds"`
 	// MaxAttempts is null when Moodle allows unlimited attempts.
-	MaxAttempts    *int            `json:"max_attempts"`
-	TeamSubmission bool            `json:"team_submission"`
-	BlindMarking   bool            `json:"blind_marking"`
-	Submission     SubmissionState `json:"submission"`
+	MaxAttempts    *int `json:"max_attempts"`
+	TeamSubmission bool `json:"team_submission"`
+	BlindMarking   bool `json:"blind_marking"`
+	// Attachments are the files the teacher attached to the description.
+	Attachments []File          `json:"attachments"`
+	Submission  SubmissionState `json:"submission"`
+}
+
+// File is a file Moodle is holding.
+type File struct {
+	Name string `json:"name"`
+	// Path is the folder within the file area, "/" at the top: two files in
+	// one area can share a name if they sit in different folders.
+	Path     string  `json:"path"`
+	Size     int64   `json:"size"`
+	MIMEType string  `json:"mime_type"`
+	URL      string  `json:"url"`
+	Modified *string `json:"modified_at"`
+	// External marks a file held by another service, such as a linked cloud
+	// drive. The site's own token does not necessarily open it, so a download
+	// that works for the rest may fail for this one.
+	External bool `json:"external"`
+}
+
+func newFiles(refs []file.Ref) []File {
+	out := make([]File, 0, len(refs))
+	for _, ref := range refs {
+		out = append(out, File{
+			Name:     ref.Name,
+			Path:     ref.Path,
+			Size:     ref.Size,
+			MIMEType: ref.MIMEType,
+			URL:      ref.URL,
+			Modified: Timestamp(ref.ModifiedAt),
+			External: ref.External,
+		})
+	}
+	return out
 }
 
 // AssignmentShow converts one assignment and the caller's standing in it into
@@ -99,6 +134,7 @@ func AssignmentShow(detail assignment.Detail, state assignment.State, siteName, 
 		AllowFrom:         Timestamp(detail.AllowFrom),
 		TeamSubmission:    detail.TeamSubmission,
 		BlindMarking:      detail.BlindMarking,
+		Attachments:       newFiles(detail.Attachments),
 		Submission:        newSubmissionState(detail.ID, state),
 	}
 	if detail.MaxGrade > 0 {
@@ -134,6 +170,9 @@ type SubmissionState struct {
 	GradingStatus *string `json:"grading_status"`
 	ModifiedAt    *string `json:"modified_at"`
 	FileCount     int     `json:"file_count"`
+	// Files is what Moodle actually holds, so a caller can check that what was
+	// received is what they meant to send.
+	Files []File `json:"files"`
 }
 
 // AssignmentStatus converts a submission state into its envelope.
@@ -152,6 +191,7 @@ func newSubmissionState(assignmentID string, state assignment.State) SubmissionS
 		GradingStatus: optional(state.GradingStatus),
 		ModifiedAt:    Timestamp(state.ModifiedAt),
 		FileCount:     state.FileCount,
+		Files:         newFiles(state.Files),
 	}
 }
 

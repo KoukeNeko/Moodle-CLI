@@ -14,6 +14,7 @@ import (
 
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
+	"github.com/KoukeNeko/moodle-cli/internal/file"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
@@ -51,7 +52,9 @@ type assignmentsDTO struct {
 			MaxAttempts                int     `json:"maxattempts"`
 			TeamSubmission             int     `json:"teamsubmission"`
 			BlindMarking               int     `json:"blindmarking"`
-			Configs                    []struct {
+			// IntroAttachments are the files attached to the description.
+			IntroAttachments []fileDTO `json:"introattachments"`
+			Configs          []struct {
 				Plugin  string `json:"plugin"`
 				Subtype string `json:"subtype"`
 				Name    string `json:"name"`
@@ -80,10 +83,8 @@ type submissionStatusDTO struct {
 			Plugins      []struct {
 				Type      string `json:"type"`
 				FileAreas []struct {
-					Area  string `json:"area"`
-					Files []struct {
-						FileName string `json:"filename"`
-					} `json:"files"`
+					Area  string    `json:"area"`
+					Files []fileDTO `json:"files"`
 				} `json:"fileareas"`
 				// EditorFields carry what the student has already typed.
 				EditorFields []struct {
@@ -94,6 +95,36 @@ type submissionStatusDTO struct {
 			} `json:"plugins"`
 		} `json:"submission"`
 	} `json:"lastattempt"`
+}
+
+// fileDTO is how Moodle describes a file it is holding. The same shape comes
+// back for assignment attachments and for submitted files.
+type fileDTO struct {
+	FileName     string `json:"filename"`
+	FilePath     string `json:"filepath"`
+	FileSize     int64  `json:"filesize"`
+	FileURL      string `json:"fileurl"`
+	TimeModified int64  `json:"timemodified"`
+	MimeType     string `json:"mimetype"`
+	// IsExternalFile marks a file held by another service, such as a linked
+	// cloud drive; the site's own token does not necessarily open it.
+	IsExternalFile bool `json:"isexternalfile"`
+}
+
+func fileRefs(items []fileDTO) []file.Ref {
+	refs := make([]file.Ref, 0, len(items))
+	for _, item := range items {
+		refs = append(refs, file.Ref{
+			Name:       item.FileName,
+			Path:       item.FilePath,
+			Size:       item.FileSize,
+			URL:        item.FileURL,
+			MIMEType:   item.MimeType,
+			ModifiedAt: unixTime(item.TimeModified),
+			External:   item.IsExternalFile,
+		})
+	}
+	return refs
 }
 
 // AssignmentBackend reads assignments over the web service API.
@@ -214,6 +245,7 @@ func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
 				MaxAttempts:       item.MaxAttempts,
 				TeamSubmission:    item.TeamSubmission == 1,
 				BlindMarking:      item.BlindMarking == 1,
+				Attachments:       fileRefs(item.IntroAttachments),
 			})
 		}
 	}
@@ -256,6 +288,7 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 		for _, area := range plugin.FileAreas {
 			if area.Area == "submission_files" {
 				state.FileCount += len(area.Files)
+				state.Files = append(state.Files, fileRefs(area.Files)...)
 			}
 		}
 		if plugin.Type != assignment.PluginOnlineText {

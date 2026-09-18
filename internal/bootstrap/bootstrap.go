@@ -22,6 +22,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
+	"github.com/KoukeNeko/moodle-cli/internal/file"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
@@ -94,6 +95,11 @@ func Run(ctx context.Context, build Build, args []string) int {
 		Calendar: func(session *auth.Session, _ *site.Capabilities) *calendar.Service {
 			return calendar.NewService(
 				moodle.NewCalendarBackend(session.Client(), session.Token()),
+			)
+		},
+		Files: func(session *auth.Session, capabilities *site.Capabilities) *file.Downloader {
+			return file.NewDownloader(
+				moodle.NewFileFetcher(session.Client(), session.Token(), capabilities),
 			)
 		},
 		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
