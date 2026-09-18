@@ -582,11 +582,7 @@ func (w *AssignmentWriter) SaveSubmission(ctx context.Context, assignmentID stri
 	}
 
 	// Moodle answers with an array of warnings; an empty array means success.
-	var warnings []struct {
-		Item        string `json:"item"`
-		WarningCode string `json:"warningcode"`
-		Message     string `json:"message"`
-	}
+	var warnings []writeWarning
 	if err := w.client.Call(ctx, w.token, FunctionSaveSubmission, Params{
 		"assignmentid": assignID,
 		"plugindata":   plugindata,
@@ -594,11 +590,45 @@ func (w *AssignmentWriter) SaveSubmission(ctx context.Context, assignmentID stri
 		return err
 	}
 	if len(warnings) > 0 {
-		return errs.New(errs.CodeUpstream,
-			fmt.Sprintf("Moodle refused the submission: %s", warnings[0].Message)).
-			WithHint(warnings[0].Item)
+		// save_submission puts its reason in "item" and a fixed "Could not
+		// save submission." in "message" — generate_warning() takes the detail
+		// last and Moodle passes the notice there. Reporting "message" showed
+		// the reader the one part that says nothing.
+		return errs.New(errs.CodeConflict,
+			"the site would not save the submission: "+reasons(warnings)).
+			WithHint("check the current state with `moodle assignment status`")
 	}
 	return nil
+}
+
+// writeWarning is the shape both write calls answer with.
+type writeWarning struct {
+	Item        string `json:"item"`
+	WarningCode string `json:"warningcode"`
+	Message     string `json:"message"`
+}
+
+// reasons joins what the site said, rather than showing the first and
+// discarding the rest: a submission can be refused by several plugins at once,
+// and hiding all but one of them hides part of the work needed to fix it.
+func reasons(warnings []writeWarning) string {
+	seen := map[string]bool{}
+	var out []string
+	for _, warning := range warnings {
+		text := strings.TrimSpace(warning.Item)
+		if text == "" {
+			text = strings.TrimSpace(warning.Message)
+		}
+		if text == "" || seen[text] {
+			continue
+		}
+		seen[text] = true
+		out = append(out, text)
+	}
+	if len(out) == 0 {
+		return "it gave no reason"
+	}
+	return strings.Join(out, "; ")
 }
 
 func (w *AssignmentWriter) SubmitForGrading(ctx context.Context, assignmentID string, acceptStatement bool) error {
@@ -607,11 +637,7 @@ func (w *AssignmentWriter) SubmitForGrading(ctx context.Context, assignmentID st
 		return errs.New(errs.CodeUsage, fmt.Sprintf("assignment id %q is not a number", assignmentID))
 	}
 
-	var warnings []struct {
-		Item        string `json:"item"`
-		WarningCode string `json:"warningcode"`
-		Message     string `json:"message"`
-	}
+	var warnings []writeWarning
 	if err := w.client.Call(ctx, w.token, FunctionSubmitForGrading, Params{
 		"assignmentid":              assignID,
 		"acceptsubmissionstatement": acceptStatement,
@@ -619,8 +645,17 @@ func (w *AssignmentWriter) SubmitForGrading(ctx context.Context, assignmentID st
 		return err
 	}
 	if len(warnings) > 0 {
-		return errs.New(errs.CodeUpstream,
-			fmt.Sprintf("Moodle refused to accept the submission: %s", warnings[0].Message))
+		// Unlike save_submission, this one puts a debugging line in "item" —
+		// "User id: 7, Assignment id: 27 Notices:" — so there is nothing here
+		// to pass on. Measured; the notices it promises are usually empty.
+		failure := errs.New(errs.CodeConflict,
+			"the site would not accept the submission for grading").
+			WithHint("check the current state with `moodle assignment status`")
+		failure.Upstream = &errs.Upstream{
+			ErrorCode: warnings[0].WarningCode,
+			Message:   strings.TrimSpace(warnings[0].Item),
+		}
+		return failure
 	}
 	return nil
 }

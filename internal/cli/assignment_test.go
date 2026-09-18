@@ -935,3 +935,54 @@ func TestAWithheldAssignmentIsNotSentBackToTheListThatHidesIt(t *testing.T) {
 		t.Errorf("the message does not say the reply was short:\n%s", stderr)
 	}
 }
+
+func TestASubmissionTheSiteWouldNotSaveNamesWhy(t *testing.T) {
+	// save_submission 把理由放在 item，把固定的 "Could not save submission."
+	// 放在 message——generate_warning() 的 detail 是最後一個參數。報 message
+	// 就是把唯一沒有內容的那一半拿給讀的人看。而且這不是站台壞掉：請求合法、
+	// 權限也有，是作業當下的狀態不接受，那是衝突。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionSaveSubmission, []any{
+		map[string]any{
+			"item": "The due date for this assignment has now passed", "itemid": 7,
+			"warningcode": "couldnotsavesubmission", "message": "Could not save submission.",
+		},
+		map[string]any{
+			"item": "File submissions are disabled", "itemid": 7,
+			"warningcode": "couldnotsavesubmission", "message": "Could not save submission.",
+		},
+	})
+
+	_, stderr, code := a.run("assignment", "submit", "7", workFile(t), "--yes")
+	if code != v1.ExitConflict {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitConflict, stderr)
+	}
+	if !strings.Contains(stderr, "due date") {
+		t.Errorf("the reason the site gave is missing:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "File submissions are disabled") {
+		t.Errorf("only the first of several reasons was shown:\n%s", stderr)
+	}
+}
+
+func TestAGradingRefusalDoesNotShowMoodlesDebugLine(t *testing.T) {
+	// submit_for_grading 的 item 是給開發者看的（"User id: 7, Assignment id: 27
+	// Notices:"），不是給學生看的。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionSaveSubmission, []any{})
+	a.server.HandleValue(moodle.FunctionSubmitForGrading, []any{
+		map[string]any{
+			"item": "User id: 7, Assignment id: 7 Notices:", "itemid": 7,
+			"warningcode": "couldnotsubmitforgrading",
+			"message":     "Could not submit assignment for grading.",
+		},
+	})
+
+	_, stderr, code := a.run("assignment", "submit", "7", workFile(t), "--yes")
+	if code != v1.ExitConflict {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitConflict, stderr)
+	}
+	if strings.Contains(stderr, "User id:") {
+		t.Errorf("a debugging line was shown to the student:\n%s", stderr)
+	}
+}
