@@ -377,6 +377,13 @@ run assignment status 999999
 say "10. 交作業"
 note "先找一份還沒交、而且不需要提交聲明的"
 TARGET=$(pick_submittable)
+if [ -z "$TARGET" ]; then
+  # 這一節會把挑中的作業交出去，所以上一次的執行會把它用掉。沒有把關的話，
+  # $TARGET 是空的，後面十幾個命令會變成 `assignment submit  <檔名>`——紀錄看起來
+  # 像整片回歸，其實只是待交的作業沒了。跑之前先補回來。
+  echo "找不到還沒交的作業，先跑 test/e2e/seed-masters.sh" >&2
+  exit 2
+fi
 note "挑中的是 $TARGET"
 WORK="$WORKDIR/thesis-chapter.pdf"
 printf '%%PDF-1.4 four semesters of work\n' > "$WORK"
