@@ -117,14 +117,22 @@ func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 		_, err := fmt.Fprintln(w, "Nothing in this gradebook.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(table, "ITEM\tGRADE\tOUT OF\tMARKED")
-	for _, item := range report.Items {
-		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n",
-			item.Name, gradeCell(item), outOf(item), date(item.GradedAt))
-	}
-	if err := table.Flush(); err != nil {
-		return err
+	if len(report.Items) == 0 {
+		// A header with nothing under it reads as a broken command. It happens
+		// for real: an activity-level override drops the item and leaves the
+		// course total behind, and the reply carries no warning to say so —
+		// measured. The sentence is what the listing can honestly claim.
+		fmt.Fprintln(w, "No grade items are visible to this account.")
+	} else {
+		table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(table, "ITEM\tGRADE\tOUT OF\tMARKED")
+		for _, item := range report.Items {
+			fmt.Fprintf(table, "%s\t%s\t%s\t%s\n",
+				item.Name, gradeCell(item), outOf(item), date(item.GradedAt))
+		}
+		if err := table.Flush(); err != nil {
+			return err
+		}
 	}
 
 	if report.Total != nil {

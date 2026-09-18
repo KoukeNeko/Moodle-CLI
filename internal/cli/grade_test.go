@@ -376,3 +376,34 @@ func TestARefusedGradableProbeClaimsNothing(t *testing.T) {
 		t.Errorf("a refusal was read as an answer:\n%s", stdout)
 	}
 }
+
+func TestAGradebookWithNoVisibleItemsDoesNotPrintABareHeader(t *testing.T) {
+	// 活動層級的權限覆寫會把成績項目從回覆裡拿掉、把課程總分留著，而且不附任何
+	// warning——實測過。舊的輸出是一列表頭、底下什麼都沒有，看起來像指令壞了。
+	f := newFixture(t)
+	f.server.HandleValue(moodle.FunctionGradeItems, map[string]any{
+		"usergrades": []any{map[string]any{
+			"courseid": 2, "userid": 4, "gradeitems": []any{
+				gradeItem(9, "", "course", map[string]any{"itemname": nil, "itemmodule": nil}),
+			},
+		}},
+	})
+	f.server.HandleValue(moodle.FunctionGradableUsers, map[string]any{
+		"users": []any{map[string]any{"id": 4}}, "warnings": []any{},
+	})
+	f.addSiteAndLogin()
+
+	stdout, stderr, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if strings.Contains(stdout, "ITEM") {
+		t.Errorf("an empty table was printed with only its header:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "No grade items are visible") {
+		t.Errorf("the listing did not say what it could honestly claim:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "Course total") {
+		t.Errorf("the course total was dropped along with the table:\n%s", stdout)
+	}
+}
