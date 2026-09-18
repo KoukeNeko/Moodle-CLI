@@ -50,15 +50,38 @@ total=0
 declare -A exits
 
 # ── 憑證去識別 ────────────────────────────────────────────────────────────
-# 紀錄要能被人讀，所以指令要照登，但值不能。SECRETS 收集每一個用過的憑證，
-# redact() 把出現在文字裡的那幾個換掉。
+# 紀錄要能被人讀，所以指令要照登，但值不能。
+#
+# 兩道，因為單靠第一道會漏。SECRETS 收的是這支腳本自己拿到的憑證，而站台會在
+# 回覆裡**自己**送出憑證：`core_webservice_get_site_info` 的
+# userprivateaccesskey 就是一把真的、有期限的 core_files 金鑰，腳本從來沒見過
+# 它的值，所以逐字紀錄裡一直是明文的。第二道改成認欄位名而不是認值，站台什麼
+# 時候送、送什麼，都一樣會被換掉。
+#
+# 只換值、保留欄位名與參數名：紀錄還是要讀得懂當初跑的是什麼。
 SECRETS=()
+SECRET_FIELDS='userprivateaccesskey|privatetoken|token|wstoken|qrloginkey|qrlogin|passport|sesskey'
+# 環境變數是大寫，跟上面那串比對不到，而它們正是命令列上帶憑證的地方。
+SECRET_ENVS='MOODLE_WS_TOKEN|MOODLE_SESSION'
+# emit 是管線版：要寫進紀錄的東西有的是變數、有的是檔案或另一支命令的輸出，
+# 而 redact() 只收參數。QR/manual 那一段就是因為直接 tee 檔案而整段漏掉的。
+# 命令替換會吃掉結尾的換行，所以要補回來，否則兩段輸出會黏成一行。
+emit() {
+  local text
+  text=$(cat)
+  [ -n "$text" ] || return 0
+  { redact "$text"; printf '\n'; } | tee -a "$TRANSCRIPT"
+}
+
 redact() {
   local text="$1" s
   for s in ${SECRETS+"${SECRETS[@]}"}; do
     [ -n "$s" ] && text="${text//$s/<redacted>}"
   done
-  printf '%s' "$text"
+  printf '%s' "$text" | sed -E \
+    -e "s/(\"($SECRET_FIELDS)\"[[:space:]]*:[[:space:]]*\")[^\"]+/\1<redacted>/g" \
+    -e "s/\b($SECRET_FIELDS)=[A-Za-z0-9._~+-]+/\1=<redacted>/g" \
+    -e "s/\b($SECRET_ENVS)=[^ ]+/\1=<redacted>/g"
 }
 
 # ── 紀錄 ──────────────────────────────────────────────────────────────────
@@ -698,7 +721,7 @@ PHP
   done
   LAUNCH=$(grep -o "https\?://[^ ]*launch\.php?[^ ]*" "$WORKDIR/manual-err" 2>/dev/null | head -1)
   note "工具印出來的登入網址（passport 也在裡面，那是這次登入的識別）"
-  printf '    %s\n' "$LAUNCH" | tee -a "$TRANSCRIPT"
+  printf '    %s\n' "$LAUNCH" | emit
   if [ -n "$LAUNCH" ]; then
     note "用瀏覽器 session 走完它，Moodle 會轉址到帶 token 的 callback"
     BROWSER_JAR="$WORKDIR/tls-jar.txt"
@@ -718,8 +741,8 @@ PHP
   wait "$MANUAL_PID" 2>/dev/null
   MANUAL_STATUS=$?
   note "工具那一邊的輸出（stdout 只有結果，提示走 stderr）："
-  sed 's/^/    /' "$WORKDIR/manual-out" | tee -a "$TRANSCRIPT"
-  sed 's/^/    /' "$WORKDIR/manual-err" | tee -a "$TRANSCRIPT"
+  sed 's/^/    /' "$WORKDIR/manual-out" | emit
+  sed 's/^/    /' "$WORKDIR/manual-err" | emit
   printf '  [exit %d]\n' "$MANUAL_STATUS" | tee -a "$TRANSCRIPT"
   printf '%d\tmoodle auth login --method manual (互動)\n' "$MANUAL_STATUS" >> "$SUMMARY"
   exits[$MANUAL_STATUS]=$(( ${exits[$MANUAL_STATUS]:-0} + 1 )); total=$((total + 1))
@@ -747,7 +770,7 @@ if [ $WITH_NOWS = 1 ]; then
   printf '\n  # 先確認這個站真的發不出 token：\n' | tee -a "$TRANSCRIPT"
   curl -fsS "http://127.0.0.1:$NOWS_PORT/login/token.php" \
     -d username=student1 -d 'password=Student123!' -d service=moodle_mobile_app \
-    | sed 's/^/    /' | tee -a "$TRANSCRIPT"
+    | sed 's/^/    /' | emit
   printf '\n' | tee -a "$TRANSCRIPT"
 
   run site add nows "http://127.0.0.1:$NOWS_PORT"
