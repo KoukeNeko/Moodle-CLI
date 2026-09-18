@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "kind": "assignment.status",
+  "data": {
+    "assignment_id": "1",
+    "status": "new",
+    "handed_in": false,
+    "can_edit": true,
+    "can_submit": false,
+    "grading_status": "notgraded",
+    "modified_at": "2026-09-18T07:50:33Z",
+    "file_count": 0
+  },
+  "meta": {
+    "site": "rec",
+    "account": "env",
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

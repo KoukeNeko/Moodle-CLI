@@ -90,6 +90,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		siteCmd,
 		newAuthCommand(renderer, deps),
 		newCourseCommand(renderer, deps),
+		newAssignmentCommand(renderer, deps),
 		newDoctorCommand(renderer, deps),
 	)
 

@@ -22,12 +22,35 @@ MOODLE_CLI_CONFIG=$(mktemp -d)/config.yaml
 
 "$REPO_DIR/bin/moodle" site add rec "http://localhost:$PORT" >/dev/null
 
-for kind in doctor site.inspect auth.status course.list; do
+# A file to describe in the recorded submission plan. The plan is a dry run, so
+# nothing is ever submitted by recording.
+SAMPLE=$(mktemp -d)/report.pdf
+printf '%%PDF-1.4 sample\n' > "$SAMPLE"
+# Pick one this account has not handed in: the plan for an assignment that is
+# already submitted is a conflict, not a plan.
+ASSIGNMENT=""
+for candidate in $("$REPO_DIR/bin/moodle" assignment list --json \
+  | python3 -c 'import json,sys;[print(a["id"]) for a in json.load(sys.stdin)["data"]]'); do
+  state=$("$REPO_DIR/bin/moodle" assignment status "$candidate" --json \
+    | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["status"])')
+  if [ "$state" != "submitted" ]; then ASSIGNMENT="$candidate"; break; fi
+done
+if [ -z "$ASSIGNMENT" ]; then
+  echo "every assignment is already submitted for this account;" >&2
+  echo "run 'make moodle-purge V=$VERSION && make moodle-up V=$VERSION' first" >&2
+  exit 1
+fi
+
+for kind in doctor site.inspect auth.status course.list \
+            assignment.list assignment.status assignment.submit; do
   case "$kind" in
-    doctor)       args=(doctor) ;;
-    site.inspect) args=(site inspect) ;;
-    auth.status)  args=(auth status) ;;
-    course.list)  args=(course list) ;;
+    doctor)            args=(doctor) ;;
+    site.inspect)      args=(site inspect) ;;
+    auth.status)       args=(auth status) ;;
+    course.list)       args=(course list) ;;
+    assignment.list)   args=(assignment list) ;;
+    assignment.status) args=(assignment status "$ASSIGNMENT") ;;
+    assignment.submit) args=(assignment submit "$ASSIGNMENT" "$SAMPLE" --dry-run) ;;
   esac
   # doctor exits non-zero when a check fails, which is still a valid document.
   "$REPO_DIR/bin/moodle" "${args[@]}" --json --pretty > "$OUT/$VERSION.$kind.json" || true

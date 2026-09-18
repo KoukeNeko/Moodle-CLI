@@ -90,6 +90,12 @@ var registry = map[string]Policy{
 		Why: "issues a credential"},
 
 	// Writes.
+	//
+	// upload.php is not a web service function but an endpoint of its own. It
+	// is listed because it stores files, and because a dry run has to be
+	// stopped here rather than at the save that follows.
+	"upload.php": {Mutates: true, Retry: RetryNever,
+		Why: "stores files in the caller's draft area"},
 	"mod_assign_save_submission": {Mutates: true, Retry: RetryNever,
 		Why: "replaces the submission's content"},
 	"mod_assign_submit_for_grading": {Mutates: true, Retry: RetryNever,

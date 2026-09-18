@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "kind": "assignment.submit",
+  "data": {
+    "assignment": {
+      "id": "1",
+      "course_id": "2",
+      "cmid": "2",
+      "name": "A1 direct submit",
+      "due_date": null,
+      "cut_off_date": null,
+      "needs_hand_in": false,
+      "requires_statement": false,
+      "submission_plugins": [
+        "onlinetext",
+        "file"
+      ],
+      "max_files": 3,
+      "max_bytes": 52428800
+    },
+    "outcome": "planned",
+    "final_status": "new",
+    "handed_in": false,
+    "dry_run": true,
+    "steps": [
+      {
+        "name": "preflight",
+        "status": "done",
+        "detail": "A1 direct submit, currently new"
+      },
+      {
+        "name": "upload",
+        "status": "planned",
+        "detail": "1 file(s) to the draft area"
+      },
+      {
+        "name": "save_submission",
+        "status": "planned",
+        "detail": "attach the draft to the submission"
+      },
+      {
+        "name": "submit_for_grading",
+        "status": "skipped",
+        "detail": "this assignment accepts work as soon as it is saved"
+      },
+      {
+        "name": "verify",
+        "status": "planned",
+        "detail": "read the state back"
+      }
+    ]
+  },
+  "meta": {
+    "site": "rec",
+    "account": "env",
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

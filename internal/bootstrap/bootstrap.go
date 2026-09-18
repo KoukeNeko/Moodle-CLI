@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/manual"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/password"
@@ -21,6 +22,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
@@ -75,6 +77,14 @@ func Run(ctx context.Context, build Build, args []string) int {
 				moodle.NewCourseBackend(session.Client(), session.Token(), capabilities),
 			)
 		},
+		Assignments: func(session *auth.Session, _ *site.Capabilities, mode safety.Mode) *assignment.Service {
+			return assignment.NewService(
+				moodle.NewAssignmentBackend(session.Client(), session.Token()),
+				moodle.NewAssignmentWriter(session.Client(), session.Token()),
+				mode,
+			)
+		},
+		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
 	}
 
 	app := cli.New(

@@ -56,6 +56,18 @@ make moodle-status        # 列出目前的測試站
 - 標準站：`enablewebservices`、`enablemobilewebservice`、`rest` 協定、mobile service 已啟用，
   且「已驗證使用者」角色已授予 `webservice/rest:use`。
 
+## 交作業流程的驗收
+
+```bash
+make moodle-up V=v52
+test/e2e/accept-assignment.sh 8521 "$(docker compose --project-name moodle-cli-e2e \
+  --file test/e2e/docker-compose.yml ps -q v52-std)"
+```
+
+它會建一個全新的學生（交件不可逆），然後對三種作業設定各跑一遍：dry run 不留下痕跡、
+A1 存檔即提交、A2 存成草稿後仍是草稿、A3 沒有 `--accept-statement` 就拒絕，
+以及重複交件回報衝突（exit 8）。
+
 ## 取得 token 並試打 API
 
 ```bash
@@ -105,9 +117,11 @@ curl -s http://localhost:8521/webservice/rest/server.php \
 
 | 版本 | 標準站 | 變體站 | `get_site_info` 函式數 |
 |---|---|---|---|
-| 4.5.12 LTS | ✅ token + 課程 + 三種作業 | ✅ 回 `enablewsdescription` | 437 |
-| 5.1.7 | ✅ token + 課程 + 三種作業 | ✅ 回 `enablewsdescription` | 431 |
-| 5.2.3 | ✅ token + 課程 + 三種作業 | ✅ 回 `enablewsdescription` | 429 |
+| 4.5.12 LTS | ✅ token + 課程 + 三種作業提交 | ✅ 回 `enablewsdescription` | 437 |
+| 5.1.7 | ✅ token + 課程 + 三種作業提交 | ✅ 回 `enablewsdescription` | 431 |
+| 5.2.3 | ✅ token + 課程 + 三種作業提交 | ✅ 回 `enablewsdescription` | 429 |
+
+「三種作業提交」是 `accept-assignment.sh` 在乾淨佈建上跑完全綠，不只是能列出作業。
 
 > 同樣的種子資料，三個版本開放的函式數量都不同（437／431／429）。這正是
 > 「看函式清單、不看版本號」這個做法

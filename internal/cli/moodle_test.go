@@ -7,11 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/tests/testmoodle"
 )
@@ -41,6 +43,16 @@ func newFixture(t *testing.T) *fixture {
 					moodle.NewCourseBackend(session.Client(), session.Token(), capabilities),
 				)
 			},
+			Assignments: func(session *auth.Session, _ *site.Capabilities, mode safety.Mode) *assignment.Service {
+				return assignment.NewService(
+					moodle.NewAssignmentBackend(session.Client(), session.Token()),
+					moodle.NewAssignmentWriter(session.Client(), session.Token()),
+					mode,
+				)
+			},
+			// No terminal: a test must never be able to answer a prompt by
+			// accident, so confirmation has to be explicit.
+			Interactive: func() bool { return false },
 		},
 	}
 	// A working site by default; individual tests break what they need to.

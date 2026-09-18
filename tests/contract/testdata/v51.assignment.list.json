@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "kind": "assignment.list",
+  "data": [
+    {
+      "id": "1",
+      "course_id": "2",
+      "cmid": "2",
+      "name": "A1 direct submit",
+      "due_date": null,
+      "cut_off_date": null,
+      "needs_hand_in": false,
+      "requires_statement": false,
+      "submission_plugins": [
+        "onlinetext",
+        "file"
+      ],
+      "max_files": 3,
+      "max_bytes": 52428800
+    },
+    {
+      "id": "2",
+      "course_id": "2",
+      "cmid": "3",
+      "name": "A2 submit button",
+      "due_date": null,
+      "cut_off_date": null,
+      "needs_hand_in": true,
+      "requires_statement": false,
+      "submission_plugins": [
+        "onlinetext",
+        "file"
+      ],
+      "max_files": 3,
+      "max_bytes": 52428800
+    },
+    {
+      "id": "3",
+      "course_id": "2",
+      "cmid": "4",
+      "name": "A3 statement",
+      "due_date": null,
+      "cut_off_date": null,
+      "needs_hand_in": true,
+      "requires_statement": true,
+      "submission_plugins": [
+        "onlinetext",
+        "file"
+      ],
+      "max_files": 3,
+      "max_bytes": 52428800
+    }
+  ],
+  "meta": {
+    "site": "rec",
+    "account": "env",
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

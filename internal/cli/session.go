@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
@@ -23,6 +25,14 @@ type Deps struct {
 	// order, is a wiring decision — and because building them means naming
 	// the transport, which this layer may not do.
 	Courses func(*auth.Session, *site.Capabilities) *course.Service
+	// Assignments assembles the assignment use case. The safety mode is passed
+	// in per invocation because --dry-run is a property of the command line,
+	// and the guard that enforces it has to be built with it.
+	Assignments func(*auth.Session, *site.Capabilities, safety.Mode) *assignment.Service
+	// Interactive reports whether there is a person at the other end to
+	// answer a confirmation prompt. It is injected because deciding that means
+	// inspecting the real process streams, which this layer does not own.
+	Interactive func() bool
 }
 
 // targetSite converts a configuration entry into the domain type.

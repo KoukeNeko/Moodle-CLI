@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.status.schema.json",
+  "title": "moodle-cli assignment.status",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "assignment.status" },
+    "data": {
+      "type": "object",
+      "required": [
+        "assignment_id", "status", "handed_in", "can_edit", "can_submit",
+        "grading_status", "modified_at", "file_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "assignment_id": { "type": "string" },
+        "status": {
+          "enum": ["new", "draft", "submitted", "unknown"],
+          "description": "draft means content is saved but is NOT being marked. unknown means the site reported a state this build does not recognise; it is deliberately not folded into one of the others."
+        },
+        "handed_in": {
+          "type": "boolean",
+          "description": "True only when Moodle reports the work as submitted. This is the question most callers are actually asking."
+        },
+        "can_edit": { "type": "boolean" },
+        "can_submit": { "type": "boolean" },
+        "grading_status": { "type": ["string", "null"], "description": "Moodle's own word, passed through unchanged" },
+        "modified_at": { "type": ["string", "null"], "format": "date-time" },
+        "file_count": { "type": "integer" }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

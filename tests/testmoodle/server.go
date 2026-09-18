@@ -30,6 +30,8 @@ type Server struct {
 	requests []Request
 	failures map[string]Failure
 	tokens   map[string]bool
+	// nextItemID is handed out by the upload endpoint.
+	nextItemID int64
 }
 
 // Request is one recorded call.
@@ -41,6 +43,10 @@ type Request struct {
 	// is claimed for the QR exchange and for nothing else.
 	UserAgent string
 }
+
+// UploadFunction is the name the upload endpoint is recorded and failed under.
+// It is not a web service function, but it is a write, so tests need to name it.
+const UploadFunction = "upload.php"
 
 // Failure makes a function misbehave in a specific way.
 type Failure string
@@ -76,6 +82,7 @@ func New() *Server {
 	mux.HandleFunc("/webservice/rest/server.php", s.handleREST)
 	mux.HandleFunc("/login/token.php", s.handleToken)
 	mux.HandleFunc("/lib/ajax/service-nologin.php", s.handleNoLogin)
+	mux.HandleFunc("/webservice/upload.php", s.handleUpload)
 	s.server = httptest.NewServer(mux)
 	return s
 }
@@ -155,6 +162,12 @@ func (s *Server) handleREST(w http.ResponseWriter, r *http.Request) {
 	anyTokens := len(s.tokens) > 0
 	s.mu.Unlock()
 
+	if failure == FailAppliedThenLost && known {
+		// The name is the behaviour: the site really does the work, and only
+		// the answer is lost. A fake that skipped the handler here would let
+		// reconciliation pass by never having anything to reconcile.
+		_, _ = handler(r.Form)
+	}
 	if failure != "" {
 		s.writeFailure(w, failure)
 		return
@@ -218,6 +231,63 @@ func (s *Server) handleNoLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, []map[string]any{{"error": false, "data": value}})
+}
+
+// handleUpload stands in for the draft file area.
+//
+// It is a separate endpoint with its own conventions: the token travels in the
+// query string rather than the form, and a failure comes back inside the array
+// instead of as an exception. Recording it as a request matters because
+// allocating a draft area is a write, and a dry run must not reach here.
+func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+
+	s.mu.Lock()
+	s.requests = append(s.requests, Request{
+		Function: UploadFunction, Token: token,
+		UserAgent: r.Header.Get("User-Agent"),
+	})
+	failure := s.failures[UploadFunction]
+	tokenKnown := s.tokens[token]
+	anyTokens := len(s.tokens) > 0
+	s.nextItemID++
+	itemID := s.nextItemID
+	s.mu.Unlock()
+
+	if failure != "" {
+		s.writeFailure(w, failure)
+		return
+	}
+	if anyTokens && !tokenKnown {
+		writeException(w, "moodle_exception", "invalidtoken", "Invalid token - token not found")
+		return
+	}
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeJSON(w, []map[string]any{{
+			"error": "invalid upload", "errorcode": "invalidparameter",
+		}})
+		return
+	}
+
+	var files []map[string]any
+	for _, headers := range r.MultipartForm.File {
+		for _, header := range headers {
+			files = append(files, map[string]any{
+				"filename": header.Filename,
+				// Moodle sends this as a number, which is why the client reads
+				// it as a json.Number rather than a string.
+				"itemid":   itemID,
+				"filesize": header.Size,
+			})
+		}
+	}
+	if len(files) == 0 {
+		writeJSON(w, []map[string]any{{
+			"error": "no file given", "errorcode": "nofile",
+		}})
+		return
+	}
+	writeJSON(w, files)
 }
 
 func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {

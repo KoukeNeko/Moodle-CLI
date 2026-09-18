@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.submit.schema.json",
+  "title": "moodle-cli assignment.submit",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "assignment.submit" },
+    "data": {
+      "type": "object",
+      "required": ["assignment", "outcome", "final_status", "handed_in", "dry_run", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "assignment": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.list.schema.json#/$defs/assignment" },
+        "outcome": {
+          "enum": ["applied", "not_applied", "planned"],
+          "description": "What happened to the request. planned is a dry run, in which nothing was sent."
+        },
+        "final_status": {
+          "enum": ["new", "draft", "submitted", "unknown"],
+          "description": "Read back from Moodle after the writes, not inferred from the calls succeeding."
+        },
+        "handed_in": {
+          "type": "boolean",
+          "description": "False for work that is only saved. An outcome of applied with handed_in false means the work is a draft and is not being marked."
+        },
+        "dry_run": { "type": "boolean", "description": "True when nothing was sent, so a log of a dry run cannot be mistaken for a record of a submission" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "status", "detail"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "enum": ["preflight", "upload", "save_submission", "submit_for_grading", "verify"] },
+              "status": { "enum": ["done", "skipped", "planned", "failed"] },
+              "detail": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}
