@@ -279,9 +279,6 @@ func newAuthStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 
 			status := v1.AuthStatus{Site: resolved.SiteName}
 			setString(&status.Account, resolved.AccountName)
-			setString(&status.Username, resolved.Account.Username)
-			setString(&status.UserID, resolved.Account.UserID)
-			setString(&status.FullName, resolved.Account.DisplayName)
 
 			capabilities, err := deps.Auth.
 				OpenWithToken(target, resolved.Account.ID, token).
@@ -291,9 +288,15 @@ func newAuthStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 				// which account stopped working is half the diagnosis.
 				return err
 			}
+			// 身分以站台當下的回答為準，不是設定檔裡那筆記錄。憑證可能是
+			// 環境變數帶來的，那不屬於任何一個存下來的帳號——用存下來的那筆
+			// 就會報出「以 grad1 的身分登入」，而 token 其實是另一個人。
 			status.Valid = true
 			setString(&status.SiteName, capabilities.SiteName)
 			setString(&status.Release, capabilities.Release)
+			setString(&status.Username, capabilities.Username)
+			setString(&status.UserID, capabilities.UserID)
+			setString(&status.FullName, capabilities.FullName)
 
 			return r.Render(Result{
 				Envelope: v1.NewEnvelope("auth.status", status, v1.NewMeta(v1.SourceWS)),
@@ -390,24 +393,14 @@ func resolveSession(deps Deps, file *config.File, siteFlag, accountFlag string) 
 		if err != nil {
 			return config.Resolved{}, "", err
 		}
-		if resolved.Account == nil {
-			// Nothing is stored, and nothing needs to be: the credential came
-			// from the environment and lives only for this run.
-			resolved.AccountName = "env"
-			resolved.Account = &config.Account{}
-		}
-		return resolved, token, nil
+		return envCredential(resolved, accountFlag), token, nil
 	}
 	if session := envSession(); session != "" {
 		resolved, err := file.Resolve(siteFlag, accountFlag)
 		if err != nil {
 			return config.Resolved{}, "", err
 		}
-		if resolved.Account == nil {
-			resolved.AccountName = "env"
-			resolved.Account = &config.Account{}
-		}
-		return resolved, "", nil
+		return envCredential(resolved, accountFlag), "", nil
 	}
 	resolved, err := file.RequireAccount(siteFlag, accountFlag)
 	if err != nil {
@@ -418,6 +411,21 @@ func resolveSession(deps Deps, file *config.File, siteFlag, accountFlag string) 
 		return config.Resolved{}, "", err
 	}
 	return resolved, token, nil
+}
+
+// envCredential names the account an environment credential belongs to.
+//
+// The credential came from the environment, so it is not the stored account's:
+// borrowing that account's name would attribute one person's data to another.
+// The name is provenance, and a wrong one is worse than a generic one. An
+// explicit --account is the user saying which account it is, so that is kept.
+func envCredential(resolved config.Resolved, accountFlag string) config.Resolved {
+	if accountFlag != "" && resolved.Account != nil {
+		return resolved
+	}
+	resolved.AccountName = "env"
+	resolved.Account = &config.Account{}
+	return resolved
 }
 
 // openSessionFor builds the session a command runs with, choosing between a
