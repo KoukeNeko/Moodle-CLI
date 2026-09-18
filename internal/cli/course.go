@@ -72,7 +72,12 @@ func newCourseListCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func writeCourseTable(w io.Writer, courses []v1.Course, nextCursor string) error {
 	if len(courses) == 0 {
-		_, err := fmt.Fprintln(w, "No courses.")
+		// "No courses" claimed more than the call answers. This listing is
+		// enrolments, and an account can reach a course without holding one: a
+		// manager with no enrolment at all reads courses perfectly well, and
+		// was being told they had none. Say which question was answered.
+		_, err := fmt.Fprintln(w, "You are not enrolled on any course.\n"+
+			"This lists enrolments, so a course you can reach without one is not here.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

@@ -66,7 +66,7 @@ func TestAnAccountWithNoEnrolmentsIsToldSoInPlainWords(t *testing.T) {
 		message string
 		args    []string
 	}{
-		{"No courses", []string{"course", "list"}},
+		{"not enrolled on any course", []string{"course", "list"}},
 		{"No assignments", []string{"assignment", "list"}},
 		{"No course totals", []string{"grade", "overview"}},
 		{"No forums", []string{"forum", "list"}},
@@ -106,5 +106,26 @@ func TestAnAdminIsRefusedQRLoginByName(t *testing.T) {
 	}
 	if strings.Contains(stderr, "run `moodle doctor`") {
 		t.Errorf("a site administrator is not helped by being sent to check the site:\n%s", stderr)
+	}
+}
+
+func TestAnEmptyEnrolmentListDoesNotClaimThereAreNoCourses(t *testing.T) {
+	// 系統層級的管理者可以零選課而照樣讀得到課程——實測過 mgr1 讀得到 CS204 的論壇。
+	// core_enrol_get_users_courses 回空陣列時說「沒有課程」，對他就是錯的：
+	// 那句話宣稱的比這個呼叫回答的多。
+	f := newFixture(t)
+	f.withCourses()
+	f.server.HandleValue(moodle.FunctionUserCourses, []any{})
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("course", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "No courses") {
+		t.Errorf("an empty enrolment list was reported as having no courses:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "enrolments") {
+		t.Errorf("the answer does not say which question it answered:\n%s", stdout)
 	}
 }
