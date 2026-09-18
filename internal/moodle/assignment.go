@@ -338,18 +338,27 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 
 	last := dto.LastAttempt
 	if last == nil {
-		// No submission summary at all. Moodle shows one to a participant
-		// when it has something to say, so its absence here means this
-		// account is not a student on this assignment.
+		// Mod/assign sends lastattempt only to an account holding
+		// mod/assign:viewownsubmissionsummary. That is not a fact about being a
+		// participant: a site can prevent the capability from the student role
+		// and leave a student with no summary of their own — measured, and the
+		// reply is then indistinguishable from a TA's.
+		//
+		// Gradingsummary is what separates the two: it comes back only to an
+		// account that can view grades. Its absence settles nothing the other
+		// way, though — a separate-groups activity withholds it even from staff
+		// who hold the capability but no group — so without it we say only what
+		// the site did and leave who this account is out of it.
 		if dto.GradingSummary != nil {
 			return assignment.State{}, errs.New(errs.CodeUnavailable,
-				"you are staff on this assignment, not a student on the course").
-				WithHint(fmt.Sprintf(
-					"there is no submission of yours here; the site counts %d to grade",
-					dto.GradingSummary.ParticipantCount))
+				"you are staff on this assignment, not a participant on the course").
+				WithHint("the site sends a submission summary only to an account " +
+					"that can view its own")
 		}
 		return assignment.State{}, errs.New(errs.CodeUnavailable,
-			"this site did not report a submission status for you on this assignment")
+			"the site reports no submission summary for this account").
+			WithHint("it sends one only to an account holding " +
+				"mod/assign:viewownsubmissionsummary")
 	}
 	state := assignment.State{
 		Status:        assignment.StatusNew,

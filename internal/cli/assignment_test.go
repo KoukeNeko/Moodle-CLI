@@ -697,7 +697,15 @@ func TestNoSubmissionSummaryIsNotAnAssignmentThatClosed(t *testing.T) {
 	}
 }
 
-func TestNoSubmissionSummaryAndNoGradingSummaryStillSaysWhich(t *testing.T) {
+func TestAnAbsentSummaryWithoutAGradingSummaryDoesNotClaimWho(t *testing.T) {
+	// gradingsummary 缺席時，lastattempt 的缺席**不足以**說出這是誰：站台可以把
+	// mod/assign:viewownsubmissionsummary 從 student 角色擋掉，學生拿到的回應就
+	// 跟助教一字不差。實測（CS1001、course context 設 CAP_PROHIBIT）：
+	//
+	//   改之前：assignmentdata, lastattempt, warnings
+	//   改之後：assignmentdata, warnings        ← 與助教相同
+	//
+	// 所以這一條只能講站台做了什麼，不能替帳號宣稱身分。
 	a := newAssignmentFixture(t, true, false)
 	a.status = map[string]any{"warnings": []any{}}
 
@@ -707,6 +715,12 @@ func TestNoSubmissionSummaryAndNoGradingSummaryStillSaysWhich(t *testing.T) {
 	}
 	if strings.Contains(stderr, "not accepting submissions") {
 		t.Errorf("an absent summary was reported as a closed assignment:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "you are staff") {
+		t.Errorf("nothing in the reply says this account is staff:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "mod/assign:viewownsubmissionsummary") {
+		t.Errorf("the message does not name what the site withheld:\n%s", stderr)
 	}
 }
 
