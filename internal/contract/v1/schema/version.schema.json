@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/version.schema.json",
+  "title": "moodle-cli version",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "version" },
+    "data": {
+      "type": "object",
+      "required": ["version", "commit", "build_date", "go_version", "platform"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string" },
+        "commit": { "type": "string" },
+        "build_date": { "type": ["string", "null"], "description": "RFC 3339, UTC" },
+        "go_version": { "type": "string" },
+        "platform": { "type": "string" }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

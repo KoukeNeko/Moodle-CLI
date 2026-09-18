@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json",
+  "title": "moodle-cli response meta",
+  "type": "object",
+  "required": ["site", "account", "source", "partial", "missing", "next_cursor"],
+  "additionalProperties": false,
+  "properties": {
+    "site": { "type": ["string", "null"] },
+    "account": { "type": ["string", "null"] },
+    "source": { "enum": ["ws", "ajax", "html", "local"] },
+    "partial": { "type": "boolean" },
+    "missing": { "type": "array", "items": { "type": "string" } },
+    "next_cursor": { "type": ["string", "null"] }
+  }
+}

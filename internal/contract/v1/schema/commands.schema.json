@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/commands.schema.json",
+  "title": "moodle-cli command self-description",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "commands" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "short", "kind", "mutates", "flags"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "description": "Space-separated command path" },
+          "short": { "type": "string" },
+          "kind": { "type": ["string", "null"], "description": "Envelope kind this command emits, null if it emits none" },
+          "mutates": { "type": "boolean", "description": "Whether the command can write to Moodle" },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "shorthand", "usage"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "shorthand": { "type": ["string", "null"] },
+                "usage": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

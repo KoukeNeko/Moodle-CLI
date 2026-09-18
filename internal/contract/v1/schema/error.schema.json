@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/error.schema.json",
+  "title": "moodle-cli error envelope",
+  "type": "object",
+  "required": ["schema_version", "kind", "error"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "error" },
+    "error": {
+      "type": "object",
+      "required": ["code", "reason", "outcome", "retryable", "message", "hint", "upstream"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "Closed set; adding a value is a breaking change.",
+          "enum": ["usage", "configuration", "authentication", "permission_denied",
+                   "not_found", "validation", "conflict", "unavailable",
+                   "network", "upstream", "internal"]
+        },
+        "reason": {
+          "description": "Open set; consumers must tolerate unknown values.",
+          "type": ["string", "null"]
+        },
+        "outcome": { "enum": ["known", "ambiguous"] },
+        "retryable": { "type": "boolean" },
+        "message": { "type": "string" },
+        "hint": { "type": ["string", "null"] },
+        "upstream": {
+          "type": ["object", "null"],
+          "required": ["exception", "errorcode", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "exception": { "type": "string" },
+            "errorcode": { "type": "string" },
+            "message": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: ["1.26.x", "1.27.x"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+      # -count=1 is required, not a preference: tests/arch reads the other
+      # packages at run time, so Go's test cache cannot see those inputs and
+      # would replay a stale pass after a boundary had been broken.
+      - run: go test -count=1 -race ./...
+      - run: go vet ./...
+
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # The binary must stay pure Go on every platform.
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.27.x"
+          cache: true
+      - run: go build ./cmd/moodle
+      - run: go test -count=1 ./...
+
+  contract:
+    # The JSON contract is a public promise; check it from the built binary,
+    # the way a consumer would.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.27.x"
+          cache: true
+      - run: make build
+      - name: version --json carries the contract envelope
+        run: |
+          ./bin/moodle version --json | tee /tmp/version.json
+          grep -q '"schema_version":1' /tmp/version.json
+          grep -q '"kind":"version"' /tmp/version.json
+      - name: a usage error exits 2 with an error envelope on stdout
+        run: |
+          set +e
+          ./bin/moodle definitely-not-a-command --json > /tmp/err.json 2>/dev/null
+          code=$?
+          set -e
+          test "$code" -eq 2
+          grep -q '"kind":"error"' /tmp/err.json
+          grep -q '"code":"usage"' /tmp/err.json
+      - name: stdout stays empty when a human-format command fails
+        run: |
+          set +e
+          out=$(./bin/moodle definitely-not-a-command 2>/dev/null)
+          set -e
+          test -z "$out"
