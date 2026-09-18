@@ -12,6 +12,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
+	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -48,6 +49,14 @@ func Run(ctx context.Context, build Build, args []string) int {
 				moodle.WithUserAgent(moodle.DefaultUserAgent(version)),
 			)
 		}),
+		Courses: func(session *auth.Session, capabilities *site.Capabilities) *course.Service {
+			// Preference order, most reliable first. The AJAX and HTML
+			// backends arrive in Phase 8; a feature with one backend is
+			// still a feature.
+			return course.NewService(
+				moodle.NewCourseBackend(session.Client(), session.Token(), capabilities),
+			)
+		},
 	}
 
 	app := cli.New(

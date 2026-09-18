@@ -140,6 +140,14 @@ func (m *Manager) Forget(siteID, accountID site.ID) error {
 	return nil
 }
 
+// Client and Token expose what the composition root needs to assemble feature
+// backends. They are not for command code: the import rules stop the command
+// layer from naming the transport at all.
+func (s *Session) Client() *moodle.Client { return s.client }
+
+// Token returns the credential this session authenticates with.
+func (s *Session) Token() string { return s.token }
+
 // Capabilities reports what this account may do, fetching once per process.
 //
 // Nothing is cached between runs: the CLI is short-lived, and a stale idea of

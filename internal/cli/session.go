@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
+	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
@@ -14,6 +15,11 @@ import (
 type Deps struct {
 	ConfigPath string
 	Auth       *auth.Manager
+	// Courses assembles the course use case for a session. The composition
+	// root supplies it because deciding which backends exist, and in which
+	// order, is a wiring decision — and because building them means naming
+	// the transport, which this layer may not do.
+	Courses func(*auth.Session, *site.Capabilities) *course.Service
 }
 
 // targetSite converts a configuration entry into the domain type.

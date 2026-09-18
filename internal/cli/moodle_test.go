@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
+	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -34,6 +36,11 @@ func newFixture(t *testing.T) *fixture {
 			Auth: auth.NewManager(secret.NewMemory(), func(target site.Site) *moodle.Client {
 				return moodle.NewClient(target)
 			}),
+			Courses: func(session *auth.Session, capabilities *site.Capabilities) *course.Service {
+				return course.NewService(
+					moodle.NewCourseBackend(session.Client(), session.Token(), capabilities),
+				)
+			},
 		},
 	}
 	// A working site by default; individual tests break what they need to.
@@ -42,7 +49,7 @@ func newFixture(t *testing.T) *fixture {
 		"lastname": "Student", "userid": 4, "release": "5.2.3",
 		"downloadfiles": 1, "uploadfiles": 1,
 		"functions": []any{
-			map[string]any{"name": "core_enrol_get_users_courses", "version": "2026091800"},
+			map[string]any{"name": moodle.FunctionUserCourses, "version": "2026091800"},
 			map[string]any{"name": "mod_assign_get_assignments", "version": "2026091800"},
 		},
 	})
@@ -251,5 +258,148 @@ func TestSiteRemoveNeedsConfirmationWhenAccountsExist(t *testing.T) {
 	stdout, _, _ := f.run("site", "list", "--json")
 	if strings.Contains(stdout, "school") {
 		t.Errorf("site survived removal: %s", stdout)
+	}
+}
+
+// courseFixture adds a course listing to the fake site.
+func (f *fixture) withCourses(courses ...map[string]any) {
+	f.t.Helper()
+	list := make([]any, 0, len(courses))
+	for _, item := range courses {
+		list = append(list, item)
+	}
+	f.server.HandleValue(moodle.FunctionUserCourses, list)
+}
+
+func TestCourseListJSONSatisfiesSchema(t *testing.T) {
+	f := newFixture(t)
+	f.withCourses(
+		map[string]any{"id": 2, "shortname": "CS204", "fullname": "Operating Systems",
+			"startdate": 1757894400, "enddate": 0, "visible": 1},
+	)
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("course", "list", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, stdout)
+	}
+	validate(t, "course.list", stdout)
+	if !strings.Contains(stdout, `"id":"2"`) {
+		t.Errorf("ids must be strings in the contract:\n%s", stdout)
+	}
+}
+
+func TestCourseListTreatsMoodleZeroDateAsNullNot1970(t *testing.T) {
+	// Moodle sends 0 for "no end date". Rendering that as 1970-01-01 would be
+	// a wrong answer that looks like a real one.
+	f := newFixture(t)
+	f.withCourses(
+		map[string]any{"id": 2, "shortname": "CS204", "fullname": "Operating Systems",
+			"startdate": 1757894400, "enddate": 0, "visible": 1},
+	)
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("course", "list", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(stdout, `"end_date":null`) {
+		t.Errorf("an unset end date must be null:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "1970") {
+		t.Errorf("Moodle's 0 leaked through as an epoch date:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, `"start_date":"2025-09-15T`) {
+		t.Errorf("a real start date should be RFC 3339 UTC:\n%s", stdout)
+	}
+}
+
+func TestCourseListPagination(t *testing.T) {
+	f := newFixture(t)
+	f.withCourses(
+		map[string]any{"id": 1, "shortname": "A", "fullname": "A", "visible": 1},
+		map[string]any{"id": 2, "shortname": "B", "fullname": "B", "visible": 1},
+		map[string]any{"id": 3, "shortname": "C", "fullname": "C", "visible": 1},
+	)
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("course", "list", "--limit", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "course.list", stdout)
+
+	var page struct {
+		Data []struct {
+			ShortName string `json:"short_name"`
+		} `json:"data"`
+		Meta struct {
+			NextCursor *string `json:"next_cursor"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Data) != 2 {
+		t.Fatalf("got %d courses, want 2", len(page.Data))
+	}
+	if page.Meta.NextCursor == nil {
+		t.Fatal("meta.next_cursor should say there is more")
+	}
+
+	// The cursor must actually continue where the first page stopped.
+	stdout, _, code = f.run("course", "list", "--cursor", *page.Meta.NextCursor, "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d on the second page", code)
+	}
+	var rest struct {
+		Data []struct {
+			ShortName string `json:"short_name"`
+		} `json:"data"`
+		Meta struct {
+			NextCursor *string `json:"next_cursor"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &rest); err != nil {
+		t.Fatal(err)
+	}
+	if len(rest.Data) != 1 || rest.Data[0].ShortName != "C" {
+		t.Fatalf("second page = %+v, want just C", rest.Data)
+	}
+	if rest.Meta.NextCursor != nil {
+		t.Errorf("the last page should report no further cursor, got %q", *rest.Meta.NextCursor)
+	}
+}
+
+func TestCourseListReportsWhichBackendAnswered(t *testing.T) {
+	// An agent has to be able to tell a web service answer from a scraped one
+	//.
+	f := newFixture(t)
+	f.withCourses(map[string]any{"id": 2, "shortname": "CS204", "fullname": "OS", "visible": 1})
+	f.addSiteAndLogin()
+
+	stdout, _, _ := f.run("course", "list", "--json")
+	if !strings.Contains(stdout, `"source":"ws"`) {
+		t.Errorf("meta.source should name the backend:\n%s", stdout)
+	}
+}
+
+func TestCourseListSaysWhatIsMissingWhenTheSiteCannotDoIt(t *testing.T) {
+	// The site answers get_site_info but does not expose the course function.
+	f := newFixture(t)
+	f.server.HandleValue(moodle.FunctionSiteInfo, map[string]any{
+		"sitename": "Test Moodle", "username": "student1", "userid": 4, "release": "5.2.3",
+		"downloadfiles": 1, "uploadfiles": 1,
+		"functions": []any{map[string]any{"name": "mod_assign_get_assignments"}},
+	})
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("course", "list", "--json")
+	if code != v1.ExitUnavailable {
+		t.Fatalf("exit %d, want %d:\n%s", code, v1.ExitUnavailable, stdout)
+	}
+	validate(t, "error", stdout)
+	if !strings.Contains(stdout, moodle.FunctionUserCourses) {
+		t.Errorf("the error should name the missing function:\n%s", stdout)
 	}
 }

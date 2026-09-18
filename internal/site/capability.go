@@ -87,6 +87,24 @@ func (c *Capabilities) FunctionNames() []string {
 	return names
 }
 
+// Provenance says where a result came from and what is missing from it.
+//
+// It travels with the data rather than being inferred later: an agent reading
+// null must be able to tell "this course has no end date" from "the backend
+// that answered cannot see end dates".
+type Provenance struct {
+	Source  BackendKind
+	Partial bool
+	// Missing names contract fields that could not be retrieved. It is never
+	// nil — an empty slice means nothing was missing.
+	Missing []string
+}
+
+// NewProvenance returns a Provenance for a complete answer from one backend.
+func NewProvenance(source BackendKind) Provenance {
+	return Provenance{Source: source, Missing: []string{}}
+}
+
 // Requirement says what a use case needs before it can run.
 type Requirement struct {
 	// AnyFunction is satisfied when at least one of these functions exists.

@@ -38,9 +38,17 @@ echo "==> [$CONTAINER] 建立三個作業"
 CID=$(docker exec -w /var/www/html "$CONTAINER" \
         php -r 'define("CLI_SCRIPT",true);require("/var/www/html/config.php");
                 echo $DB->get_field("course","id",["shortname"=>"CS204"]);' 2>>"$LOG")
+# moosh activity-add always adds; re-running on an existing volume would
+# duplicate the assignments, so each one is only created when absent.
 for a in "A1 direct submit" "A2 submit button" "A3 statement"; do
-  m activity-add -n "$a" -o "--assignsubmission_file_enabled 1 --assignsubmission_file_maxfiles 1" \
-     assign "$CID" >>"$LOG" || true
+  exists=$(docker exec -w /var/www/html "$CONTAINER" php -r '
+    define("CLI_SCRIPT",true);require("/var/www/html/config.php");
+    echo $DB->count_records("assign",["name"=>$argv[1],"course"=>(int)$argv[2]]);' \
+    "$a" "$CID" 2>>"$LOG")
+  if [ "${exists:-0}" = "0" ]; then
+    m activity-add -n "$a" -o "--assignsubmission_file_enabled 1 --assignsubmission_file_maxfiles 1" \
+       assign "$CID" >>"$LOG" || true
+  fi
 done
 
 echo "==> [$CONTAINER] 站台設定（$MODE）與作業參數"

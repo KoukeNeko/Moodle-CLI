@@ -17,17 +17,6 @@ import (
 // configuration and the keychain.
 const EnvWSToken = "MOODLE_WS_TOKEN"
 
-type authStatus struct {
-	Site     string  `json:"site"`
-	Account  *string `json:"account"`
-	Username *string `json:"username"`
-	UserID   *string `json:"user_id"`
-	FullName *string `json:"full_name"`
-	SiteName *string `json:"site_name"`
-	Release  *string `json:"release"`
-	Valid    bool    `json:"valid"`
-}
-
 func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
@@ -119,10 +108,7 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				return err
 			}
 
-			status := authStatus{
-				Site:  resolved.SiteName,
-				Valid: true,
-			}
+			status := v1.AuthStatus{Site: resolved.SiteName, Valid: true}
 			setString(&status.Account, name)
 			setString(&status.Username, capabilities.Username)
 			setString(&status.UserID, capabilities.UserID)
@@ -165,7 +151,7 @@ func newAuthStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 				return err
 			}
 
-			status := authStatus{Site: resolved.SiteName}
+			status := v1.AuthStatus{Site: resolved.SiteName}
 			setString(&status.Account, resolved.AccountName)
 			setString(&status.Username, resolved.Account.Username)
 			setString(&status.UserID, resolved.Account.UserID)

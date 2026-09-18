@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/course.list.schema.json",
+  "title": "moodle-cli course.list",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "course.list" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "short_name", "full_name", "start_date", "end_date", "visible", "progress"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "Opaque identifier; a string, never a number" },
+          "short_name": { "type": "string" },
+          "full_name": { "type": "string" },
+          "start_date": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "RFC 3339 UTC. Null when the course sets no start date; Moodle's 0 is not 1970."
+          },
+          "end_date": { "type": ["string", "null"], "format": "date-time" },
+          "visible": { "type": "boolean" },
+          "progress": { "type": ["number", "null"], "description": "Null when the site does not report progress, which differs from 0%" }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

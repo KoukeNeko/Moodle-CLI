@@ -22,11 +22,12 @@ MOODLE_CLI_CONFIG=$(mktemp -d)/config.yaml
 
 "$REPO_DIR/bin/moodle" site add rec "http://localhost:$PORT" >/dev/null
 
-for kind in doctor site.inspect auth.status; do
+for kind in doctor site.inspect auth.status course.list; do
   case "$kind" in
     doctor)       args=(doctor) ;;
     site.inspect) args=(site inspect) ;;
     auth.status)  args=(auth status) ;;
+    course.list)  args=(course list) ;;
   esac
   # doctor exits non-zero when a check fails, which is still a valid document.
   "$REPO_DIR/bin/moodle" "${args[@]}" --json --pretty > "$OUT/$VERSION.$kind.json" || true

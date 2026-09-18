@@ -86,6 +86,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newCommandsCommand(renderer, func() *cobra.Command { return root }),
 		siteCmd,
 		newAuthCommand(renderer, deps),
+		newCourseCommand(renderer, deps),
 		newDoctorCommand(renderer, deps),
 	)
 
