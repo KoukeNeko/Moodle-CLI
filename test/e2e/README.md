@@ -118,6 +118,15 @@ test/e2e/full-run.sh --nows               # 連 Mobile WS 關閉的變體站也�
 CS1001 看得到別人的繳交，但沒有 `mod/assign:viewownsubmissionsummary`，Moodle 於是
 完全不回 `lastattempt` 那個鍵。
 
+八個標準角色裡，這裡跑到六個：`student`（含大學部與研究生）、`teacher`（助教）、
+`editingteacher`、`user`（零選課的新帳號）、`manager`、`coursecreator`，外加站台管理員。
+
+另外兩個**刻意不跑**，因為它們不是能帶著憑證登入的身分：
+
+- `guest` 是未登入的訪客。這支工具一律帶著憑證發問，所以那個情境對應的是「完全沒有
+  憑證」，見第 20 節。
+- `frontpage` 只決定登入者在站台首頁看到什麼，而這裡的每個命令都以課程為範圍。
+
 紀錄寫到 `test/e2e/logs/<時間>/`：
 
 - `transcript.log` — 每個命令的完整命令列、stdout、stderr 與結束碼

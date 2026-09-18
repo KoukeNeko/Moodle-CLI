@@ -583,9 +583,10 @@ fi
 
 say "19b. 每個身分組都走一遍"
 note "Moodle 有八個標準角色。前面跑的是學生、助教與教師，這裡補上剩下的："
-note "零選課的帳號（每個新帳號的起點）、站台 manager、以及站台管理員。"
+note "零選課的帳號（每個新帳號的起點）、站台 manager 與 coursecreator、站台管理員。"
+note "guest 不在這裡：那不是能登入的身分，而是未登入的訪客，見第 20 節的無憑證。"
 # 每個帳號都拿一次自己的 token：憑證決定看得到什麼，不是站台決定。
-for who in nocourse mgr1 admin; do
+for who in nocourse mgr1 cc1 admin; do
   case $who in
     admin) pw='Admin123!' ;;
     *)     pw='Student123!' ;;

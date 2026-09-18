@@ -222,6 +222,23 @@ function ensure_discussion(stdClass $course, string $forumname, string $subject,
     }
 }
 
+/**
+ * 站台層級的角色：看得到站台，卻一門課都沒有。
+ *
+ * manager 與 coursecreator 都不是課程裡的角色，所以他們的課程清單是空的——
+ * 而且跟「零選課的新帳號」一樣空，儘管成因完全不同。
+ */
+function ensure_system_role(string $username, string $first, string $last, string $roleshort): stdClass {
+    global $DB;
+    $user = ensure_user($username, $first, $last);
+    if (!get_config('masters', $roleshort . '_assigned')) {
+        $role = $DB->get_record('role', ['shortname' => $roleshort], '*', MUST_EXIST);
+        role_assign($role->id, $user->id, context_system::instance()->id);
+        set_config($roleshort . '_assigned', 1, 'masters');
+    }
+    return $user;
+}
+
 // ─── 角色 ───────────────────────────────────────────────────────────────
 $grad = ensure_user('grad1', 'Ming-Hua', 'Chen');       // 碩士生，也是助教
 $prof = ensure_user('prof1', 'Wei', 'Lin');             // 授課教師
@@ -233,12 +250,9 @@ $ug2  = ensure_user('ug2', 'Bella', 'Undergrad');
 $none = ensure_user('nocourse', 'No', 'Course');
 // 站台層級的高權限，卻沒有任何課程角色——助教要處理的身分之外的另一種
 // 「看得到站台、看不到課」。
-$mgr = ensure_user('mgr1', 'Site', 'Manager');
-if (!get_config('masters', 'manager_assigned')) {
-    $role = $DB->get_record('role', ['shortname' => 'manager'], '*', MUST_EXIST);
-    role_assign($role->id, $mgr->id, context_system::instance()->id);
-    set_config('manager_assigned', 1, 'masters');
-}
+$mgr = ensure_system_role('mgr1', 'Site', 'Manager', 'manager');
+// 可以開課、但自己沒有選任何課。
+$cc  = ensure_system_role('cc1', 'Course', 'Creator', 'coursecreator');
 
 // ─── 四個學期的課程 ──────────────────────────────────────────────────────
 $semesters = [
@@ -323,7 +337,7 @@ ensure_discussion($ta, 'Student Questions',
     '作業一的迴圈題可以用 while 嗎？', '規格只寫了 for。', $ug1,
     [$grad, '可以，只要邏輯正確。（助教回覆）']);
 echo "[masters] 討論串 3 串，含助教身分的回覆\n";
-echo "[masters] 身分：學生、助教（非編輯教師）、教師、manager、零選課帳號\n";
+echo "[masters] 身分：學生、助教（非編輯教師）、教師、manager、coursecreator、零選課帳號\n";
 
 purge_all_caches();
 echo "[masters] 完成\n";
