@@ -37,3 +37,6 @@ test/e2e/logs/
 
 # keyring 容器的 session bus socket（執行時產生）
 test/e2e/run/
+
+# 本機工作日誌：記錄每輪做了什麼，屬個人筆記不入版控
+NOTES.local.md
