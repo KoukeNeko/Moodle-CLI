@@ -246,3 +246,50 @@ func TestReadRefusesAnAddressThatIsNotAThread(t *testing.T) {
 		t.Errorf("the error does not show what a thread address looks like:\n%s", stderr)
 	}
 }
+
+func TestAForumWithNothingInItSaysSo(t *testing.T) {
+	// 公告區就是這樣：存在、但沒有討論串。空白的表格看起來像壞掉，
+	// 一句話才是答案。兩種空——沒有論壇、論壇裡沒有討論串——是不同的句子。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionForums, []any{})
+	f.server.HandleValue(moodle.FunctionForumDiscussion, map[string]any{
+		"discussions": []any{}, "warnings": []any{},
+	})
+	f.server.HandleValue(moodle.FunctionForumPosts, map[string]any{
+		"posts": []any{}, "forumid": 2, "courseid": 2, "warnings": []any{},
+	})
+
+	stdout, _, code := f.run("forum", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(stdout, "No forums") {
+		t.Errorf("an empty forum list should say so:\n%s", stdout)
+	}
+
+	json, _, code := f.run("forum", "list", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "forum.list", json)
+	if !strings.Contains(json, `"data":[]`) {
+		t.Errorf("an empty forum list must be the empty array:\n%s", json)
+	}
+
+	stdout, _, code = f.run("forum", "discussions", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(stdout, "No discussions") {
+		t.Errorf("a forum with no threads should say so:\n%s", stdout)
+	}
+
+	stdout, _, code = f.run("forum", "read", "1")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(stdout, "Nothing in this thread") {
+		t.Errorf("an empty thread should say so:\n%s", stdout)
+	}
+}

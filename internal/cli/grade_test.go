@@ -268,3 +268,42 @@ func TestGradesAskForTheCallersOwnId(t *testing.T) {
 		t.Errorf("userid = %q, want the signed-in user's own id", sent)
 	}
 }
+
+func TestAnEmptyGradebookSaysSoAndIsNotEmptyOnlyByAccident(t *testing.T) {
+	// 選了課但還沒被評分：成績單存在、裡面沒有東西。這和「這門課根本沒有
+	// 你的成績單」是兩件事，前者是一句話，後者是找不到。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.withGrades() // 一筆項目都沒有
+
+	stdout, _, code := f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "grade.list", stdout)
+
+	human, _, _ := f.run("grade", "list", "--course", "2")
+	if !strings.Contains(human, "Nothing in this gradebook") {
+		t.Errorf("an unmarked gradebook should say so:\n%s", human)
+	}
+}
+
+func TestACourseWithNoGradebookForThisAccountIsNotFound(t *testing.T) {
+	// 帳號不在這門課上，Moodle 回空陣列而不是拒絕——因為它是被問「這個人
+	// 在這門課的成績」，答案就是沒有。那是找不到，不是空成績單：把兩者
+	// 混在一起，使用者會以為自己修了課卻什麼都沒被評分。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionGradeItems, map[string]any{
+		"usergrades": []any{}, "warnings": []any{},
+	})
+
+	stdout, stderr, code := f.run("grade", "list", "--course", "9", "--json")
+	if code != v1.ExitNotFound {
+		t.Fatalf("exit %d, want %d\nstdout: %s\nstderr: %s",
+			code, v1.ExitNotFound, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "no gradebook") {
+		t.Errorf("the document should say there is no gradebook:\n%s", stdout)
+	}
+}

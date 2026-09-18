@@ -1,0 +1,110 @@
+package cli_test
+
+import (
+	"strings"
+	"testing"
+
+	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
+	"github.com/KoukeNeko/moodle-cli/internal/moodle"
+)
+
+// 身分組。這個工具面對的不只是學生：Moodle 有八個標準角色，而一個帳號在不同
+// 課程可以有不同角色——助教在某一門課是教職員、在另一門課是學生。其餘的測試
+// 幾乎都以學生身分跑，所以「不是學生」的幾個形狀固定在這裡。
+
+// TestAnAccountWithNoEnrolmentsIsEmptyAndNotAnError 是每個新帳號的起點：
+// 已驗證、但一門課都沒有。
+//
+// 空集合是合法的答案，不是失敗。把「沒有東西」報成錯誤，會讓腳本對一個完全
+// 正常的帳號不停重試；而回 null 而不是 [] 則是契約問題——讀的人得先分辨
+// 「沒有」和「不知道」。
+func TestAnAccountWithNoEnrolmentsIsEmptyAndNotAnError(t *testing.T) {
+	f := newFixture(t)
+	f.withCourses()
+	f.server.HandleValue(moodle.FunctionAssignments, map[string]any{"courses": []any{}})
+	f.server.HandleValue(moodle.FunctionCourseGrades, map[string]any{"grades": []any{}})
+	f.server.HandleValue(moodle.FunctionActionEvents, map[string]any{"events": []any{}})
+	f.server.HandleValue(moodle.FunctionForums, []any{})
+	f.addSiteAndLogin()
+
+	cases := []struct {
+		kind string
+		args []string
+	}{
+		{"course.list", []string{"course", "list", "--json"}},
+		{"assignment.list", []string{"assignment", "list", "--json"}},
+		{"grade.overview", []string{"grade", "overview", "--json"}},
+		{"calendar.upcoming", []string{"calendar", "upcoming", "--json"}},
+		{"forum.list", []string{"forum", "list", "--json"}},
+	}
+	for _, tc := range cases {
+		stdout, stderr, code := f.run(tc.args...)
+		if code != v1.ExitOK {
+			t.Errorf("%s: exit %d, want 0 — having nothing is not a failure\n%s",
+				tc.kind, code, stderr)
+			continue
+		}
+		validate(t, tc.kind, stdout)
+		if !strings.Contains(stdout, `"data":[]`) {
+			t.Errorf("%s: an empty result must be the empty array, not null:\n%s",
+				tc.kind, stdout)
+		}
+	}
+}
+
+// TestAnAccountWithNoEnrolmentsIsToldSoInPlainWords 是上一條的人類可讀版本：
+// 讀的人不該看到一張空表格。
+func TestAnAccountWithNoEnrolmentsIsToldSoInPlainWords(t *testing.T) {
+	f := newFixture(t)
+	f.withCourses()
+	f.server.HandleValue(moodle.FunctionAssignments, map[string]any{"courses": []any{}})
+	f.server.HandleValue(moodle.FunctionCourseGrades, map[string]any{"grades": []any{}})
+	f.server.HandleValue(moodle.FunctionForums, []any{})
+	f.addSiteAndLogin()
+
+	cases := []struct {
+		message string
+		args    []string
+	}{
+		{"No courses", []string{"course", "list"}},
+		{"No assignments", []string{"assignment", "list"}},
+		{"No course totals", []string{"grade", "overview"}},
+		{"No forums", []string{"forum", "list"}},
+	}
+	for _, tc := range cases {
+		stdout, _, code := f.run(tc.args...)
+		if code != v1.ExitOK {
+			t.Errorf("%v: exit %d, want 0", tc.args, code)
+			continue
+		}
+		if !strings.Contains(stdout, tc.message) {
+			t.Errorf("%v should say %q, got:\n%s", tc.args, tc.message, stdout)
+		}
+	}
+}
+
+// TestAnAdminIsRefusedQRLoginByName —— Moodle 對站台管理員關掉 app 登入流程。
+//
+// 這是被誤解成「站台壞了」的典型：管理員拿自己的帳號試 QR 登入，得到的是
+// 上游錯誤碼。分類對了才會指向正確的動作（換一個帳號），而不是叫使用者去問
+// 伺服器管理員——他自己就是。
+func TestAnAdminIsRefusedQRLoginByName(t *testing.T) {
+	f := newFixture(t)
+	f.server.FailException(moodle.FunctionQRTokens, "moodle_exception",
+		"autologinnotallowedtoadmins", "Admin cannot use the app login flow")
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+
+	_, stderr, code := f.run("auth", "login", "--method", "qr",
+		"--qr", f.server.URL()+"?qrlogin=KEY123&userid=2")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("exit %d, want %d (stderr: %s)", code, v1.ExitPermissionDenied, stderr)
+	}
+	if !strings.Contains(stderr, "administrator") {
+		t.Errorf("the refusal should say it is about administrators:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "run `moodle doctor`") {
+		t.Errorf("a site administrator is not helped by being sent to check the site:\n%s", stderr)
+	}
+}
