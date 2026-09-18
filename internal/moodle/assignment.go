@@ -220,6 +220,14 @@ func (b *AssignmentBackend) List(ctx context.Context, courseIDs []string) (assig
 					fmt.Sprintf("this account is not enrolled on course %s",
 						strings.Join(unenrolled, ", "))).
 					WithHint("the site lists a course here only for an account enrolled on it")
+			} else if withheld := withheldActivities(dto); len(withheld) > 0 {
+				// The course itself was read. Every assignment in it was left
+				// out one at a time, which is what an availability restriction
+				// or an activity-level override looks like from here.
+				return assignment.ListResult{}, errs.New(errs.CodePermissionDenied,
+					fmt.Sprintf("this account cannot read activity %s",
+						strings.Join(withheld, ", "))).
+					WithHint("the site left every assignment out of the reply")
 			}
 		}
 		result.Provenance.Partial = true
@@ -245,6 +253,23 @@ func leftOutCourses(dto assignmentsDTO) (unenrolled, unreachable []string) {
 		unreachable = append(unreachable, id)
 	}
 	return unenrolled, unreachable
+}
+
+// withheldActivities names the activities a reply left out one at a time.
+//
+// Moodle checks mod/assign:view per activity and reports each refusal with
+// item "module" and the course module's id. That id is not the assignment id
+// this tool prints elsewhere: an activity it will not open has no assignment
+// record to name it by, and the course module id is what the site gave.
+func withheldActivities(dto assignmentsDTO) []string {
+	var out []string
+	for _, warning := range dto.Warnings {
+		if warning.Item != "module" {
+			continue
+		}
+		out = append(out, strconv.FormatInt(warning.ItemID, 10))
+	}
+	return out
 }
 
 // Show returns everything one assignment says about itself.

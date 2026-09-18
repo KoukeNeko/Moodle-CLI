@@ -819,3 +819,39 @@ func TestOneUnreadableCourseAmongReadableOnesIsMarkedPartial(t *testing.T) {
 		t.Error("a list missing a course the account cannot read was reported as complete")
 	}
 }
+
+func TestAnActivityTheSiteWithheldIsNotAnEmptyCourse(t *testing.T) {
+	// 可用性限制（日期／成績／分組）與活動層級的權限覆寫，站台的回答是把課程讀給你，
+	// 再把作業一筆一筆拿掉，每一筆配一個 item=module 的 warning。全部被拿掉時，
+	// 照原樣印出去就是對一門讀得到的課說「這裡沒有作業」。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionAssignments, map[string]any{
+		"courses": []any{map[string]any{
+			"id": 15, "shortname": "CS5006", "assignments": []any{},
+		}},
+		"warnings": []any{
+			map[string]any{"item": "module", "itemid": 44, "warningcode": "1",
+				"message": "No access rights in module context"},
+			map[string]any{"item": "module", "itemid": 45, "warningcode": "1",
+				"message": "No access rights in module context"},
+		},
+	})
+
+	stdout, stderr, code := a.run("assignment", "list", "--course", "15")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitPermissionDenied, stderr)
+	}
+	if stdout != "" {
+		t.Errorf("a refusal wrote to stdout:\n%s", stdout)
+	}
+	if strings.Contains(stderr, "No assignments") {
+		t.Errorf("a course whose activities were all withheld was reported as "+
+			"an empty one:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "not enrolled") {
+		t.Errorf("the course itself was read, so enrolment is not the reason:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "44") || !strings.Contains(stderr, "45") {
+		t.Errorf("the message does not name what the site withheld:\n%s", stderr)
+	}
+}
