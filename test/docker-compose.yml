@@ -1,0 +1,128 @@
+# 測試用 Moodle：4.5 LTS / 5.1 / 5.2，每版各一個「標準站」與一個「關閉 Mobile Web Services 站」。
+#
+# 用 profile 一次只起一個版本，避免 8GB 記憶體被六個容器吃爆：
+#   docker compose --profile v52 up -d
+#   ./up.sh v52            # 起容器 + 等就緒 + 佈建（見 up.sh）
+#
+# 每個站台用 SQLite 單容器（輕量、免另開資料庫）。SITE_URL 必須含 port，
+# 因為 Moodle 會把它寫進 $CFG->wwwroot，之後所有請求都要用同一個網址。
+#
+# 佈建（課程、帳號、作業、開啟 Web Services）不在這裡做，由 up.sh 在容器就緒後
+# 用 docker exec 跑 seed.sh。不用 image 內建的 blueprint runner：它在 5.2 的
+# public/ 佈局下會去找 /var/www/html/public/admin/cli/cfg.php 而失敗（實際在
+# /var/www/html/admin/cli/cfg.php），且無法建立作業。
+#
+# 帳號：admin/Admin123!、teacher1/Teacher123!、student1/Student123!
+
+x-moodle: &moodle
+  image: erseco/alpine-moodle:${TAG:-v5.2.3}
+  environment:
+    MOODLE_DATABASE_TYPE: sqlite3
+    MOODLE_USERNAME: admin
+    MOODLE_PASSWORD: Admin123!
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8080/login/index.php"]
+    interval: 10s
+    timeout: 5s
+    retries: 40
+    start_period: 30s
+
+services:
+  # ---- Moodle 4.5 LTS ----
+  v45-std:
+    <<: *moodle
+    image: erseco/alpine-moodle:v4.5.12
+    profiles: ["v45"]
+    environment:
+      MOODLE_DATABASE_TYPE: sqlite3
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      # 必要：容器內 nginx 聽 8080，對外映射到別的 port。沒有這個，Moodle 會用
+      # SERVER_PORT(8080) 比對 wwwroot 的 port，token.php 直接回 requirecorrectaccess。
+      REVERSEPROXY: "true"
+      SITE_URL: http://localhost:8451
+    ports: ["8451:8080"]
+    volumes: ["v45std:/var/www/moodledata"]
+  v45-nows:
+    <<: *moodle
+    image: erseco/alpine-moodle:v4.5.12
+    profiles: ["v45"]
+    environment:
+      MOODLE_DATABASE_TYPE: sqlite3
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      # 必要：容器內 nginx 聽 8080，對外映射到別的 port。沒有這個，Moodle 會用
+      # SERVER_PORT(8080) 比對 wwwroot 的 port，token.php 直接回 requirecorrectaccess。
+      REVERSEPROXY: "true"
+      SITE_URL: http://localhost:8452
+    ports: ["8452:8080"]
+    volumes: ["v45nows:/var/www/moodledata"]
+
+  # ---- Moodle 5.1 ----
+  v51-std:
+    <<: *moodle
+    image: erseco/alpine-moodle:v5.1.7
+    profiles: ["v51"]
+    environment:
+      MOODLE_DATABASE_TYPE: sqlite3
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      # 必要：容器內 nginx 聽 8080，對外映射到別的 port。沒有這個，Moodle 會用
+      # SERVER_PORT(8080) 比對 wwwroot 的 port，token.php 直接回 requirecorrectaccess。
+      REVERSEPROXY: "true"
+      SITE_URL: http://localhost:8511
+    ports: ["8511:8080"]
+    volumes: ["v51std:/var/www/moodledata"]
+  v51-nows:
+    <<: *moodle
+    image: erseco/alpine-moodle:v5.1.7
+    profiles: ["v51"]
+    environment:
+      MOODLE_DATABASE_TYPE: sqlite3
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      # 必要：容器內 nginx 聽 8080，對外映射到別的 port。沒有這個，Moodle 會用
+      # SERVER_PORT(8080) 比對 wwwroot 的 port，token.php 直接回 requirecorrectaccess。
+      REVERSEPROXY: "true"
+      SITE_URL: http://localhost:8512
+    ports: ["8512:8080"]
+    volumes: ["v51nows:/var/www/moodledata"]
+
+  # ---- Moodle 5.2 ----
+  v52-std:
+    <<: *moodle
+    image: erseco/alpine-moodle:v5.2.3
+    profiles: ["v52"]
+    environment:
+      MOODLE_DATABASE_TYPE: sqlite3
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      # 必要：容器內 nginx 聽 8080，對外映射到別的 port。沒有這個，Moodle 會用
+      # SERVER_PORT(8080) 比對 wwwroot 的 port，token.php 直接回 requirecorrectaccess。
+      REVERSEPROXY: "true"
+      SITE_URL: http://localhost:8521
+    ports: ["8521:8080"]
+    volumes: ["v52std:/var/www/moodledata"]
+  v52-nows:
+    <<: *moodle
+    image: erseco/alpine-moodle:v5.2.3
+    profiles: ["v52"]
+    environment:
+      MOODLE_DATABASE_TYPE: sqlite3
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      # 必要：容器內 nginx 聽 8080，對外映射到別的 port。沒有這個，Moodle 會用
+      # SERVER_PORT(8080) 比對 wwwroot 的 port，token.php 直接回 requirecorrectaccess。
+      REVERSEPROXY: "true"
+      SITE_URL: http://localhost:8522
+    ports: ["8522:8080"]
+    volumes: ["v52nows:/var/www/moodledata"]
+
+volumes:
+  v45std: {}
+  v45nows: {}
+  v51std: {}
+  v51nows: {}
+  v52std: {}
+  v52nows: {}

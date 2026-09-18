@@ -1,0 +1,29 @@
+# 編譯產物
+/moodle
+/moodle.exe
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 測試與涵蓋率
+*.test
+*.out
+coverage.*
+
+# Go 工作區（各人環境不同，不入版控）
+go.work
+go.work.sum
+
+# 編輯器與作業系統
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 本機設定與憑證：絕不入版控
+config.yaml
+config.local.*
+*.token
+.env
