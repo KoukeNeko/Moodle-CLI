@@ -33,6 +33,14 @@ func (s *Service) List(ctx context.Context, capabilities *site.Capabilities, cou
 	return s.backend.List(ctx, courseIDs)
 }
 
+// Show returns one assignment's full definition.
+func (s *Service) Show(ctx context.Context, capabilities *site.Capabilities, assignmentID string) (Detail, error) {
+	if err := s.check(capabilities, "read assignments"); err != nil {
+		return Detail{}, err
+	}
+	return s.backend.Show(ctx, assignmentID)
+}
+
 // Status reports where one submission stands.
 func (s *Service) Status(ctx context.Context, capabilities *site.Capabilities, assignmentID string) (State, error) {
 	if err := s.check(capabilities, "read submission status"); err != nil {
@@ -43,6 +51,15 @@ func (s *Service) Status(ctx context.Context, capabilities *site.Capabilities, a
 
 // Submit hands work in.
 func (s *Service) Submit(ctx context.Context, capabilities *site.Capabilities, req SubmitRequest) (SubmitResult, error) {
+	if s.mode.ReadOnly {
+		// Checked here rather than left to the guard further in, because a dry
+		// run returns before reaching it. Read-only is a standing restriction
+		// on what this process may do at all, so it is not something an
+		// individual request gets to argue with.
+		return SubmitResult{}, errs.New(errs.CodePermissionDenied,
+			"refusing to submit in read-only mode").
+			WithHint("read-only mode is on; remove --read-only to allow writes")
+	}
 	if err := s.check(capabilities, "submit assignments"); err != nil {
 		return SubmitResult{}, err
 	}

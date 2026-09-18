@@ -67,6 +67,58 @@ func newAssignment(item assignment.Summary) Assignment {
 	return out
 }
 
+// AssignmentDetail is the assignment.show payload.
+type AssignmentDetail struct {
+	Assignment
+	// Description is Moodle's own text, passed through unchanged, with the
+	// format it declared. Rewriting it here would be guessing at how the
+	// caller wants to render it.
+	Description       string `json:"description"`
+	DescriptionFormat int    `json:"description_format"`
+	// MaxGrade is null when the assignment is not graded, which is not the
+	// same as being marked out of zero.
+	MaxGrade  *float64 `json:"max_grade"`
+	AllowFrom *string  `json:"allow_from"`
+	// TimeLimitSeconds is null when there is no limit.
+	TimeLimitSeconds *int `json:"time_limit_seconds"`
+	// MaxAttempts is null when Moodle allows unlimited attempts.
+	MaxAttempts    *int            `json:"max_attempts"`
+	TeamSubmission bool            `json:"team_submission"`
+	BlindMarking   bool            `json:"blind_marking"`
+	Submission     SubmissionState `json:"submission"`
+}
+
+// AssignmentShow converts one assignment and the caller's standing in it into
+// its envelope. The two belong together: the definition is not much use
+// without knowing where you stand in it.
+func AssignmentShow(detail assignment.Detail, state assignment.State, siteName, accountName string) Envelope {
+	payload := AssignmentDetail{
+		Assignment:        newAssignment(detail.Summary),
+		Description:       detail.Description,
+		DescriptionFormat: detail.DescriptionFormat,
+		AllowFrom:         Timestamp(detail.AllowFrom),
+		TeamSubmission:    detail.TeamSubmission,
+		BlindMarking:      detail.BlindMarking,
+		Submission:        newSubmissionState(detail.ID, state),
+	}
+	if detail.MaxGrade > 0 {
+		grade := detail.MaxGrade
+		payload.MaxGrade = &grade
+	}
+	if detail.TimeLimit > 0 {
+		limit := detail.TimeLimit
+		payload.TimeLimitSeconds = &limit
+	}
+	// Moodle uses -1 for "as many as you like", which must not be reported as
+	// a limit of minus one attempt.
+	if detail.MaxAttempts > 0 {
+		attempts := detail.MaxAttempts
+		payload.MaxAttempts = &attempts
+	}
+	return NewEnvelope("assignment.show", payload,
+		MetaFrom(state.Provenance, siteName, accountName))
+}
+
 // SubmissionState is the assignment.status payload.
 type SubmissionState struct {
 	AssignmentID string `json:"assignment_id"`
@@ -86,7 +138,12 @@ type SubmissionState struct {
 
 // AssignmentStatus converts a submission state into its envelope.
 func AssignmentStatus(assignmentID string, state assignment.State, siteName, accountName string) Envelope {
-	payload := SubmissionState{
+	return NewEnvelope("assignment.status", newSubmissionState(assignmentID, state),
+		MetaFrom(state.Provenance, siteName, accountName))
+}
+
+func newSubmissionState(assignmentID string, state assignment.State) SubmissionState {
+	return SubmissionState{
 		AssignmentID:  assignmentID,
 		Status:        string(state.Status),
 		HandedIn:      state.Status == assignment.StatusSubmitted,
@@ -96,8 +153,6 @@ func AssignmentStatus(assignmentID string, state assignment.State, siteName, acc
 		ModifiedAt:    Timestamp(state.ModifiedAt),
 		FileCount:     state.FileCount,
 	}
-	return NewEnvelope("assignment.status", payload,
-		MetaFrom(state.Provenance, siteName, accountName))
 }
 
 // SubmitStep is one stage of handing work in.

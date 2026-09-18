@@ -35,14 +35,22 @@ type assignmentsDTO struct {
 	Courses []struct {
 		ID          int64 `json:"id"`
 		Assignments []struct {
-			ID                         int64  `json:"id"`
-			CMID                       int64  `json:"cmid"`
-			Course                     int64  `json:"course"`
-			Name                       string `json:"name"`
-			DueDate                    int64  `json:"duedate"`
-			CutOffDate                 int64  `json:"cutoffdate"`
-			SubmissionDrafts           int    `json:"submissiondrafts"`
-			RequireSubmissionStatement int    `json:"requiresubmissionstatement"`
+			ID                         int64   `json:"id"`
+			CMID                       int64   `json:"cmid"`
+			Course                     int64   `json:"course"`
+			Name                       string  `json:"name"`
+			DueDate                    int64   `json:"duedate"`
+			CutOffDate                 int64   `json:"cutoffdate"`
+			SubmissionDrafts           int     `json:"submissiondrafts"`
+			RequireSubmissionStatement int     `json:"requiresubmissionstatement"`
+			AllowFrom                  int64   `json:"allowsubmissionsfromdate"`
+			Intro                      string  `json:"intro"`
+			IntroFormat                int     `json:"introformat"`
+			Grade                      float64 `json:"grade"`
+			TimeLimit                  int     `json:"timelimit"`
+			MaxAttempts                int     `json:"maxattempts"`
+			TeamSubmission             int     `json:"teamsubmission"`
+			BlindMarking               int     `json:"blindmarking"`
 			Configs                    []struct {
 				Plugin  string `json:"plugin"`
 				Subtype string `json:"subtype"`
@@ -129,6 +137,37 @@ func (b *AssignmentBackend) List(ctx context.Context, courseIDs []string) (assig
 	}
 
 	var out []assignment.Summary
+	for _, detail := range b.details(dto) {
+		out = append(out, detail.Summary)
+	}
+	return assignment.ListResult{
+		Assignments: out,
+		Provenance:  site.NewProvenance(site.BackendWS),
+	}, nil
+}
+
+// Show returns everything one assignment says about itself.
+//
+// Moodle has no "one assignment" call: the same listing is fetched and the one
+// asked for is picked out of it.
+func (b *AssignmentBackend) Show(ctx context.Context, assignmentID string) (assignment.Detail, error) {
+	var dto assignmentsDTO
+	if err := b.client.Call(ctx, b.token, FunctionAssignments, Params{}, &dto); err != nil {
+		return assignment.Detail{}, err
+	}
+	for _, detail := range b.details(dto) {
+		if detail.ID == assignmentID {
+			return detail, nil
+		}
+	}
+	return assignment.Detail{}, errs.New(errs.CodeNotFound,
+		fmt.Sprintf("no assignment with id %s", assignmentID)).
+		WithHint("list them with `moodle assignment list`")
+}
+
+// details maps Moodle's reply onto this project's shape.
+func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
+	var out []assignment.Detail
 	for _, course := range dto.Courses {
 		for _, item := range course.Assignments {
 			summary := assignment.Summary{
@@ -165,13 +204,20 @@ func (b *AssignmentBackend) List(ctx context.Context, courseIDs []string) (assig
 					summary.MaxBytes, _ = strconv.ParseInt(config.Value, 10, 64)
 				}
 			}
-			out = append(out, summary)
+			out = append(out, assignment.Detail{
+				Summary:           summary,
+				Description:       item.Intro,
+				DescriptionFormat: item.IntroFormat,
+				MaxGrade:          item.Grade,
+				AllowFrom:         unixTime(item.AllowFrom),
+				TimeLimit:         item.TimeLimit,
+				MaxAttempts:       item.MaxAttempts,
+				TeamSubmission:    item.TeamSubmission == 1,
+				BlindMarking:      item.BlindMarking == 1,
+			})
 		}
 	}
-	return assignment.ListResult{
-		Assignments: out,
-		Provenance:  site.NewProvenance(site.BackendWS),
-	}, nil
+	return out
 }
 
 func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (assignment.State, error) {

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.show.schema.json",
+  "title": "moodle-cli assignment.show",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "assignment.show" },
+    "data": {
+      "type": "object",
+      "required": [
+        "id", "course_id", "cmid", "name", "due_date", "cut_off_date",
+        "needs_hand_in", "requires_statement", "submission_plugins",
+        "max_files", "max_bytes",
+        "description", "description_format", "max_grade", "allow_from",
+        "time_limit_seconds", "max_attempts", "team_submission",
+        "blind_marking", "submission"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "course_id": { "type": "string" },
+        "cmid": { "type": "string" },
+        "name": { "type": "string" },
+        "due_date": { "type": ["string", "null"], "format": "date-time" },
+        "cut_off_date": { "type": ["string", "null"], "format": "date-time" },
+        "needs_hand_in": {
+          "type": "boolean",
+          "description": "True when saving content leaves the work as a draft, so a separate hand-in is required."
+        },
+        "requires_statement": { "type": "boolean" },
+        "submission_plugins": { "type": "array", "items": { "type": "string" } },
+        "max_files": { "type": ["integer", "null"] },
+        "max_bytes": { "type": ["integer", "null"] },
+        "description": {
+          "type": "string",
+          "description": "Moodle's own text, passed through unchanged; description_format says how to read it."
+        },
+        "description_format": {
+          "type": "integer",
+          "description": "Moodle's text format id: 1 is HTML, 2 plain, 4 markdown."
+        },
+        "max_grade": {
+          "type": ["number", "null"],
+          "description": "Null when the assignment is not graded, which is not the same as being marked out of zero."
+        },
+        "allow_from": { "type": ["string", "null"], "format": "date-time" },
+        "time_limit_seconds": { "type": ["integer", "null"], "description": "Null when there is no limit" },
+        "max_attempts": { "type": ["integer", "null"], "description": "Null when Moodle allows unlimited attempts; it sends -1 for that" },
+        "team_submission": { "type": "boolean" },
+        "blind_marking": { "type": "boolean" },
+        "submission": {
+          "type": "object",
+          "required": [
+            "assignment_id", "status", "handed_in", "can_edit", "can_submit",
+            "grading_status", "modified_at", "file_count"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "assignment_id": { "type": "string" },
+            "status": { "enum": ["new", "draft", "submitted", "unknown"] },
+            "handed_in": { "type": "boolean" },
+            "can_edit": { "type": "boolean" },
+            "can_submit": { "type": "boolean" },
+            "grading_status": { "type": ["string", "null"] },
+            "modified_at": { "type": ["string", "null"], "format": "date-time" },
+            "file_count": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

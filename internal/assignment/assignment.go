@@ -74,6 +74,30 @@ const (
 	PluginOnlineText = "onlinetext"
 )
 
+// Detail is everything an assignment says about itself.
+//
+// It is separate from Summary because a listing does not want the description
+// of every assignment, and a single assignment's view is useless without it.
+type Detail struct {
+	Summary
+	// Description is Moodle's own text, unchanged. It is usually HTML, which
+	// DescriptionFormat identifies; rewriting it here would be guessing at how
+	// the caller wants to render it.
+	Description       string
+	DescriptionFormat int
+	// MaxGrade is the number the work is marked out of. Zero means the
+	// assignment is not graded.
+	MaxGrade float64
+	// AllowFrom is when submissions open, nil when they are open already.
+	AllowFrom *time.Time
+	// TimeLimit is in seconds; zero means no limit.
+	TimeLimit int
+	// MaxAttempts is -1 when Moodle allows unlimited attempts.
+	MaxAttempts    int
+	TeamSubmission bool
+	BlindMarking   bool
+}
+
 // State is the caller's current submission for an assignment.
 type State struct {
 	Status Status
@@ -134,6 +158,7 @@ type Backend interface {
 	Name() site.BackendKind
 	Requirement() site.Requirement
 	List(ctx context.Context, courseIDs []string) (ListResult, error)
+	Show(ctx context.Context, assignmentID string) (Detail, error)
 	Status(ctx context.Context, assignmentID string) (State, error)
 }
 

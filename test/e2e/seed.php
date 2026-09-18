@@ -82,9 +82,12 @@ echo "[seed] enrolled: " . implode(', ', array_keys($people)) . "\n";
 // 就被標成「不收繳交」。Moodle 5.1 實測，這時 mod_assign_get_submission_status
 // 會回 nopermission（而不是 submissionsenabled=false），完全看不出真正原因。
 $want = [
-    'A1 direct submit' => ['submissiondrafts' => 0, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0],
-    'A2 submit button' => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0],
-    'A3 statement'     => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 1, 'nosubmissions' => 0],
+    'A1 direct submit' => ['submissiondrafts' => 0, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0,
+                           'intro' => '<p>存檔即視為提交，不需要另外按下提交鍵。</p>'],
+    'A2 submit button' => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 0, 'nosubmissions' => 0,
+                           'intro' => '<p>存檔之後還要再按一次<strong>提交評分</strong>，否則作業停在草稿。</p>'],
+    'A3 statement'     => ['submissiondrafts' => 1, 'requiresubmissionstatement' => 1, 'nosubmissions' => 0,
+                           'intro' => '<p>提交前必須同意提交聲明。</p>'],
 ];
 foreach ($want as $name => $fields) {
     $rec = $DB->get_record('assign', ['name' => $name]);

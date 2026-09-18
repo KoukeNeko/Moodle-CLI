@@ -39,6 +39,11 @@ func newAssignmentFixture(t *testing.T, drafts, statement bool, extraPlugins ...
 			"assignments": []any{map[string]any{
 				"id": 7, "cmid": 12, "course": 2, "name": "Essay 1",
 				"duedate": 1789000000, "cutoffdate": 0,
+				"intro":       "<p>Write <strong>800 words</strong> on scheduling.</p>",
+				"introformat": 1, "grade": 100, "allowsubmissionsfromdate": 0,
+				// -1 means "as many attempts as you like", not minus one.
+				"maxattempts": -1, "timelimit": 0,
+				"teamsubmission": 0, "blindmarking": 0,
 				"submissiondrafts":           boolToInt(drafts),
 				"requiresubmissionstatement": boolToInt(statement),
 				"configs":                    pluginConfigs(extraPlugins),
@@ -483,4 +488,125 @@ func withOnlineText(attempt map[string]any, text string, format int) map[string]
 		}},
 	})
 	return attempt
+}
+
+func TestReadOnlyModeWithholdsEveryWritingCommand(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+
+	// It refuses, and says why: someone who set the restriction in their
+	// environment would learn nothing from "unknown command".
+	_, stderr, code := a.run("assignment", "submit", "7", workFile(t), "--yes", "--read-only")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("exit %d, want %d\n%s", code, v1.ExitPermissionDenied, stderr)
+	}
+	if !strings.Contains(stderr, "read-only") {
+		t.Errorf("the refusal does not mention read-only mode:\n%s", stderr)
+	}
+	if writeCalls(a.server) != 0 {
+		t.Error("a write reached the site in read-only mode")
+	}
+
+	// And it is gone from what an agent can discover, so it cannot be chosen
+	// in the first place.
+	stdout, _, code := a.run("commands", "--json", "--read-only")
+	if code != v1.ExitOK {
+		t.Fatalf("commands: exit %d", code)
+	}
+	var doc struct {
+		Data []struct {
+			Path    string `json:"path"`
+			Mutates bool   `json:"mutates"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Data) == 0 {
+		t.Fatal("no commands were described at all")
+	}
+	for _, command := range doc.Data {
+		if command.Mutates {
+			t.Errorf("%s can write and is still offered in read-only mode", command.Path)
+		}
+	}
+}
+
+func TestReadOnlyModeStillAllowsReads(t *testing.T) {
+	// The restriction has to leave the tool useful, or nobody will use it.
+	a := newAssignmentFixture(t, true, false)
+	stdout, stderr, code := a.run("assignment", "list", "--json", "--read-only")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d, %s", code, stderr)
+	}
+	validate(t, "assignment.list", stdout)
+}
+
+func TestReadOnlyDryRunIsStillARefusal(t *testing.T) {
+	// --dry-run is this invocation's choice; --read-only is a standing
+	// restriction. The restriction is not something a flag can talk its way
+	// past, even a flag that would have written nothing.
+	a := newAssignmentFixture(t, true, false)
+	_, _, code := a.run("assignment", "submit", "7", workFile(t), "--dry-run", "--read-only")
+	if code != v1.ExitPermissionDenied {
+		t.Errorf("exit %d, want %d", code, v1.ExitPermissionDenied)
+	}
+	if writeCalls(a.server) != 0 {
+		t.Error("a write reached the site")
+	}
+}
+
+func TestAssignmentShowKeepsMoodlesTextAndReadsItForHumans(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+	a.status = lastAttempt("draft", []any{"report.pdf"})
+
+	stdout, stderr, code := a.run("assignment", "show", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d, %s", code, stderr)
+	}
+	validate(t, "assignment.show", stdout)
+
+	var doc struct {
+		Data v1.AssignmentDetail `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	// The contract carries Moodle's own text untouched; deciding how to render
+	// it belongs to whoever consumes it.
+	if doc.Data.Description != "<p>Write <strong>800 words</strong> on scheduling.</p>" {
+		t.Errorf("the description was rewritten: %q", doc.Data.Description)
+	}
+	if doc.Data.DescriptionFormat != 1 {
+		t.Errorf("description_format = %d, want 1", doc.Data.DescriptionFormat)
+	}
+	// Moodle sends -1 for unlimited, which must not be reported as a limit.
+	if doc.Data.MaxAttempts != nil {
+		t.Errorf("max_attempts = %v, want null for unlimited", *doc.Data.MaxAttempts)
+	}
+	// The definition is not much use without knowing where you stand in it.
+	if doc.Data.Submission.Status != "draft" || doc.Data.Submission.HandedIn {
+		t.Errorf("submission = %+v", doc.Data.Submission)
+	}
+
+	human, _, code := a.run("assignment", "show", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(human, "<p>") || strings.Contains(human, "<strong>") {
+		t.Errorf("raw HTML reached the terminal:\n%s", human)
+	}
+	if !strings.Contains(human, "Write 800 words on scheduling.") {
+		t.Errorf("the description did not survive being made readable:\n%s", human)
+	}
+	if !strings.Contains(human, "NOT handed in") {
+		t.Errorf("show does not say the work is unsubmitted:\n%s", human)
+	}
+}
+
+func TestAssignmentShowOnAnUnknownIdIsNotFound(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+	_, _, code := a.run("assignment", "show", "999")
+	if code != v1.ExitNotFound {
+		t.Errorf("exit %d, want %d", code, v1.ExitNotFound)
+	}
 }

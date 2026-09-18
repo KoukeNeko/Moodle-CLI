@@ -42,13 +42,14 @@ if [ -z "$ASSIGNMENT" ]; then
 fi
 
 for kind in doctor site.inspect auth.status course.list \
-            assignment.list assignment.status assignment.submit; do
+            assignment.list assignment.show assignment.status assignment.submit; do
   case "$kind" in
     doctor)            args=(doctor) ;;
     site.inspect)      args=(site inspect) ;;
     auth.status)       args=(auth status) ;;
     course.list)       args=(course list) ;;
     assignment.list)   args=(assignment list) ;;
+    assignment.show)   args=(assignment show "$ASSIGNMENT") ;;
     assignment.status) args=(assignment status "$ASSIGNMENT") ;;
     assignment.submit) args=(assignment submit "$ASSIGNMENT" "$SAMPLE" --dry-run) ;;
   esac

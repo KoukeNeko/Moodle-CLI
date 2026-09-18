@@ -47,6 +47,13 @@ func (f *fake) List(context.Context, []string) (assignment.ListResult, error) {
 	}, nil
 }
 
+func (f *fake) Show(_ context.Context, id string) (assignment.Detail, error) {
+	if id != f.summary.ID {
+		return assignment.Detail{}, errs.New(errs.CodeNotFound, "no such assignment")
+	}
+	return assignment.Detail{Summary: f.summary}, nil
+}
+
 func (f *fake) Status(context.Context, string) (assignment.State, error) {
 	f.stateAt++
 	if f.statusFailFrom > 0 && f.stateAt >= f.statusFailFrom {

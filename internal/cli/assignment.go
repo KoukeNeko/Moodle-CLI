@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -17,7 +19,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
-func newAssignmentCommand(r *Renderer, deps Deps) *cobra.Command {
+func newAssignmentCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "assignment",
 		Aliases: []string{"assign"},
@@ -25,8 +27,9 @@ func newAssignmentCommand(r *Renderer, deps Deps) *cobra.Command {
 	}
 	cmd.AddCommand(
 		newAssignmentListCommand(r, deps),
+		newAssignmentShowCommand(r, deps),
 		newAssignmentStatusCommand(r, deps),
-		newAssignmentSubmitCommand(r, deps),
+		newAssignmentSubmitCommand(r, deps, mode),
 	)
 	return cmd
 }
@@ -106,6 +109,41 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 	return cmd
 }
 
+func newAssignmentShowCommand(r *Renderer, deps Deps) *cobra.Command {
+	var flags sessionFlags
+	cmd := &cobra.Command{
+		Use:         "show <assignment-id>",
+		Short:       "Show one assignment and where you stand in it",
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{annotationKind: "assignment.show"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			service, session, err := openAssignments(cmd, deps, flags, safety.Mode{})
+			if err != nil {
+				return err
+			}
+			detail, err := service.Show(cmd.Context(), session.capabilities, args[0])
+			if err != nil {
+				return err
+			}
+			// The definition alone does not answer the question people
+			// actually have, which is whether their work is in.
+			state, err := service.Status(cmd.Context(), session.capabilities, args[0])
+			if err != nil {
+				return err
+			}
+			envelope := v1.AssignmentShow(detail, state,
+				session.resolved.SiteName, session.resolved.AccountName)
+			payload, _ := envelope.Data.(v1.AssignmentDetail)
+			return r.Render(Result{
+				Envelope: envelope,
+				Human:    func(w io.Writer) error { return writeAssignmentDetail(w, payload) },
+			})
+		},
+	}
+	flags.bind(cmd, "read the assignment from")
+	return cmd
+}
+
 func newAssignmentStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 	var flags sessionFlags
 	cmd := &cobra.Command{
@@ -135,7 +173,7 @@ func newAssignmentStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 	return cmd
 }
 
-func newAssignmentSubmitCommand(r *Renderer, deps Deps) *cobra.Command {
+func newAssignmentSubmitCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Command {
 	var (
 		flags           sessionFlags
 		dryRun          bool
@@ -155,8 +193,10 @@ func newAssignmentSubmitCommand(r *Renderer, deps Deps) *cobra.Command {
 			annotationMutates: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mode := safety.Mode{DryRun: dryRun}
-			service, session, err := openAssignments(cmd, deps, flags, mode)
+			// The global restriction and this invocation's choice are both
+			// real; neither overrides the other.
+			effective := safety.Mode{DryRun: dryRun, ReadOnly: mode.ReadOnly}
+			service, session, err := openAssignments(cmd, deps, flags, effective)
 			if err != nil {
 				return err
 			}
@@ -253,6 +293,89 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment) error {
 		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", item.ID, item.Name, due, handIn)
 	}
 	return table.Flush()
+}
+
+func writeAssignmentDetail(w io.Writer, detail v1.AssignmentDetail) error {
+	fmt.Fprintf(w, "%s\n\n", detail.Name)
+	if text := plainText(detail.Description); text != "" {
+		fmt.Fprintf(w, "%s\n\n", text)
+	}
+
+	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	row := func(label, value string) {
+		if value != "" {
+			fmt.Fprintf(table, "%s\t%s\n", label, value)
+		}
+	}
+	row("Opens", date(detail.AllowFrom))
+	row("Due", date(detail.DueDate))
+	// The cut-off is the one that actually stops you: after the due date work
+	// is merely late, after the cut-off Moodle refuses it.
+	row("Cut-off", date(detail.CutOff))
+	if detail.MaxGrade != nil {
+		row("Marked out of", strconv.FormatFloat(*detail.MaxGrade, 'f', -1, 64))
+	}
+	if detail.MaxAttempts != nil {
+		row("Attempts", strconv.Itoa(*detail.MaxAttempts))
+	}
+	if detail.TimeLimitSeconds != nil {
+		row("Time limit", (time.Duration(*detail.TimeLimitSeconds) * time.Second).String())
+	}
+	if len(detail.SubmissionPlugins) > 0 {
+		row("Accepts", strings.Join(detail.SubmissionPlugins, ", "))
+	}
+	handIn := "not needed; saving submits it"
+	if detail.NeedsHandIn {
+		handIn = "required after saving"
+	}
+	row("Hand-in", handIn)
+	if detail.RequiresStatement {
+		row("Statement", "you must accept it with --accept-statement")
+	}
+	if detail.TeamSubmission {
+		row("Team", "this is a group submission")
+	}
+	if err := table.Flush(); err != nil {
+		return err
+	}
+
+	fmt.Fprintln(w)
+	return writeStatus(w, detail.Submission)
+}
+
+func date(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return (*value)[:10]
+}
+
+// plainText makes Moodle's HTML readable in a terminal. It is deliberately
+// crude: the JSON contract carries the original, so nothing is lost by this
+// being approximate.
+func plainText(html string) string {
+	text := strings.NewReplacer(
+		"<br>", "\n", "<br/>", "\n", "<br />", "\n", "</p>", "\n",
+	).Replace(html)
+	var out strings.Builder
+	depth := 0
+	for _, r := range text {
+		switch {
+		case r == '<':
+			depth++
+		case r == '>':
+			if depth > 0 {
+				depth--
+			}
+		case depth == 0:
+			out.WriteRune(r)
+		}
+	}
+	unescaped := strings.NewReplacer(
+		"&amp;", "&", "&lt;", "<", "&gt;", ">", "&quot;", `"`, "&#39;", "'",
+		"&nbsp;", " ",
+	).Replace(out.String())
+	return strings.TrimSpace(unescaped)
 }
 
 func writeStatus(w io.Writer, state v1.SubmissionState) error {

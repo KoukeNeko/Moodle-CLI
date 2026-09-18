@@ -7,13 +7,22 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 )
+
+// EnvReadOnly turns on read-only mode for the whole process.
+//
+// It is an environment variable as well as a flag because the restriction is
+// usually imposed by whoever starts the process — a CI job, or a harness
+// running an agent — and they do not control every argv the tool is given.
+const EnvReadOnly = "MOODLE_CLI_READ_ONLY"
 
 // BuildInfo describes the running binary. It is injected by the composition
 // root so this package does not reach for globals.
@@ -27,6 +36,10 @@ type BuildInfo struct {
 type App struct {
 	root     *cobra.Command
 	renderer *Renderer
+	// mode is shared with the commands, which read it when they run rather
+	// than when they are built: the global flags are parsed after the tree
+	// already exists.
+	mode *safety.Mode
 }
 
 // New builds the command tree.
@@ -39,10 +52,12 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 	}
 
 	renderer := &Renderer{Streams: streams, Format: FormatTable}
-	app := &App{renderer: renderer}
+	mode := &safety.Mode{}
+	app := &App{renderer: renderer, mode: mode}
 
 	var asJSON bool
 	var pretty bool
+	var readOnly bool
 
 	root := &cobra.Command{
 		Use:           "moodle",
@@ -56,6 +71,9 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 				renderer.Format = FormatJSON
 			}
 			renderer.Pretty = pretty
+			if readOnly {
+				mode.ReadOnly = true
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,6 +97,8 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		"emit the versioned JSON contract on stdout")
 	root.PersistentFlags().BoolVar(&pretty, "pretty", false,
 		"indent JSON output")
+	root.PersistentFlags().BoolVar(&readOnly, "read-only", false,
+		"refuse every call that can change anything on the site")
 
 	siteCmd := newSiteCommand(renderer, deps)
 	siteCmd.AddCommand(newSiteInspectCommand(renderer, deps))
@@ -90,7 +110,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		siteCmd,
 		newAuthCommand(renderer, deps),
 		newCourseCommand(renderer, deps),
-		newAssignmentCommand(renderer, deps),
+		newAssignmentCommand(renderer, deps, mode),
 		newDoctorCommand(renderer, deps),
 	)
 
@@ -105,7 +125,13 @@ func (a *App) Execute(ctx context.Context, args []string) int {
 	// command name is wrong, Cobra fails before it ever parses flags, and a
 	// caller that passed --json would get a bare stderr line instead of the
 	// JSON document the contract promises.
-	a.applyOutputFlags(args)
+	a.applyGlobalFlags(args)
+	if a.mode.ReadOnly {
+		// The command surface shrinks rather than each write failing somewhere
+		// inside itself: an agent reading `moodle commands` cannot see a
+		// command it is not allowed to run.
+		withholdMutatingCommands(a.root)
+	}
 	a.root.SetArgs(args)
 	err := a.root.ExecuteContext(ctx)
 	if err == nil {
@@ -114,15 +140,44 @@ func (a *App) Execute(ctx context.Context, args []string) int {
 	return a.renderer.RenderError(classify(err))
 }
 
-// applyOutputFlags pre-parses only the global output flags, tolerating the
-// unknown flags of whatever subcommand may follow.
-func (a *App) applyOutputFlags(args []string) {
+// withholdMutatingCommands hides every command that can write and makes it
+// refuse.
+//
+// Hiding alone would leave Cobra reporting "unknown command", which tells
+// someone who set the restriction in their environment nothing about why. The
+// command stays registered so its own flags still parse and the refusal is the
+// thing they see.
+func withholdMutatingCommands(parent *cobra.Command) {
+	for _, child := range parent.Commands() {
+		if child.Annotations[annotationMutates] == "true" {
+			name := child.CommandPath()
+			child.Hidden = true
+			child.RunE = func(*cobra.Command, []string) error {
+				return errs.New(errs.CodePermissionDenied,
+					"refusing to run "+name+" in read-only mode").
+					WithHint("read-only mode is on; unset --read-only or " +
+						EnvReadOnly + " to allow writes")
+			}
+			continue
+		}
+		withholdMutatingCommands(child)
+	}
+}
+
+// applyGlobalFlags pre-parses only the global flags, tolerating the unknown
+// flags of whatever subcommand may follow.
+//
+// They have to be known before Cobra resolves the command: a wrong command
+// name fails before flags are ever parsed, and read-only mode decides which
+// commands exist at all.
+func (a *App) applyGlobalFlags(args []string) {
 	set := pflag.NewFlagSet("moodle-output", pflag.ContinueOnError)
 	set.ParseErrorsAllowlist.UnknownFlags = true
 	set.SetOutput(io.Discard)
 	set.Usage = func() {}
 	asJSON := set.Bool("json", false, "")
 	pretty := set.Bool("pretty", false, "")
+	readOnly := set.Bool("read-only", false, "")
 	// A parse failure here is not fatal: the real parse happens in Cobra and
 	// reports the error properly.
 	_ = set.Parse(args)
@@ -130,6 +185,20 @@ func (a *App) applyOutputFlags(args []string) {
 		a.renderer.Format = FormatJSON
 	}
 	a.renderer.Pretty = *pretty
+	a.mode.ReadOnly = *readOnly || envReadOnly()
+}
+
+// envReadOnly reads the environment switch. Anything but an explicit off
+// counts as on: someone who sets this variable at all means to restrict the
+// run, and a typo must not quietly grant write access.
+func envReadOnly() bool {
+	value := strings.TrimSpace(os.Getenv(EnvReadOnly))
+	switch strings.ToLower(value) {
+	case "", "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
 }
 
 // classify maps Cobra's own failures onto the error vocabulary. Anything
