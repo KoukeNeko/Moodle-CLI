@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/KoukeNeko/moodle-cli/internal/api"
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/manual"
@@ -100,6 +101,12 @@ func Run(ctx context.Context, build Build, args []string) int {
 		Files: func(session *auth.Session, capabilities *site.Capabilities) *file.Downloader {
 			return file.NewDownloader(
 				moodle.NewFileFetcher(session.Client(), session.Token(), capabilities),
+			)
+		},
+		API: func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service {
+			return api.NewService(
+				moodle.NewRawCaller(session.Client(), session.Token()),
+				mode, allowWrite,
 			)
 		},
 		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },

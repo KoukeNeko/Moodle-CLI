@@ -115,6 +115,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newCalendarCommand(renderer, deps),
 		newFileCommand(renderer, deps),
 		newResolveCommand(renderer),
+		newAPICommand(renderer, deps, mode),
 		newDoctorCommand(renderer, deps),
 	)
 

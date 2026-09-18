@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/api.call.schema.json",
+  "title": "moodle-cli api.call",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "api.call"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "function",
+        "params",
+        "response",
+        "dry_run",
+        "needs_allow_write",
+        "mutates",
+        "reviewed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "function": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object",
+          "description": "What was sent, so a dry run has something to show and a real call can be reproduced"
+        },
+        "response": {
+          "description": "Exactly what the site returned, unread. This is the one field in the contract whose shape belongs to the site and not to this project: there is no typed contract for an arbitrary function, and inventing one would be a promise that cannot be kept. Null for a dry run."
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Nothing was sent"
+        },
+        "mutates": {
+          "type": "boolean",
+          "description": "What was known about the function before calling it"
+        },
+        "reviewed": {
+          "type": "boolean"
+        },
+        "needs_allow_write": {
+          "type": "boolean",
+          "description": "A real run of this call would be refused without --allow-write. Always false outside a plan."
+        }
+      }
+    },
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/KoukeNeko/moodle-cli/internal/api"
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/calendar"
@@ -38,6 +39,9 @@ type Deps struct {
 	Calendar func(*auth.Session, *site.Capabilities) *calendar.Service
 	// Files assembles the download use case.
 	Files func(*auth.Session, *site.Capabilities) *file.Downloader
+	// API assembles the direct-call escape hatch. The safety mode and the
+	// caller's acceptance of a write are both per invocation.
+	API func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service
 	// Interactive reports whether there is a person at the other end to
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.

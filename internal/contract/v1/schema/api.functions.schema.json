@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/api.functions.schema.json",
+  "title": "moodle-cli api.functions",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "api.functions" },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "version", "reviewed", "mutates", "retry", "why"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "reviewed": {
+            "type": "boolean",
+            "description": "Whether this project has looked at the function. Anything unreviewed is assumed to write — that is the answer, not a gap."
+          },
+          "mutates": { "type": "boolean", "description": "Whether the call can change anything on the site" },
+          "retry": {
+            "enum": ["safe", "auth-only", "never"],
+            "description": "Whether a failed call may be sent again. Every Moodle write is \"never\": none of them carry an idempotency key."
+          },
+          "why": { "type": ["string", "null"], "description": "The reasoning behind a reviewed entry, so it can be judged rather than trusted" }
+        }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

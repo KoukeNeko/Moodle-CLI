@@ -65,7 +65,8 @@ fi
 
 for kind in doctor site.inspect auth.status course.list \
             assignment.list assignment.show assignment.status assignment.submit \
-            grade.list grade.overview calendar.upcoming file.download resolve; do
+            grade.list grade.overview calendar.upcoming file.download resolve \
+            api.functions api.call; do
   case "$kind" in
     doctor)            args=(doctor) ;;
     site.inspect)      args=(site inspect) ;;
@@ -79,6 +80,9 @@ for kind in doctor site.inspect auth.status course.list \
     file.download)     args=(file download "$ATTACHMENT" --dir "$SCRATCH" --force) ;;
     # Parsing only; recorded against an address this site really produced.
     resolve)           args=(resolve "$ATTACHMENT") ;;
+    api.functions)     args=(api functions --match core_webservice) ;;
+    # A plain read through the escape hatch; nothing here needs --allow-write.
+    api.call)          args=(api call core_webservice_get_site_info) ;;
     assignment.list)   args=(assignment list) ;;
     assignment.show)   args=(assignment show "$WITH_ATTACHMENT") ;;
     assignment.status) args=(assignment status "$ASSIGNMENT") ;;

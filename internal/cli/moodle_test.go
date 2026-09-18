@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/KoukeNeko/moodle-cli/internal/api"
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/calendar"
@@ -64,6 +65,12 @@ func newFixture(t *testing.T) *fixture {
 			Calendar: func(session *auth.Session, _ *site.Capabilities) *calendar.Service {
 				return calendar.NewService(
 					moodle.NewCalendarBackend(session.Client(), session.Token()),
+				)
+			},
+			API: func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service {
+				return api.NewService(
+					moodle.NewRawCaller(session.Client(), session.Token()),
+					mode, allowWrite,
 				)
 			},
 			// No terminal: a test must never be able to answer a prompt by
