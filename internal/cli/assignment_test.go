@@ -986,3 +986,25 @@ func TestAGradingRefusalDoesNotShowMoodlesDebugLine(t *testing.T) {
 		t.Errorf("a debugging line was shown to the student:\n%s", stderr)
 	}
 }
+
+func TestARefusalOnOneAssignmentDoesNotSuppressTheNext(t *testing.T) {
+	// 站台的拒絕是針對某一門課、某一個活動、某一位使用者，不是針對「這支函式」。
+	// 把拒絕記在函式頭上，下一個本來有權限的問題就會被一個過期的「不行」擋掉，
+	// 而且完全不會去問站台。
+	a := newAssignmentFixture(t, true, false)
+	a.server.FailException(moodle.FunctionSubmissionStatus,
+		"required_capability_exception", "nopermission", "error/nopermission")
+
+	if _, _, code := a.run("assignment", "status", "7"); code != v1.ExitPermissionDenied {
+		t.Fatalf("first call: exit %d, want %d", code, v1.ExitPermissionDenied)
+	}
+	// 站台這一次願意回答了——換一門課、換一個活動就是這樣。
+	a.server.FailException(moodle.FunctionSubmissionStatus, "", "", "")
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("the second call was refused without asking the site: exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Status:") {
+		t.Errorf("the second call answered nothing:\n%s", stdout)
+	}
+}

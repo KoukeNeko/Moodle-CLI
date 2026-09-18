@@ -31,7 +31,6 @@ type Capabilities struct {
 	AccountID   ID
 	Credential  CredentialKind
 	Functions   map[string]FunctionInfo
-	Unavailable map[string]errs.Reason
 	CanUpload   bool
 	CanDownload bool
 	Release     string
@@ -49,41 +48,28 @@ type Capabilities struct {
 
 // NewCapabilities returns an empty, usable set.
 func NewCapabilities() *Capabilities {
-	return &Capabilities{
-		Functions:   map[string]FunctionInfo{},
-		Unavailable: map[string]errs.Reason{},
-	}
+	return &Capabilities{Functions: map[string]FunctionInfo{}}
 }
 
 // Has reports whether a function is available.
+//
+// There is deliberately no way to record one as unavailable after a call
+// fails. A refusal from Moodle is about a course, an activity or a user, not
+// about the function: mod_assign_get_submission_status refusing one assignment
+// says nothing about the next. Remembering the refusal against the function
+// would answer a later, permitted question with a stale no.
 func (c *Capabilities) Has(function string) bool {
 	if c == nil {
-		return false
-	}
-	if _, blocked := c.Unavailable[function]; blocked {
 		return false
 	}
 	_, ok := c.Functions[function]
 	return ok
 }
 
-// MarkUnavailable records a function that turned out not to work, so it is not
-// tried again in this process. The AJAX backend has no function list at all,
-// so this is the only way it learns.
-func (c *Capabilities) MarkUnavailable(function string, reason errs.Reason) {
-	if c.Unavailable == nil {
-		c.Unavailable = map[string]errs.Reason{}
-	}
-	c.Unavailable[function] = reason
-}
-
 // FunctionNames returns the available function names, sorted.
 func (c *Capabilities) FunctionNames() []string {
 	names := make([]string, 0, len(c.Functions))
 	for name := range c.Functions {
-		if _, blocked := c.Unavailable[name]; blocked {
-			continue
-		}
 		names = append(names, name)
 	}
 	sort.Strings(names)
