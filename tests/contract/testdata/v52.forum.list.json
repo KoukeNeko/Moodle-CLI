@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "kind": "forum.list",
+  "data": [
+    {
+      "id": "1",
+      "cmid": "1",
+      "kind": "news",
+      "name": "Announcements",
+      "description": "General news and announcements",
+      "course_id": "2",
+      "discussions": 0
+    },
+    {
+      "id": "2",
+      "cmid": "5",
+      "kind": "general",
+      "name": "Q&A 討論區",
+      "description": "<p>課程問答。</p>",
+      "course_id": "2",
+      "discussions": 1
+    }
+  ],
+  "meta": {
+    "site": "rec",
+    "account": "env",
+    "source": "ws",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

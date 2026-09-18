@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/forum.discussions.schema.json",
+  "title": "moodle-cli forum.discussions",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "forum.discussions"
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "forum_id",
+          "author",
+          "last_author",
+          "created_at",
+          "modified_at",
+          "replies",
+          "unread",
+          "pinned",
+          "locked",
+          "can_reply"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The discussion's own id, which is what reading a thread needs. Moodle sends it beside the opening post's id and the two differ."
+          },
+          "name": {
+            "type": "string"
+          },
+          "forum_id": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "last_author": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "modified_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "replies": {
+            "type": "integer"
+          },
+          "unread": {
+            "type": "integer"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "can_reply": {
+            "type": "boolean",
+            "description": "Moodle's own verdict, folding the forum type, the lock and any cut-off into one answer"
+          }
+        }
+      }
+    },
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
+  }
+}

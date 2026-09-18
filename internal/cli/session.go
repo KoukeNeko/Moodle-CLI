@@ -8,6 +8,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/file"
+	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -37,6 +38,8 @@ type Deps struct {
 	Grades func(*auth.Session, *site.Capabilities) *grade.Service
 	// Calendar assembles the deadline use case.
 	Calendar func(*auth.Session, *site.Capabilities) *calendar.Service
+	// Forums assembles the discussion use case.
+	Forums func(*auth.Session, *site.Capabilities) *forum.Service
 	// Files assembles the download use case.
 	Files func(*auth.Session, *site.Capabilities) *file.Downloader
 	// API assembles the direct-call escape hatch. The safety mode and the

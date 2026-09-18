@@ -13,7 +13,7 @@
       "lang": "en",
       "userid": 4,
       "siteurl": "http:\/\/localhost:8521",
-      "userpictureurl": "http:\/\/localhost:8521\/theme\/image.php\/boost\/core\/1789722425\/u\/f1",
+      "userpictureurl": "http:\/\/localhost:8521\/theme\/image.php\/boost\/core\/1789723639\/u\/f1",
       "functions": [
         {
           "name": "core_badges_get_badge",
@@ -1791,7 +1791,7 @@
       "userquota": 104857600,
       "usermaxuploadfilesize": 52428800,
       "userhomepage": 1,
-      "userprivateaccesskey": "447d8cb13cdc9d1912b856781b69c098",
+      "userprivateaccesskey": "8a0abc20e22f157b52a0c05b76e0b1c2",
       "siteid": 1,
       "sitecalendartype": "gregorian",
       "usercalendartype": "gregorian",

@@ -63,10 +63,20 @@ if [ -z "$ATTACHMENT" ]; then
   exit 1
 fi
 
+# The seeded general forum and its one thread. The announcements forum has no
+# discussions a student can see, so recording from it would prove nothing.
+FORUM=$("$REPO_DIR/bin/moodle" forum list --json \
+  | python3 -c 'import json,sys;f=[x for x in json.load(sys.stdin)["data"] if x["kind"]=="general"];print(f[0]["id"] if f else "")')
+if [ -z "$FORUM" ]; then echo "no general forum; re-seed the site" >&2; exit 1; fi
+DISCUSSION=$("$REPO_DIR/bin/moodle" forum discussions "$FORUM" --json \
+  | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];print(d[0]["id"] if d else "")')
+if [ -z "$DISCUSSION" ]; then echo "no discussion; re-seed the site" >&2; exit 1; fi
+
 for kind in doctor site.inspect auth.status course.list \
             assignment.list assignment.show assignment.status assignment.submit \
             grade.list grade.overview calendar.upcoming file.download resolve \
-            api.functions api.call; do
+            api.functions api.call \
+            forum.list forum.discussions forum.thread; do
   case "$kind" in
     doctor)            args=(doctor) ;;
     site.inspect)      args=(site inspect) ;;
@@ -83,6 +93,9 @@ for kind in doctor site.inspect auth.status course.list \
     api.functions)     args=(api functions --match core_webservice) ;;
     # A plain read through the escape hatch; nothing here needs --allow-write.
     api.call)          args=(api call core_webservice_get_site_info) ;;
+    forum.list)        args=(forum list) ;;
+    forum.discussions) args=(forum discussions "$FORUM") ;;
+    forum.thread)      args=(forum read "$DISCUSSION") ;;
     assignment.list)   args=(assignment list) ;;
     assignment.show)   args=(assignment show "$WITH_ATTACHMENT") ;;
     assignment.status) args=(assignment status "$ASSIGNMENT") ;;

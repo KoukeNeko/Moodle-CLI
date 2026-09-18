@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/forum.list.schema.json",
+  "title": "moodle-cli forum.list",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "forum.list"
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "cmid",
+          "kind",
+          "name",
+          "description",
+          "course_id",
+          "discussions"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cmid": {
+            "type": "string",
+            "description": "Course module id, which is what a forum's address carries — not this id"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Moodle's forum type: general, news, qanda and so on. It decides who may post."
+          },
+          "name": {
+            "type": "string",
+            "description": "Un-escaped: the listing call HTML-escapes it and its sibling does not, so \"Q&A\" would otherwise differ between the two"
+          },
+          "description": {
+            "type": "string"
+          },
+          "course_id": {
+            "type": "string"
+          },
+          "discussions": {
+            "type": "integer",
+            "description": "The count the site reports, which is not always how many a listing returns"
+          }
+        }
+      }
+    },
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
+  }
+}

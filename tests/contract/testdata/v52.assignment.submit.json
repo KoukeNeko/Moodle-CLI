@@ -3,13 +3,13 @@
   "kind": "assignment.submit",
   "data": {
     "assignment": {
-      "id": "2",
+      "id": "1",
       "course_id": "2",
-      "cmid": "3",
-      "name": "A2 submit button",
-      "due_date": "2026-10-02T09:07:05Z",
-      "cut_off_date": "2026-10-09T09:07:05Z",
-      "needs_hand_in": true,
+      "cmid": "2",
+      "name": "A1 direct submit",
+      "due_date": "2026-09-25T09:27:19Z",
+      "cut_off_date": null,
+      "needs_hand_in": false,
       "requires_statement": false,
       "submission_plugins": [
         "onlinetext",
@@ -26,7 +26,7 @@
       {
         "name": "preflight",
         "status": "done",
-        "detail": "A2 submit button, currently new"
+        "detail": "A1 direct submit, currently new"
       },
       {
         "name": "upload",
@@ -40,8 +40,8 @@
       },
       {
         "name": "submit_for_grading",
-        "status": "planned",
-        "detail": "hand in for grading"
+        "status": "skipped",
+        "detail": "this assignment accepts work as soon as it is saved"
       },
       {
         "name": "verify",

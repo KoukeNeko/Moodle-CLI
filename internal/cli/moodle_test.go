@@ -14,6 +14,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
@@ -67,6 +68,11 @@ func newFixture(t *testing.T) *fixture {
 					moodle.NewCalendarBackend(session.Client(), session.Token()),
 				)
 			},
+			Forums: func(session *auth.Session, _ *site.Capabilities) *forum.Service {
+				return forum.NewService(
+					moodle.NewForumBackend(session.Client(), session.Token()),
+				)
+			},
 			API: func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service {
 				return api.NewService(
 					moodle.NewRawCaller(session.Client(), session.Token()),
@@ -85,6 +91,9 @@ func newFixture(t *testing.T) *fixture {
 		moodle.FunctionGradeItems,
 		moodle.FunctionCourseGrades,
 		moodle.FunctionActionEvents,
+		moodle.FunctionForums,
+		moodle.FunctionForumDiscussion,
+		moodle.FunctionForumPosts,
 	}
 	declared := make([]any, 0, len(f.functions))
 	for _, name := range f.functions {

@@ -2,13 +2,13 @@
   "schema_version": 1,
   "kind": "assignment.status",
   "data": {
-    "assignment_id": "2",
+    "assignment_id": "1",
     "status": "new",
     "handed_in": false,
     "can_edit": true,
     "can_submit": false,
     "grading_status": "notgraded",
-    "modified_at": "2026-09-18T08:52:37Z",
+    "modified_at": "2026-09-18T09:32:54Z",
     "file_count": 0,
     "files": []
   },

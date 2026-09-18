@@ -168,6 +168,61 @@ if ($graded && $student1) {
     echo "[seed] student1 的 A1 已評分 85/100（含評語）\n";
 }
 
+// 討論區：一則教師發的討論加一則學生回覆。
+//
+// moosh 建出來的 forum 是 type=news（公告），學生不能在那裡發言，驗不到真正的
+// 討論串，所以另外建一個 type=general 的。
+require_once($CFG->dirroot . '/mod/forum/lib.php');
+$forum = $DB->get_record('forum', ['course' => $course->id, 'type' => 'general']);
+if (!$forum) {
+    $module = $DB->get_record('modules', ['name' => 'forum'], '*', MUST_EXIST);
+    $forum = (object) [
+        'course' => $course->id, 'type' => 'general', 'name' => 'Q&A 討論區',
+        'intro' => '<p>課程問答。</p>', 'introformat' => FORMAT_HTML,
+        'timemodified' => time(),
+    ];
+    $forum->id = $DB->insert_record('forum', $forum);
+    $cm = (object) [
+        'course' => $course->id, 'module' => $module->id, 'instance' => $forum->id,
+        'section' => 0, 'visible' => 1, 'visibleoncoursepage' => 1, 'added' => time(),
+    ];
+    $cm->id = add_course_module($cm);
+    course_add_cm_to_section($course->id, $cm->id, 0);
+    echo "[seed] 已建立 Q&A 討論區（type=general）\n";
+}
+
+if ($DB->count_records('forum_discussions', ['forum' => $forum->id]) == 0) {
+    $teacher = $DB->get_record('user', ['username' => 'teacher1'], '*', MUST_EXIST);
+    $student = $DB->get_record('user', ['username' => 'student1'], '*', MUST_EXIST);
+
+    // 發文要以發文者的身分執行：forum_add_new_post 會處理草稿檔案區，
+    // 那需要目前使用者的 context，CLI 下預設是 0，會直接爆 dml exception。
+    \core\session\manager::set_user($teacher);
+    $discussion = (object) [
+        'course' => $course->id, 'forum' => $forum->id,
+        'name' => '第一次作業的常見問題',
+        'message' => '<p>交件前請先看評分標準。</p>',
+        'messageformat' => FORMAT_HTML, 'messagetrust' => 0,
+        'attachment' => null, 'groupid' => -1, 'mailnow' => 0,
+    ];
+    $discussionid = forum_add_discussion($discussion, null, null, $teacher->id);
+
+    $first = $DB->get_record('forum_posts',
+        ['discussion' => $discussionid, 'parent' => 0], '*', MUST_EXIST);
+    \core\session\manager::set_user($student);
+    $reply = (object) [
+        'discussion' => $discussionid, 'parent' => $first->id,
+        'course' => $course->id, 'forum' => $forum->id,
+        'subject' => 'Re: 第一次作業的常見問題',
+        'message' => '<p>請問可以交 PDF 以外的格式嗎？</p>',
+        'messageformat' => FORMAT_HTML, 'messagetrust' => 0,
+        'attachment' => '', 'userid' => $student->id,
+        'created' => time(), 'modified' => time(), 'mailnow' => 0, 'itemid' => 0,
+    ];
+    forum_add_new_post($reply, null);
+    echo "[seed] 討論區已有一則討論與一則回覆\n";
+}
+
 // 權限、服務定義與模組設定都有快取，改完要清。
 purge_all_caches();
 echo "[seed] caches purged\n";

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/forum.thread.schema.json",
+  "title": "moodle-cli forum.thread",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "forum.thread"
+    },
+    "data": {
+      "type": "array",
+      "description": "Posts in reading order: the opening post first, then oldest to newest. Moodle returns them newest first, which puts every reply before the thing it replies to.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "subject",
+          "message",
+          "message_format",
+          "author",
+          "parent_id",
+          "created_at",
+          "deleted",
+          "attachments",
+          "url"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "description": "Moodle's own markup, unchanged"
+          },
+          "message_format": {
+            "type": "integer",
+            "description": "Moodle's text format id: 1 HTML, 2 plain, 4 markdown"
+          },
+          "author": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null for the post that opened the thread"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "boolean",
+            "description": "Moodle is withholding the content. The post stays, because removing it would lose the shape of the thread."
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/file"
+            }
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null when Moodle's link carried a secret, which is never passed on"
+          }
+        }
+      }
+    },
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "required": [
+        "name",
+        "path",
+        "size",
+        "mime_type",
+        "url",
+        "modified_at",
+        "external"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "modified_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "external": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
