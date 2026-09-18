@@ -72,7 +72,8 @@
       "graded_at": "2026-09-18T09:34:15Z",
       "hidden": false,
       "locked": false
-    }
+    },
+    "not_gradable": false
   },
   "meta": {
     "site": "rec",

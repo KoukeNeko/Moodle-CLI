@@ -24,7 +24,7 @@
       {
         "name": "Login methods",
         "status": "ok",
-        "detail": "token, password",
+        "detail": "token, password, qr",
         "reason": null,
         "hint": null
       },

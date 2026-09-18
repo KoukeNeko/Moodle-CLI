@@ -3,66 +3,171 @@
   "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/grade.list.schema.json",
   "title": "moodle-cli grade.list",
   "type": "object",
-  "required": ["schema_version", "kind", "data", "meta"],
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "const": 1 },
-    "kind": { "const": "grade.list" },
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "grade.list"
+    },
     "data": {
       "type": "object",
-      "required": ["course_id", "items", "total"],
+      "required": [
+        "course_id",
+        "items",
+        "total",
+        "not_gradable"
+      ],
       "additionalProperties": false,
       "properties": {
-        "course_id": { "type": "string" },
-        "items": { "type": "array", "items": { "$ref": "#/$defs/grade" } },
+        "course_id": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/grade"
+          }
+        },
         "total": {
-          "oneOf": [{ "$ref": "#/$defs/grade" }, { "type": "null" }],
+          "oneOf": [
+            {
+              "$ref": "#/$defs/grade"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "The course total, kept apart from the items because its maximum counts only what has been graded so far — it is never the sum of the items above."
+        },
+        "not_gradable": {
+          "type": "boolean",
+          "description": "True only when the site confirmed this account is not a graded participant on the course. False also covers the site not saying, so it is not proof of the opposite."
         }
       }
     },
-    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
   },
   "$defs": {
     "grade": {
       "type": "object",
       "required": [
-        "id", "name", "kind", "module", "cmid", "grade", "grade_min",
-        "grade_max", "display", "percentage", "feedback", "feedback_format",
-        "graded_at", "hidden", "locked"
+        "id",
+        "name",
+        "kind",
+        "module",
+        "cmid",
+        "grade",
+        "grade_min",
+        "grade_max",
+        "display",
+        "percentage",
+        "feedback",
+        "feedback_format",
+        "graded_at",
+        "hidden",
+        "locked"
       ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string", "description": "Empty for the course total, which Moodle sends with no name" },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "Empty for the course total, which Moodle sends with no name"
+        },
         "kind": {
-          "enum": ["activity", "category", "course", "manual", "unknown"],
+          "enum": [
+            "activity",
+            "category",
+            "course",
+            "manual",
+            "unknown"
+          ],
           "description": "A consumer that treats every row as an activity will present the course total as one."
         },
-        "module": { "type": ["string", "null"], "description": "The activity type, such as assign" },
-        "cmid": { "type": ["string", "null"], "description": "Course module id, for getting from a grade back to what was graded" },
+        "module": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The activity type, such as assign"
+        },
+        "cmid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Course module id, for getting from a grade back to what was graded"
+        },
         "grade": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "description": "Null when the work has not been marked. Zero is a real mark and means something quite different."
         },
-        "grade_min": { "type": ["number", "null"] },
-        "grade_max": { "type": ["number", "null"] },
+        "grade_min": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "grade_max": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
         "display": {
           "type": "string",
           "description": "Moodle's own rendering. For an item graded on a scale or in letters this is the only truthful answer; the raw number is a position in a list."
         },
         "percentage": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "description": "Null wherever a percentage would be meaningless, in particular for anything graded on a scale."
         },
-        "feedback": { "type": ["string", "null"], "description": "The marker's comment, in Moodle's own markup" },
-        "feedback_format": { "type": ["integer", "null"], "description": "Moodle's text format id for the feedback" },
-        "graded_at": { "type": ["string", "null"], "format": "date-time" },
+        "feedback": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The marker's comment, in Moodle's own markup"
+        },
+        "feedback_format": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Moodle's text format id for the feedback"
+        },
+        "graded_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
         "hidden": {
           "type": "boolean",
           "description": "The site is withholding this grade. Not the same as unmarked: reporting it as unmarked tells a student their marked work was never looked at."
         },
-        "locked": { "type": "boolean" }
+        "locked": {
+          "type": "boolean"
+        }
       }
     }
   }

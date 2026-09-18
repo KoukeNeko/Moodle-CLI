@@ -41,11 +41,19 @@ type GradeReport struct {
 	// is kept apart from the items because its maximum counts only what has
 	// been graded so far — it is never the sum of the items above.
 	Total *Grade `json:"total"`
+	// NotGradable is true only when the site confirmed this account is not a
+	// graded participant on the course. False covers both "it is" and "the
+	// site would not say", so a reader must not treat false as proof.
+	NotGradable bool `json:"not_gradable"`
 }
 
 // GradeList converts a course's gradebook into its envelope.
 func GradeList(result grade.CourseResult, siteName, accountName string) Envelope {
-	payload := GradeReport{CourseID: result.CourseID, Items: []Grade{}}
+	payload := GradeReport{
+		CourseID:    result.CourseID,
+		Items:       []Grade{},
+		NotGradable: result.NotGradable,
+	}
 	for _, item := range result.Items {
 		payload.Items = append(payload.Items, newGrade(item))
 	}

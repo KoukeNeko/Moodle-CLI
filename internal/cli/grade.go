@@ -141,6 +141,14 @@ func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 			fmt.Fprintf(w, "\n%s — feedback:\n  %s\n", item.Name, plainText(*item.Feedback))
 		}
 	}
+	if report.NotGradable {
+		// Without this the table above reads as "nothing of yours has been
+		// marked yet" to someone who will never be marked here, because the
+		// gradebook Moodle hands staff about themselves is the course's item
+		// list with every grade empty.
+		fmt.Fprintln(w, "\nYou are not a graded participant on this course, "+
+			"so none of these rows is about you.")
+	}
 	return nil
 }
 

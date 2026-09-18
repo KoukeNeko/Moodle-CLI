@@ -307,3 +307,72 @@ func TestACourseWithNoGradebookForThisAccountIsNotFound(t *testing.T) {
 		t.Errorf("the document should say there is no gradebook:\n%s", stdout)
 	}
 }
+
+func TestStaffAreToldTheGradebookIsNotAboutThem(t *testing.T) {
+	// gradereport_user_get_grade_items 靠 moodle/grade:viewall 放行老師，然後
+	// 對「他自己的成績」回一張課程的成績項目表、分數全空——跟一個還沒被評分的
+	// 學生看到的一模一樣。回覆本身沒有任何欄位分得出來，所以要另外問一次。
+	f := newFixture(t)
+	f.withGrades(gradeItem(1, "Essay 1", "mod", nil))
+	f.server.HandleValue(moodle.FunctionGradableUsers, map[string]any{
+		// 這門課的評分對象是別人，呼叫者（user 4）不在裡面。
+		"users":    []any{map[string]any{"id": 9}, map[string]any{"id": 10}},
+		"warnings": []any{},
+	})
+	f.addSiteAndLogin()
+
+	stdout, stderr, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "not a graded participant") {
+		t.Errorf("an empty gradebook read as work that is merely unmarked:\n%s", stdout)
+	}
+
+	jsonOut, _, code := f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "grade.list", jsonOut)
+	if !gradeReport(t, jsonOut).NotGradable {
+		t.Error("the contract did not carry what the human output said")
+	}
+}
+
+func TestAStudentWithNothingMarkedIsNotCalledStaff(t *testing.T) {
+	// 同樣是一張全空的成績表，但呼叫者確實是評分對象。說他不是，就是把一個
+	// 作業還沒被改的學生講成教職員。
+	f := newFixture(t)
+	f.withGrades(gradeItem(1, "Essay 1", "mod", nil))
+	f.server.HandleValue(moodle.FunctionGradableUsers, map[string]any{
+		"users":    []any{map[string]any{"id": 4}, map[string]any{"id": 9}},
+		"warnings": []any{},
+	})
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "not a graded participant") {
+		t.Errorf("a student whose work is unmarked was reported as staff:\n%s", stdout)
+	}
+}
+
+func TestARefusedGradableProbeClaimsNothing(t *testing.T) {
+	// 站台可以把 moodle/site:viewuseridentity 開給任何角色，所以「這支被拒絕」
+	// 完全不能反推呼叫者是誰。拿不到答案就不要下結論。
+	f := newFixture(t)
+	f.withGrades(gradeItem(1, "Essay 1", "mod", nil))
+	f.server.FailException(moodle.FunctionGradableUsers,
+		"required_capability_exception", "nopermission", "error/nopermission")
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: a probe that said nothing must not change the answer", code)
+	}
+	if strings.Contains(stdout, "not a graded participant") {
+		t.Errorf("a refusal was read as an answer:\n%s", stdout)
+	}
+}

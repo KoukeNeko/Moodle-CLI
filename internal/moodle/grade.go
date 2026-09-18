@@ -14,8 +14,11 @@ import (
 
 // Grade web service functions.
 const (
-	FunctionGradeItems   = "gradereport_user_get_grade_items"
-	FunctionCourseGrades = "gradereport_overview_get_course_grades"
+	FunctionGradeItems = "gradereport_user_get_grade_items"
+	// FunctionGradableUsers answers the one question an empty gradebook leaves
+	// open: whether this account is a graded participant at all.
+	FunctionGradableUsers = "core_grades_get_gradable_users"
+	FunctionCourseGrades  = "gradereport_overview_get_course_grades"
 )
 
 // gradeItemsDTO is Moodle's reply to gradereport_user_get_grade_items. The
@@ -163,7 +166,65 @@ func (b *GradeBackend) Course(ctx context.Context, courseID string) (grade.Cours
 		}
 		result.Items = append(result.Items, item)
 	}
+	if noGradeRecorded(result) {
+		result.NotGradable = b.notAGradedParticipant(ctx, id, user)
+	}
 	return result, nil
+}
+
+// noGradeRecorded reports that not one row carries a grade.
+//
+// This is the only shape that is ambiguous. A gradebook with any grade in it
+// has already said this account is graded here, so the probe below is not
+// worth a round trip.
+func noGradeRecorded(result grade.CourseResult) bool {
+	if result.Total != nil && result.Total.Grade != nil {
+		return false
+	}
+	for _, item := range result.Items {
+		if item.Grade != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// gradableUsersDTO is Moodle's reply to core_grades_get_gradable_users.
+type gradableUsersDTO struct {
+	Users []struct {
+		ID int64 `json:"id"`
+	} `json:"users"`
+}
+
+// notAGradedParticipant asks the site whether this account is graded here.
+//
+// gradereport_user_get_grade_items lets a teacher through on
+// moodle/grade:viewall and then answers about themselves with the course's
+// item list and no grades — indistinguishable from a student whose work is
+// not marked yet. Nothing in that reply separates the two: an absent
+// grade_grade row is materialised as an empty one either way.
+//
+// Moodle's own gradebook settles it with get_gradable_users(), which is
+// enrolment plus the site's configured gradebook roles rather than a role
+// name — and role names are a site's to choose. The web service in front of
+// it needs moodle/site:viewuseridentity, which staff hold and students do not;
+// measured. That is the right way round, because staff is the ambiguous side.
+//
+// A refusal is not evidence. A site can grant that capability to anyone, so
+// "the call failed" says nothing about who this is, and the answer stays no.
+func (b *GradeBackend) notAGradedParticipant(ctx context.Context, courseID, user int64) bool {
+	var dto gradableUsersDTO
+	if err := b.client.Call(ctx, b.token, FunctionGradableUsers, Params{
+		"courseid": courseID,
+	}, &dto); err != nil {
+		return false
+	}
+	for _, candidate := range dto.Users {
+		if candidate.ID == user {
+			return false
+		}
+	}
+	return len(dto.Users) > 0
 }
 
 func (b *GradeBackend) Overview(ctx context.Context) (grade.OverviewResult, error) {

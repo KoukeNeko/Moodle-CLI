@@ -73,8 +73,14 @@ type CourseResult struct {
 	Items    []Item
 	// Total is the course total row, pulled out of the list because it is the
 	// answer to a different question from the items above it.
-	Total      *Item
-	Provenance site.Provenance
+	Total *Item
+	// NotGradable reports that the site confirmed this account is not one of
+	// the course's graded participants — staff, usually. It is false both when
+	// the account is one and when the site would not say: only a confirmation
+	// is worth acting on, and guessing from an empty gradebook would call a
+	// student with nothing marked yet a member of staff.
+	NotGradable bool
+	Provenance  site.Provenance
 }
 
 // CourseGrade is one course's total, as the overview reports it.

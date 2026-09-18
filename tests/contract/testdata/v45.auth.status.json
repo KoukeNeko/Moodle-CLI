@@ -4,9 +4,9 @@
   "data": {
     "site": "rec",
     "account": "env",
-    "username": null,
-    "user_id": null,
-    "full_name": null,
+    "username": "student1",
+    "user_id": "4",
+    "full_name": "Sam Student",
     "site_name": "Dockerized_Moodle",
     "release": "4.5.12 (Build: 20260608)",
     "valid": true
