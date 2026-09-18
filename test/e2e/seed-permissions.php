@@ -62,6 +62,21 @@ function group_named(int $courseid, string $idnumber): ?stdClass {
     return $DB->get_record('groups', ['courseid' => $courseid, 'idnumber' => $idnumber]) ?: null;
 }
 
+/**
+ * 活動層級的 capability 覆寫。
+ *
+ * 跟可用性限制長得很像——站台一樣是回一次成功的呼叫、把活動從清單裡拿掉、
+ * 附一筆 item=module 的 warning——但擋人的機制完全不同：這裡是 require_capability
+ * 直接擋，前者是 \core_availability 的條件判定。兩條都要有 fixture，才不會用其中
+ * 一條的行為去推論另一條。
+ */
+function set_activity_override(int $cmid, string $roleshort, string $capability, ?int $permission): void {
+    global $DB;
+    $role = $DB->get_record('role', ['shortname' => $roleshort], '*', MUST_EXIST);
+    $context = context_module::instance($cmid);
+    role_change_permission($role->id, $context, $capability, $permission ?? CAP_INHERIT);
+}
+
 $mode = $argv[1] ?? 'apply';
 
 $ta      = $DB->get_record('course', ['shortname' => 'CS1001'], '*', MUST_EXIST);
@@ -95,6 +110,7 @@ if ($mode === 'revert') {
         }
         $DB->set_field('course', 'groupmode', 0, ['id' => $ta->id]);
         set_availability($chaptercm, null);
+        set_activity_override($assigncm, 'student', 'mod/assign:view', null);
 
         foreach ($DB->get_records('forum_discussions',
                 ['course' => $ta->id, 'name' => DISCUSSION_B]) as $discussion) {
@@ -170,5 +186,11 @@ apply_and_purge(function () use ($DB, $ta, $users, $forum, $forumcm, $assigncm, 
         ['type' => 'date', 'd' => '>=', 't' => time() + 7 * DAYSECS],
     ]);
     echo "[perm] CS5006：Chapter 2 Draft 以日期限制存取\n";
+
+    // 活動層級的 capability 覆寫：CS1001 的 Exercise 1 Loops 對 student 角色
+    // PROHIBIT mod/assign:view。教師不受影響，所以同一門課兩種帳號會看到
+    // 不一樣的清單——那正是「別拿一個帳號的結果去推論另一個」要測的東西。
+    set_activity_override($assigncm, 'student', 'mod/assign:view', CAP_PROHIBIT);
+    echo "[perm] CS1001：Exercise 1 Loops 對 student 角色 PROHIBIT mod/assign:view\n";
 });
 echo "[perm] 完成\n";
