@@ -159,7 +159,10 @@ services:
       - ./tls:/etc/nginx/tls:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://localhost:8443/login/index.php"]
+      # 用 127.0.0.1，不是 localhost：容器裡 localhost 先解析到 ::1，而 nginx
+      # 只聽 IPv4，於是 wget 拿到 Connection refused、容器永遠顯示 unhealthy。
+      # 一直顯示 unhealthy 的健康檢查比沒有還糟——它教人忽略這個欄位。
+      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://127.0.0.1:8443/login/index.php"]
       interval: 10s
       timeout: 5s
       retries: 30
