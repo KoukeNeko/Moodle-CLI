@@ -134,3 +134,30 @@ func TestABlankCredentialIsNotACredential(t *testing.T) {
 		t.Errorf("the refusal should say how to sign in:\n%s", stdout)
 	}
 }
+
+func TestATokenAndABrowserSessionAreNeverUsedTogether(t *testing.T) {
+	// 兩者是不同的身分：token 屬於它被發給的人，cookie 屬於登入的人。
+	// 組裝時 WS 後端吃 token、讀頁面的後端吃 cookie，而功能會自己從前者掉到後者。
+	// 若一次帶著兩個，一次回退就會用另一個人的資料回答問題，而且兩條路都成功，
+	// 所以什麼都不會說。openSessionFor 只有在沒有 token 時才去看 MOODLE_SESSION。
+	f := newFixture(t)
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+	t.Setenv(cli.EnvWSToken, "good-token")
+	t.Setenv(cli.EnvSession, "MoodleSession=someone-else")
+
+	stdout, stderr, code := f.run("auth", "status", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	validate(t, "auth.status", stdout)
+	// 站台照 token 回答身分。cookie 從頭到尾沒有機會參與：openSessionFor
+	// 只有在 token 是空的時候才會去讀它。
+	if !strings.Contains(stdout, `"username":"student1"`) {
+		t.Errorf("the identity did not come from the token alone:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "someone-else") {
+		t.Errorf("the browser session reached the answer:\n%s", stdout)
+	}
+}
