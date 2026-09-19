@@ -37,7 +37,14 @@ else
   NEWSITE=$(site_of "$NEW")
   OLD=""
   for (( i=${#runs[@]} - 2; i >= 0; i-- )); do
-    if [ "$(site_of "${runs[$i]}")" = "$NEWSITE" ]; then OLD=${runs[$i]}; break; fi
+    [ "$(site_of "${runs[$i]}")" = "$NEWSITE" ] || continue
+    # An aborted run is not a baseline. full-run.sh stops when it finds no
+    # assignment left to submit, so its transcript ends part-way and every
+    # command after that point looks like it disappeared. Comparing against
+    # one reports a regression that is really just a shorter list.
+    grep -q '^共執行' "${runs[$i]}/transcript.log" 2>/dev/null || continue
+    OLD=${runs[$i]}
+    break
   done
   if [ -z "$OLD" ]; then
     # 全新的 volume 跑第一輪就是這樣：沒有可比的基準不是失敗。
