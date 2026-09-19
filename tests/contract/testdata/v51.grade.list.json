@@ -19,7 +19,7 @@
         "feedback_format": 1,
         "graded_at": "2026-09-18T09:33:34Z",
         "hidden": false,
-        "locked": false
+        "locked": null
       },
       {
         "id": "3",
@@ -36,7 +36,7 @@
         "feedback_format": null,
         "graded_at": null,
         "hidden": false,
-        "locked": false
+        "locked": null
       },
       {
         "id": "4",
@@ -53,7 +53,7 @@
         "feedback_format": null,
         "graded_at": null,
         "hidden": false,
-        "locked": false
+        "locked": null
       }
     ],
     "total": {
@@ -71,7 +71,7 @@
       "feedback_format": null,
       "graded_at": "2026-09-18T09:33:34Z",
       "hidden": false,
-      "locked": false
+      "locked": null
     },
     "not_gradable": false
   },

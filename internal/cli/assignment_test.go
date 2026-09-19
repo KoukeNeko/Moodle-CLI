@@ -1402,3 +1402,60 @@ func blindAssignment(revealed bool) map[string]any {
 		}},
 	}
 }
+
+// TestAReplyThatSaysLittleIsNotReadAsSayingNo is the guard for a bug this
+// project has now shipped three times.
+//
+// Moodle omits keys rather than sending them empty, and the omissions differ
+// by account, by route and by version. A Go bool decodes an absent key as
+// false, and where false is itself a meaningful state — an offline
+// assignment, a group with nobody left to submit — the tool starts announcing
+// something the site never said.
+//
+// Rather than one test per field, this feeds the least a reply can carry and
+// asserts that nothing was invented from what is missing. A new field read as
+// a value rather than a pointer fails here without anyone remembering to add
+// a case for it.
+func TestAReplyThatSaysLittleIsNotReadAsSayingNo(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, map[string]any{
+		// Only what mod/assign always sends. Every optional key is absent,
+		// which is how a real site answers an account it tells less to.
+		"lastattempt": map[string]any{
+			"canedit": true, "cansubmit": false,
+			"locked": false, "graded": false, "gradingstatus": "notgraded",
+		},
+		"warnings": []any{},
+	})
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	// Each of these is a sentence the tool prints about a state the site has
+	// to report. None of them was reported here, so none may be claimed.
+	for _, invented := range []struct{ claim, from string }{
+		{"no online submission", "submissionsenabled"},
+		{"group submission", "submissiongroup"},
+		{"Waiting:", "submissiongroupmemberswhoneedtosubmit"},
+		{"Extension:", "extensionduedate"},
+		{"Timer:", "timelimit and timestarted"},
+		{"Earlier:", "previousattempts"},
+	} {
+		if strings.Contains(stdout, invented.claim) {
+			t.Errorf("%q was claimed from an absent %s:\n%s",
+				invented.claim, invented.from, stdout)
+		}
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", jsonOut)
+	// The contract has to carry the same distinction: null is "the site did
+	// not say", and a reader that sees false is entitled to believe it.
+	if !strings.Contains(jsonOut, `"online_submission":null`) {
+		t.Errorf("an absent key became a value in the contract:\n%s", jsonOut)
+	}
+}

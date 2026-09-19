@@ -19,7 +19,7 @@
         "feedback_format": 0,
         "graded_at": null,
         "hidden": false,
-        "locked": false
+        "locked": null
       },
       {
         "id": "",
@@ -36,7 +36,7 @@
         "feedback_format": null,
         "graded_at": null,
         "hidden": false,
-        "locked": false
+        "locked": null
       },
       {
         "id": "",
@@ -53,7 +53,7 @@
         "feedback_format": null,
         "graded_at": null,
         "hidden": false,
-        "locked": false
+        "locked": null
       }
     ],
     "total": {
@@ -71,7 +71,7 @@
       "feedback_format": null,
       "graded_at": null,
       "hidden": false,
-      "locked": false
+      "locked": null
     },
     "not_gradable": false
   },

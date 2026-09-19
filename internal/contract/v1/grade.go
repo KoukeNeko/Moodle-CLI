@@ -30,7 +30,9 @@ type Grade struct {
 	// unmarked one, and reporting it as unmarked would tell a student their
 	// marked work was never looked at.
 	Hidden bool `json:"hidden"`
-	Locked bool `json:"locked"`
+	// Locked is null when the site did not say, which is what a student is
+	// told: Moodle sends it only to an account that can manage grades.
+	Locked *bool `json:"locked"`
 }
 
 // GradeReport is the grade.list payload.

@@ -140,6 +140,7 @@ func (b *GradeBackend) Course(ctx context.Context, courseID string) (grade.Cours
 			FeedbackFormat: raw.FeedbackFormat,
 			GradedAt:       numberTime(raw.GradedAt),
 			Hidden:         raw.GradeIsHidden,
+			Locked:         raw.GradeIsLocked,
 			UsesScale:      raw.ScaleID != nil,
 		}
 		if raw.ItemName != nil {
@@ -151,9 +152,7 @@ func (b *GradeBackend) Course(ctx context.Context, courseID string) (grade.Cours
 		if raw.CMID != nil {
 			item.CMID = strconv.FormatInt(*raw.CMID, 10)
 		}
-		if raw.GradeIsLocked != nil {
-			item.Locked = *raw.GradeIsLocked
-		}
+		item.Locked = raw.GradeIsLocked
 		item.Percentage = grade.Percentage(item.Grade, item.Min, item.Max, item.UsesScale)
 
 		if item.Kind == grade.KindCourse {

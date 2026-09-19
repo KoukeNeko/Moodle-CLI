@@ -107,7 +107,11 @@ type submissionStatusDTO struct {
 }
 
 type lastAttemptDTO struct {
-	SubmissionsEnabled bool   `json:"submissionsenabled"`
+	// SubmissionsEnabled is a pointer because its absence and its being false
+	// are different answers: false is an offline assignment, and a reply that
+	// never mentioned it says nothing at all. Decoding the zero value made the
+	// tool announce an offline assignment on a reply that had not claimed one.
+	SubmissionsEnabled *bool  `json:"submissionsenabled"`
 	CanEdit            bool   `json:"canedit"`
 	CanSubmit          bool   `json:"cansubmit"`
 	Locked             bool   `json:"locked"`
@@ -494,7 +498,7 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 		GradingStatus:        last.GradingStatus,
 		Earlier:              earlierAttempts(dto),
 		TimerEndsAt:          timerEnd(last),
-		OnlineSubmission:     boolPtr(last.SubmissionsEnabled),
+		OnlineSubmission:     last.SubmissionsEnabled,
 		Provenance:           site.NewProvenance(site.BackendWS),
 	}
 	// submissionsenabled=false used to end the call here. It is false for an

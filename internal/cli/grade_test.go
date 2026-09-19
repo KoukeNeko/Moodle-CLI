@@ -460,3 +460,57 @@ func mustGradeJSON(t *testing.T, f *fixture) string {
 	validate(t, "grade.list", stdout)
 	return stdout
 }
+
+func TestAGradeFlagTheSiteWithheldIsNotReportedAsFalse(t *testing.T) {
+	// Moodle 把 gradeislocked 送給能管理成績的帳號，對其他人送 null——實測學生
+	// 拿到的正是 null。DTO 這一層本來就用指標接住了，但到 domain 被壓回 bool，
+	// 於是契約印出 "locked": false：一個站台明確拒絕回答的事實。
+	f := newFixture(t)
+	f.server.HandleValue(moodle.FunctionGradeItems, map[string]any{
+		"usergrades": []any{map[string]any{
+			"courseid": 2, "userid": 4,
+			"gradeitems": []any{map[string]any{
+				"id": 1, "itemtype": "mod", "itemname": "Essay 1",
+				"gradeishidden": false, "gradeislocked": nil,
+			}},
+		}},
+	})
+	f.server.HandleValue(moodle.FunctionGradableUsers, map[string]any{
+		"users": []any{map[string]any{"id": 4}}, "warnings": []any{},
+	})
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "grade.list", stdout)
+	if !strings.Contains(stdout, `"locked":null`) {
+		t.Errorf("a flag the site withheld was published as false:\n%s", stdout)
+	}
+}
+
+func TestAGradeFlagTheSiteDidGiveIsKept(t *testing.T) {
+	f := newFixture(t)
+	f.server.HandleValue(moodle.FunctionGradeItems, map[string]any{
+		"usergrades": []any{map[string]any{
+			"courseid": 2, "userid": 4,
+			"gradeitems": []any{map[string]any{
+				"id": 1, "itemtype": "mod", "itemname": "Essay 1",
+				"gradeishidden": false, "gradeislocked": true,
+			}},
+		}},
+	})
+	f.server.HandleValue(moodle.FunctionGradableUsers, map[string]any{
+		"users": []any{map[string]any{"id": 4}}, "warnings": []any{},
+	})
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(stdout, `"locked":true`) {
+		t.Errorf("a flag the site did give was lost:\n%s", stdout)
+	}
+}

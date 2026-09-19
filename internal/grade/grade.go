@@ -59,8 +59,12 @@ type Item struct {
 	// Hidden reports a grade the site is withholding. That is different from
 	// one that does not exist yet, and a caller that conflates them will tell
 	// a student their marked work was never marked.
-	Hidden    bool
-	Locked    bool
+	Hidden bool
+	// Locked is nil when the site did not say. Moodle sends gradeislocked to
+	// an account that can manage grades and null to everyone else — measured,
+	// a student gets null — so collapsing it to false published a fact the
+	// site had explicitly declined to give.
+	Locked    *bool
 	UsesScale bool
 }
 

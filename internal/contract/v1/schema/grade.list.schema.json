@@ -166,7 +166,15 @@
           "description": "The site is withholding this grade. Not the same as unmarked: reporting it as unmarked tells a student their marked work was never looked at."
         },
         "locked": {
-          "type": "boolean"
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null when the site did not say. Moodle sends this only to an account that can manage grades, so a student is told null and false would be a fact the site withheld."
         }
       }
     }
