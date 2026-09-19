@@ -120,6 +120,11 @@ func (r Requirement) SatisfiedBy(c *Capabilities) (bool, string) {
 	if r.Credential != "" && c.Credential != "" && r.Credential != c.Credential {
 		return false, fmt.Sprintf("needs a %s credential, this account has %s", r.Credential, c.Credential)
 	}
+	// The subject of these two sentences is the service, not the site. This
+	// list comes from core_webservice_get_site_info, which answers for the
+	// external service the token belongs to — measured by removing one
+	// function from moodle_mobile_app while the site still had it installed,
+	// and watching the old wording call it missing from the site.
 	if len(r.AnyFunction) > 0 {
 		found := false
 		for _, function := range r.AnyFunction {
@@ -129,12 +134,13 @@ func (r Requirement) SatisfiedBy(c *Capabilities) (bool, string) {
 			}
 		}
 		if !found {
-			return false, fmt.Sprintf("this site exposes none of: %s", strings.Join(r.AnyFunction, ", "))
+			return false, fmt.Sprintf("the web service this account signs in through exposes none of: %s",
+				strings.Join(r.AnyFunction, ", "))
 		}
 	}
 	for _, function := range r.AllFunctions {
 		if !c.Has(function) {
-			return false, fmt.Sprintf("this site does not expose %s", function)
+			return false, fmt.Sprintf("the web service this account signs in through does not expose %s", function)
 		}
 	}
 	if r.NeedsUpload && !c.CanUpload {

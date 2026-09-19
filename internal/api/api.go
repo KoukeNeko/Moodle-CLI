@@ -120,9 +120,10 @@ func (s *Service) Call(ctx context.Context, capabilities *site.Capabilities, fun
 			// Refusing here rather than at the site turns a generic
 			// "accessexception" into something the caller can act on.
 			return Result{}, errs.New(errs.CodeUnavailable,
-				fmt.Sprintf("this site does not offer %s", name)).
+				fmt.Sprintf("the web service this account signs in through does not offer %s", name)).
 				WithReason(errs.ReasonCapability).
-				WithHint("list what it does offer with `moodle api functions`")
+				WithHint("list what it does offer with `moodle api functions`; " +
+					"the site may still have the function, exposed to another service")
 		}
 	}
 

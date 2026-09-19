@@ -160,7 +160,7 @@ func TestParametersReachTheSiteInMoodlesOwnNotation(t *testing.T) {
 	}
 }
 
-func TestAFunctionTheSiteDoesNotHaveIsRefusedBeforeSending(t *testing.T) {
+func TestAFunctionTheServiceDoesNotOfferIsRefusedBeforeSending(t *testing.T) {
 	// Moodle answers this with a generic access exception, which reads like a
 	// permissions problem rather than a typo.
 	f := newFixture(t)
@@ -171,7 +171,16 @@ func TestAFunctionTheSiteDoesNotHaveIsRefusedBeforeSending(t *testing.T) {
 		t.Fatalf("exit %d, want %d", code, v1.ExitUnavailable)
 	}
 	if !strings.Contains(stderr, "does not offer") {
-		t.Errorf("the error does not say the site lacks it:\n%s", stderr)
+		t.Errorf("the error does not say it is unavailable:\n%s", stderr)
+	}
+	// 主詞是服務不是站台。這份清單來自 core_webservice_get_site_info，它回答的是
+	// token 所屬的 external service——實測：把一支函式從 moodle_mobile_app 移除，
+	// 站台仍然裝著它，而舊措辭說「這個站台沒有」。
+	if strings.Contains(stderr, "this site does not offer") {
+		t.Errorf("a service's function list was reported as the site's:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "web service this account signs in through") {
+		t.Errorf("the error does not name whose function list it read:\n%s", stderr)
 	}
 }
 

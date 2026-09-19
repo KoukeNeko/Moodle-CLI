@@ -151,7 +151,10 @@ func writeInspect(w io.Writer, payload v1.SiteCapabilities, capabilities *site.C
 	fmt.Fprintf(table, "URL\t%s\n", payload.SiteURL)
 	fmt.Fprintf(table, "Moodle\t%s\n", payload.Release)
 	fmt.Fprintf(table, "Account\t%s (%s)\n", capabilities.FullName, payload.Username)
-	fmt.Fprintf(table, "Functions\t%d\n", payload.FunctionCount)
+	// Not "this site has 429 functions": core_webservice_get_site_info answers
+	// for the external service the token belongs to. Measured by dropping one
+	// function from moodle_mobile_app while the site kept it installed.
+	fmt.Fprintf(table, "Functions offered to this account\t%d\n", payload.FunctionCount)
 	fmt.Fprintf(table, "Upload\t%s\n", yesNo(payload.CanUpload))
 	fmt.Fprintf(table, "Download\t%s\n", yesNo(payload.CanDownload))
 	if err := table.Flush(); err != nil {
