@@ -40,17 +40,19 @@ C(x) ⇒ E(x)
 | `course list` | `core_enrol_get_users_courses` | 這個帳號的選課 | `onlyactive` 寫死 true；隱藏課程；已結束；沒有選課但讀得到的課程不在裡面 | 這個帳號沒有選過課。**實測**：停權一筆選課，清單就空了 |
 | `assignment list` | `mod_assign_get_assignments` | 不指定課程時＝選課的課程 | 選課；課程可見性；投影會依繳交狀態省略欄位 | 沒有作業。**實測**：類別層的 manager 讀得到一門有兩份作業的課，清單是空的 |
 | `forum list` | `mod_forum_get_forums_by_courses` | 不指定課程時＝選課的課程 | 選課；活動可見性；`mod/forum:viewdiscussion`；被過濾的課程只進 warnings | 這個帳號看不到論壇。**實測**：同一個 manager 指定課程就讀到了 |
-| `forum discussions` | `mod_forum_get_forum_discussions` | 該論壇 | `can_view_discussion()`；論壇的分組模式；被擋掉的只進 warnings 不報錯 | 這個論壇沒有討論串。**Q&A 那一路沒重現**：把論壇改成 qanda 之後，沒在裡面發過文的學生仍然讀得到只有一則貼文的討論——Moodle 擋的是回覆不是開頭那一則 |
+| `forum discussions` | `mod_forum_get_forum_discussions` | 該論壇 | `can_view_discussion()`；論壇的分組模式；被擋掉的只進 warnings 不報錯 | 這個論壇沒有討論串。**實測（分組）**：把兩串討論都移到 UG-B，UG-A 的在職學生拿到空清單，資料庫裡有兩串。**Q&A 那一路沒重現**：改成 qanda 之後，沒發過文的學生仍讀得到只有一則貼文的討論——Moodle 擋的是回覆不是開頭那一則 |
 | `grade list` | `gradereport_user_get_grade_items` | 該課程該帳號 | 項目 `hidden`／hidden-until；user report 的可見度設定；含隱藏項目的總分也會被藏 | 沒有成績。**實測**：整門課項目設隱藏後報表全空，而 92、78.5 與總分 170.50 都還在 |
 | `grade overview` | `gradereport_overview_get_course_grades` | 這個帳號被評分的課程 | 只含被評分者（教職員不在內）；跳過 `showgrades=0` 的課程；站台隱藏的課程 | 沒有課程總分。**實測**：教 31 門課的教師、封存課裡有 135 分的學生、關掉 showgrades 後有 20 筆總分的學生，三種都是空的 |
 | `calendar upcoming` | `core_calendar_get_calendar_monthly_view`＋`core_calendar_get_action_events_by_timesort` | 月曆為基底，動作清單左接 | 月檢視套用行事曆的可見度；動作清單只回有動作回呼的事件，但預設**不**排除停權選課的課程 | 沒有到期的事情。**實測**：改用動作清單當唯一來源時，學生看到四分之一、教師看到零 |
 | `file download` | `pluginfile.php` | 該檔案 | 授權；某些 file area 用同一支 `send_file_not_found()` 回應兩種情況 | — 這條**實測不成立**：webservice/pluginfile 以 `requireloginerror`（HTTP 200 JSON）與 `filenotfound`（HTTP 404）區分兩者，CLI 已分別對應 exit 5 與 6 |
 | `site inspect` / `doctor` | `core_webservice_get_site_info` | **token 所屬的 external service** | 服務沒開的函式不在清單裡 | 這個站台沒有這支函式。**實測**：從 `moodle_mobile_app` 移除一支站台仍然裝著的函式 |
-| `auth methods` | `tool_mobile_get_public_config` | 不需認證的公開設定 | 文件明說只回公開設定 | 對應的私有設定不存在。**未實測** |
+| `auth methods` | `tool_mobile_get_public_config` | 不需認證的公開設定 | 文件明說只回公開設定 | 對應的私有設定不存在。**未實測**，但現有輸出本來就是講方法可不可用而不是站台有沒有設定，例如「QR login requires https」 |
+| `assignment status/show` | `mod_assign_get_submission_status` | 該作業該帳號 | `lastattempt` 綁在 `mod/assign:viewownsubmissionsummary` 上（原始碼 `mod/assign/externallib.php:2401`）；整個欄位會被省略 | 這份作業還沒交。**實測**：PROHIBIT 那個能力之後，一份**已繳交**的作業回傳裡沒有 `lastattempt`——CLI 已正確處理，明確拒絕並指名那個能力，而不是報成未繳交 |
 
 ## 還沒查的
 
-- `forum discussions` 的分組情境：全部討論都屬於另一組時，清單會不會是空的。
-  （Q&A 那一路已試過，見上表。）
-- `assignment status/show` 的投影：`lastattempt` 之類的子結構綁在能力上。
-- `auth methods` 的公開設定缺席。
+- `auth methods` 的公開設定缺席：`tool_mobile_get_public_config` 只回公開設定，
+  缺席不能證明私有設定不存在。目前的輸出講的是「這個方法可不可用」而不是
+  「站台有沒有這個設定」，所以風險低，但沒有實測過。
+
+每一列的「實測」都可以用 `mutate.sh` 重現，見 [README](README.md#語意範圍與範圍突變)。

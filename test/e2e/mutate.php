@@ -63,6 +63,53 @@ function mutations(): array {
                 $DB->set_field_select('course', 'showgrades', 1, 'id <> ?', [SITEID]);
             },
         ],
+        'discussions-in-another-group' => [
+            'why' => 'CS1001 的分組論壇裡，每一串討論都移到 UG-B。'
+                . 'UG-A 的成員看到的空清單不能證明這個論壇沒有討論。',
+            'apply' => function () use ($DB) {
+                $course = $DB->get_record('course', ['shortname' => 'CS1001'], '*', MUST_EXIST);
+                $forum = $DB->get_record('forum',
+                    ['course' => $course->id, 'name' => 'Student Questions'], '*', MUST_EXIST);
+                $other = $DB->get_record('groups',
+                    ['courseid' => $course->id, 'name' => 'UG-B'], '*', MUST_EXIST);
+                foreach ($DB->get_records('forum_discussions', ['forum' => $forum->id]) as $d) {
+                    $DB->set_field('forum_discussions', 'groupid', $other->id, ['id' => $d->id]);
+                }
+            },
+            'revert' => function () use ($DB) {
+                $course = $DB->get_record('course', ['shortname' => 'CS1001'], '*', MUST_EXIST);
+                $forum = $DB->get_record('forum',
+                    ['course' => $course->id, 'name' => 'Student Questions'], '*', MUST_EXIST);
+                $mine = $DB->get_record('groups',
+                    ['courseid' => $course->id, 'name' => 'UG-A'], '*', MUST_EXIST);
+                foreach ($DB->get_records('forum_discussions', ['forum' => $forum->id]) as $d) {
+                    $DB->set_field('forum_discussions', 'groupid', $mine->id, ['id' => $d->id]);
+                }
+            },
+        ],
+        'hide-own-submission-summary' => [
+            'why' => '對 student 角色 PROHIBIT mod/assign:viewownsubmissionsummary。'
+                . 'mod_assign_get_submission_status 會整個省略 lastattempt——'
+                . '缺席的繳交狀態不能讀成「還沒交」。',
+            'apply' => function () use ($DB) {
+                $role = $DB->get_record('role', ['shortname' => 'student'], '*', MUST_EXIST);
+                assign_capability('mod/assign:viewownsubmissionsummary', CAP_PROHIBIT,
+                    $role->id, \context_system::instance()->id, true);
+            },
+            'revert' => function () use ($DB) {
+                // assign_capability at the system context overwrites the role's
+                // own definition rather than layering over it, so unassigning
+                // would delete the definition instead of restoring it — and
+                // leave every student on the site without the capability, with
+                // nothing in the database to show what happened. Put back what
+                // Moodle ships for this role.
+                $role = $DB->get_record('role', ['shortname' => 'student'], '*', MUST_EXIST);
+                $default = get_default_capabilities('student');
+                assign_capability('mod/assign:viewownsubmissionsummary',
+                    $default['mod/assign:viewownsubmissionsummary'] ?? CAP_ALLOW,
+                    $role->id, \context_system::instance()->id, true);
+            },
+        ],
         'drop-service-function' => [
             'why' => '從 moodle_mobile_app 移除一支站台仍然裝著的函式。'
                 . '「這個站台沒有」不能從服務的清單推出來。',
