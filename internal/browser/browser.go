@@ -174,3 +174,46 @@ func hostMatches(cookieHost, want string) bool {
 	cookieHost = strings.TrimPrefix(strings.ToLower(cookieHost), ".")
 	return cookieHost == strings.ToLower(want)
 }
+
+// Kind names which browser family a profile belongs to. They store sessions
+// in entirely different ways — Firefox in a compressed session snapshot,
+// Chromium in an encrypted SQLite database — so this decides which reader
+// runs rather than being decoration.
+type Kind string
+
+const (
+	Unknown  Kind = ""
+	Firefox  Kind = "firefox"
+	Chromium Kind = "chromium"
+)
+
+// ReadSession reads one site's session from whichever browser a profile is.
+//
+// An unknown kind — a directory named on the command line — is tried both
+// ways, because the user knows what they pointed at and being told "that is
+// not a Firefox profile" when it is a Chrome one helps nobody.
+func ReadSession(profile Profile, host, cookieName string) (Found, error) {
+	switch profile.Kind {
+	case Firefox:
+		return FirefoxSession(profile.Path, host, cookieName)
+	case Chromium:
+		return ChromiumSession(profile.Path, host, cookieName)
+	}
+
+	found, firefoxErr := FirefoxSession(profile.Path, host, cookieName)
+	if firefoxErr == nil {
+		return found, nil
+	}
+	found, chromiumErr := ChromiumSession(profile.Path, host, cookieName)
+	if chromiumErr == nil {
+		return found, nil
+	}
+	// Report whichever failure is about the cookie rather than about the
+	// directory: "no session snapshot here" from the wrong reader would bury
+	// the real answer.
+	if errs.From(firefoxErr).Code == errs.CodeNotFound &&
+		errs.From(chromiumErr).Code != errs.CodeNotFound {
+		return Found{}, chromiumErr
+	}
+	return Found{}, firefoxErr
+}

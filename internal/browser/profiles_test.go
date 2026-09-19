@@ -153,3 +153,59 @@ func TestNoFirefoxIsAnAnswerNotAFailure(t *testing.T) {
 		t.Errorf("code = %q, want not_found", code)
 	}
 }
+
+func TestChromiumProfilesAreNamedFromItsOwnIndex(t *testing.T) {
+	// The directories are called "Default", "Profile 1" and so on; the names
+	// a person recognises live in Local State. Listing the directories would
+	// show every profile as "Default".
+	home := t.TempDir()
+	configHome := filepath.Join(home, ".config")
+	root := filepath.Join(configHome, "google-chrome")
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile("testdata/chrome-local-state.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "Local State"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	profiles := browser.ChromiumProfiles(home, configHome)
+	if len(profiles) != 1 {
+		t.Fatalf("got %d profiles: %+v", len(profiles), profiles)
+	}
+	if !strings.HasPrefix(profiles[0].Name, "Chrome") {
+		t.Errorf("name = %q; it should say which browser", profiles[0].Name)
+	}
+	if !strings.HasSuffix(profiles[0].Path, "Default") {
+		t.Errorf("path = %q", profiles[0].Path)
+	}
+	// Chrome's Local State names no last-used profile on a fresh install, so
+	// Default is the one it would open.
+	if !profiles[0].Default {
+		t.Error("the only profile was not marked as the default")
+	}
+}
+
+func TestNoChromiumIsAnEmptyListNotAFailure(t *testing.T) {
+	home := t.TempDir()
+	if got := browser.ChromiumProfiles(home, filepath.Join(home, ".config")); len(got) != 0 {
+		t.Errorf("got %d profiles on a machine with no Chromium", len(got))
+	}
+}
+
+func TestAProfileNamedByHandIsTriedBothWays(t *testing.T) {
+	// Someone who points at a directory knows what they pointed at. Being
+	// told "that is not a Firefox profile" when it is a Chrome one helps
+	// nobody.
+	profile := browser.Profile{Path: chromeProfile(t)} // no Kind set
+	found, err := browser.ReadSession(profile, "192.168.50.169", "")
+	if err != nil {
+		t.Fatalf("a Chrome profile named by hand was not read: %v", err)
+	}
+	if found.Value == "" {
+		t.Error("read nothing")
+	}
+}

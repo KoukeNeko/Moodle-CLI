@@ -2,8 +2,10 @@ package browser
 
 import (
 	"bufio"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -14,10 +16,14 @@ import (
 type Profile struct {
 	Name string
 	Path string
-	// Default marks the one Firefox itself would open. It comes from the
-	// install's own section rather than from the older per-profile marker:
-	// measured on Firefox 156, a machine can have both and they can disagree.
+	// Default marks the one the browser itself would open. For Firefox it
+	// comes from the install's own section rather than from the older
+	// per-profile marker: measured on 156, a machine can have both and they
+	// can disagree.
 	Default bool
+	// Kind decides which reader runs. The two families store sessions in
+	// entirely different places.
+	Kind Kind
 }
 
 // firefoxRoots are where Firefox keeps profiles.ini, newest convention first.
@@ -181,4 +187,79 @@ func PickProfile(profiles []Profile) (Profile, error) {
 		"this machine has several Firefox profiles and no single default").
 		WithHint("they hold different sessions, so say which with --profile: " +
 			strings.Join(names, ", "))
+}
+
+// chromiumRoots are where the Chromium family keeps its user data, by browser.
+//
+// Each is a separate browser with its own cookies and its own encryption
+// settings. They are listed rather than generalised from Chrome, because
+// assuming one from another is how a reader ends up looking in the wrong
+// place and reporting that the user is not signed in.
+func chromiumRoots(home, configHome string) map[string]string {
+	if configHome == "" {
+		configHome = filepath.Join(home, ".config")
+	}
+	roots := map[string]string{
+		"Chrome":   filepath.Join(configHome, "google-chrome"),
+		"Chromium": filepath.Join(configHome, "chromium"),
+		"Edge":     filepath.Join(configHome, "microsoft-edge"),
+		"Brave":    filepath.Join(configHome, "BraveSoftware", "Brave-Browser"),
+	}
+	if runtime.GOOS == "darwin" {
+		support := filepath.Join(home, "Library", "Application Support")
+		roots = map[string]string{
+			"Chrome":   filepath.Join(support, "Google", "Chrome"),
+			"Chromium": filepath.Join(support, "Chromium"),
+			"Edge":     filepath.Join(support, "Microsoft Edge"),
+			"Brave":    filepath.Join(support, "BraveSoftware", "Brave-Browser"),
+		}
+	}
+	return roots
+}
+
+// localState is the part of Chromium's own index this reads.
+type localState struct {
+	Profile struct {
+		InfoCache map[string]struct {
+			Name string `json:"name"`
+		} `json:"info_cache"`
+		LastUsed string `json:"last_used"`
+	} `json:"profile"`
+}
+
+// ChromiumProfiles lists the Chromium-family profiles on this machine.
+//
+// A browser's profiles are named in its Local State file rather than in the
+// directory listing: the directories are called "Default", "Profile 1" and so
+// on, while the names people recognise live in that index.
+func ChromiumProfiles(home, configHome string) []Profile {
+	var found []Profile
+	for browserName, root := range chromiumRoots(home, configHome) {
+		raw, err := os.ReadFile(filepath.Join(root, "Local State"))
+		if err != nil {
+			continue
+		}
+		var state localState
+		if err := json.Unmarshal(raw, &state); err != nil {
+			continue
+		}
+		for dir, info := range state.Profile.InfoCache {
+			label := browserName
+			if info.Name != "" && info.Name != browserName {
+				label = browserName + " — " + info.Name
+			}
+			found = append(found, Profile{
+				Name:    label,
+				Path:    filepath.Join(root, dir),
+				Default: state.Profile.LastUsed == dir || (state.Profile.LastUsed == "" && dir == "Default"),
+			})
+		}
+	}
+	sort.SliceStable(found, func(i, j int) bool {
+		if found[i].Default != found[j].Default {
+			return found[i].Default
+		}
+		return found[i].Name < found[j].Name
+	})
+	return found
 }

@@ -37,14 +37,12 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import-browser",
 		Short: "Take this site's session from a browser you are already signed in to",
-		Long: "Reads the Moodle session cookie for one site out of a Firefox\n" +
-			"profile, so a site that issues no web service token can be used\n" +
-			"without copying the cookie out of developer tools by hand.\n\n" +
-			"Only the cookie for the site named is read, and it is not stored:\n" +
-			"it is printed for `auth login --method browser-session` to take, or\n" +
-			"exchanged by that command. Firefox keeps every site's session\n" +
-			"cookies in one file, so others are necessarily parsed on the way\n" +
-			"past; none of them is returned, kept or logged.",
+		Long: "Reads the Moodle session cookie for one site out of a Firefox or\n" +
+			"Chromium profile, so a site that issues no web service token can be\n" +
+			"used without copying the cookie out of developer tools by hand.\n\n" +
+			"Only the cookie for the site named is returned. A browser keeps\n" +
+			"every site's cookies together, so others are necessarily parsed on\n" +
+			"the way past; none of them is returned, kept or logged.",
 		Args:        cobra.NoArgs,
 		Annotations: map[string]string{annotationKind: "auth.import_browser"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -52,9 +50,28 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return errs.Wrap(errs.CodeUnavailable, err, "cannot find your home directory")
 			}
-			profiles, err := browser.FirefoxProfiles(home, os.Getenv("XDG_CONFIG_HOME"))
-			if err != nil {
-				return err
+			configHome := os.Getenv("XDG_CONFIG_HOME")
+
+			// Both families are looked for, because which browser someone
+			// signed in with is their business. They store sessions in
+			// entirely different ways, so each is read by its own code and
+			// the profile remembers which it came from.
+			var profiles []browser.Profile
+			if firefox, err := browser.FirefoxProfiles(home, configHome); err == nil {
+				for _, profile := range firefox {
+					profile.Kind = browser.Firefox
+					profiles = append(profiles, profile)
+				}
+			}
+			for _, profile := range browser.ChromiumProfiles(home, configHome) {
+				profile.Kind = browser.Chromium
+				profiles = append(profiles, profile)
+			}
+			if len(profiles) == 0 {
+				return errs.New(errs.CodeNotFound,
+					"no Firefox or Chromium profile found on this machine").
+					WithHint("if a browser is installed somewhere unusual, name " +
+						"its profile directory with --profile")
 			}
 			if listOnly {
 				return r.Render(Result{
@@ -62,7 +79,7 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 				})
 			}
 
-			profile := browser.Profile{Path: profileDir}
+			profile := browser.Profile{Path: profileDir, Kind: browser.Unknown}
 			if profileDir == "" {
 				picked, err := browser.PickProfile(profiles)
 				if err != nil {
@@ -85,7 +102,7 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 			}
 			host := target.BaseURL.Hostname()
 
-			found, err := browser.FirefoxSession(profile.Path, host, cookieName)
+			found, err := browser.ReadSession(profile, host, cookieName)
 			if err != nil {
 				return err
 			}
@@ -143,15 +160,29 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 	}
 	flags.bind(cmd, "import a session for")
 	cmd.Flags().StringVar(&profileDir, "profile", "",
-		"read this Firefox profile directory instead of the default one")
+		"read this browser profile directory instead of the default one")
 	cmd.Flags().StringVar(&cookieName, "cookie-name", "",
 		"the session cookie's name, if the site has renamed it (default "+
 			browser.SessionCookieName+")")
 	cmd.Flags().BoolVar(&listOnly, "list-profiles", false,
-		"list the Firefox profiles on this machine and stop")
+		"list the browser profiles on this machine and stop")
 	cmd.Flags().BoolVar(&store, "store", false,
 		"keep the session in the OS keychain so later commands need no flag")
 	return cmd
+}
+
+// describeBrowser names the family for a person, or declines to guess.
+func describeBrowser(kind browser.Kind) string {
+	switch kind {
+	case browser.Firefox:
+		return "Firefox"
+	case browser.Chromium:
+		return "Chromium-family"
+	default:
+		// A directory named on the command line: both readers were tried and
+		// one of them worked, and saying which would be a guess.
+		return "browser"
+	}
 }
 
 func writeProfiles(w io.Writer, profiles []browser.Profile) error {
@@ -172,8 +203,11 @@ func writeImported(w io.Writer, profile browser.Profile, found browser.Found, ho
 	if name == "" {
 		name = profile.Path
 	}
-	fmt.Fprintf(w, "Found a %s for %s in the Firefox profile %q.\n",
-		found.Name, host, name)
+	// Named from the profile rather than hard-coded: a Chrome cookie
+	// announced as coming from Firefox reads as the wrong file being opened,
+	// which is exactly the worry this command should not create.
+	fmt.Fprintf(w, "Found a %s for %s in the %s profile %q.\n",
+		found.Name, host, describeBrowser(profile.Kind), name)
 	fmt.Fprintf(w, "Read from %s\n\n", found.Source)
 	// The value is printed because the next command needs it, and because a
 	// credential this tool hands over should be visible to the person it
