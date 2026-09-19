@@ -94,6 +94,7 @@ func New() *Server {
 	mux.HandleFunc("/login/token.php", s.handleToken)
 	mux.HandleFunc("/lib/ajax/service-nologin.php", s.handleNoLogin)
 	mux.HandleFunc("/webservice/upload.php", s.handleUpload)
+	mux.HandleFunc("/my/", s.handleDashboard)
 	s.server = httptest.NewServer(mux)
 	return s
 }
@@ -105,6 +106,28 @@ func (s *Server) Close() { s.server.Close() }
 func (s *Server) URL() string { return s.server.URL }
 
 // Handle registers a function.
+// handleDashboard serves the page a browser session reads.
+//
+// It is the only place a session can learn two things Moodle does not expose
+// over any endpoint it can reach: the session key, and who the session
+// belongs to. Both are in the configuration block every signed-in page
+// carries — the shape is copied from a real Moodle 5.2.
+func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	if _, err := r.Cookie("MoodleSession"); err != nil {
+		// No session: Moodle answers with the login page, which carries
+		// neither value. That is how a client tells a rejected session from a
+		// changed page.
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><body>Log in</body></html>`))
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	_, _ = w.Write([]byte(
+		`<html><head><script>M.cfg = {"wwwroot":"` + s.URL() +
+			`","sesskey":"testsesskey","userId":4};</script></head>` +
+			`<body>Dashboard</body></html>`))
+}
+
 func (s *Server) Handle(function string, handler Handler) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

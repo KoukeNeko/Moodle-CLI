@@ -37,6 +37,7 @@ func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 		newAuthMethodsCommand(r, deps),
 		newAuthStatusCommand(r, deps),
 		newAuthLogoutCommand(r, deps),
+		newAuthImportBrowserCommand(r, deps),
 	)
 	return cmd
 }
@@ -272,16 +273,18 @@ func newAuthStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			target, err := targetSite(resolved.SiteName, resolved.Site)
-			if err != nil {
+			if _, err := targetSite(resolved.SiteName, resolved.Site); err != nil {
 				return err
 			}
 
 			status := v1.AuthStatus{Site: resolved.SiteName}
 			setString(&status.Account, resolved.AccountName)
 
-			capabilities, err := deps.Auth.
-				OpenWithToken(target, resolved.Account.ID, token).
+			// The same session every other command opens. Building a token
+			// one unconditionally reported "invalid token" for an account
+			// holding a browser session — while the commands beside it
+			// worked, which is the worst way to be wrong.
+			capabilities, err := openSessionFor(deps, resolved, token).
 				Capabilities(cmd.Context())
 			if err != nil {
 				// Report the stored identity alongside the failure: knowing
@@ -300,8 +303,8 @@ func newAuthStatusCommand(r *Renderer, deps Deps) *cobra.Command {
 
 			return r.Render(Result{
 				Envelope: v1.NewEnvelope("auth.status", status, v1.NewMeta(v1.SourceWS)),
-				Human: humanLine("%s on %s as %s (%s) — credential valid.",
-					resolved.AccountName, resolved.SiteName, capabilities.FullName, capabilities.Username),
+				Human: humanLine("%s on %s as %s — credential valid.",
+					resolved.AccountName, resolved.SiteName, describeWho(capabilities)),
 			})
 		},
 	}
@@ -406,6 +409,13 @@ func resolveSession(deps Deps, file *config.File, siteFlag, accountFlag string) 
 	if err != nil {
 		return config.Resolved{}, "", err
 	}
+	if resolved.Account.CredentialKind == site.CredentialBrowserSession {
+		// The account holds a browser session rather than a token, which is
+		// the only credential some sites will give. It is returned empty here
+		// and fetched again when the session is opened, so that nothing
+		// treats it as a token by accident.
+		return resolved, "", nil
+	}
 	token, err := deps.Auth.Token(resolved.Site.ID, resolved.Account.ID)
 	if err != nil {
 		return config.Resolved{}, "", err
@@ -439,7 +449,18 @@ func openSessionFor(deps Deps, resolved config.Resolved, token string) *auth.Ses
 	}
 	var session *auth.Session
 	if token == "" {
-		if cookie := envSession(); cookie != "" {
+		cookie := envSession()
+		if cookie == "" && resolved.Account != nil &&
+			resolved.Account.CredentialKind == site.CredentialBrowserSession {
+			// Stored by `auth import-browser --store`. Read at the moment it
+			// is needed, like a token, so it lives in the keychain and in
+			// memory and nowhere else.
+			stored, err := deps.Auth.Session(resolved.Site.ID, resolved.Account.ID)
+			if err == nil {
+				cookie = stored
+			}
+		}
+		if cookie != "" {
 			session = deps.Auth.OpenWithSession(target, resolved.Account.ID, cookie)
 		}
 	}
@@ -461,6 +482,27 @@ func wantsWebServiceOnly(deps Deps, resolved config.Resolved) bool {
 		return *deps.Backend == config.BackendWSOnly
 	}
 	return resolved.Site != nil && resolved.Site.Backend == config.BackendWSOnly
+}
+
+// describeWho names the signed-in user with whatever the site said.
+//
+// A browser session is answered by a page rather than by the web service, and
+// a page carries the user's id and not their name. "as  ()" is what printing
+// the missing fields anyway produced — which reads as something broken rather
+// than as a credential that works.
+func describeWho(c *site.Capabilities) string {
+	switch {
+	case c.FullName != "" && c.Username != "":
+		return c.FullName + " (" + c.Username + ")"
+	case c.FullName != "":
+		return c.FullName
+	case c.Username != "":
+		return c.Username
+	case c.UserID != "":
+		return "user " + c.UserID
+	default:
+		return "an account the site did not name"
+	}
 }
 
 func setString(target **string, value string) {

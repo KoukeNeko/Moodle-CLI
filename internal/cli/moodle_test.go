@@ -12,6 +12,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/calendar"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
+	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
@@ -652,5 +653,54 @@ func TestTwoAttemptsAtTheSameCourseAreNotOneCourse(t *testing.T) {
 	}
 	if doc.Data[0].ID == doc.Data[1].ID {
 		t.Error("the two attempts share an id, so nothing downstream can separate them")
+	}
+}
+
+func TestAStoredBrowserSessionIsNotReadAsAToken(t *testing.T) {
+	// An account can hold a browser session instead of a token — some sites
+	// issue nothing else. Measured before this was wired: `auth status`
+	// reported "invalid token" for such an account while every command beside
+	// it worked, which is the worst way to be wrong.
+	f := newFixture(t)
+	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatal("site add failed")
+	}
+
+	// Write the account by hand, as import-browser --store would.
+	file, err := config.Load(f.deps.ConfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := file.Resolve("school", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := resolved.Site.UpsertAccount("browser-4", config.Account{
+		UserID:         "4",
+		AuthMethod:     "import-browser",
+		CredentialKind: site.CredentialBrowserSession,
+	})
+	if err := file.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.deps.Auth.StoreSession(resolved.Site.ID, account.ID,
+		"MoodleSession=abc"); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, code := f.run("auth", "status")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s%s", code, stdout, stderr)
+	}
+	if strings.Contains(stderr, "Invalid token") || strings.Contains(stdout, "Invalid token") {
+		t.Errorf("a stored browser session was read as a token:\n%s%s", stdout, stderr)
+	}
+	// A page says who a session is for by id, not by name. Printing the
+	// missing fields anyway produced "as  ()", which reads as broken.
+	if strings.Contains(stdout, "as  (") {
+		t.Errorf("an unnamed account was rendered as empty parentheses:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "user 4") {
+		t.Errorf("the identity the site did give was not shown:\n%s", stdout)
 	}
 }

@@ -149,6 +149,26 @@ func (m *Manager) StoreToken(siteID, accountID site.ID, token string) error {
 	}, token)
 }
 
+// Session returns a stored browser session for an account.
+func (m *Manager) Session(siteID, accountID site.ID) (string, error) {
+	return m.secrets.Get(secret.Ref{
+		SiteID: siteID, AccountID: accountID, Kind: secret.KindSession,
+	})
+}
+
+// StoreSession saves a browser session that has been shown to work.
+//
+// A session is stored rather than exchanged for a token because the exchange
+// is usually not available: Moodle only offers it to a session that has just
+// signed in, and a session taken out of a browser somebody has been using is
+// past that by definition — measured against Moodle 5.2, with a cookie read
+// from a real Firefox profile.
+func (m *Manager) StoreSession(siteID, accountID site.ID, cookie string) error {
+	return m.secrets.Set(secret.Ref{
+		SiteID: siteID, AccountID: accountID, Kind: secret.KindSession,
+	}, cookie)
+}
+
 // Forget deletes every credential held for an account.
 //
 // It never asks Moodle to revoke the token: the same token is often the one
@@ -245,6 +265,11 @@ func (s *Session) Capabilities(ctx context.Context) (*site.Capabilities, error) 
 		capabilities := site.NewCapabilities()
 		capabilities.AccountID = s.accountID
 		capabilities.Credential = site.CredentialBrowserSession
+		// Who the session belongs to is on the page it reads for the session
+		// key, so this costs nothing extra — and without it a browser session
+		// has no identity at all, which leaves `auth status` unable to say
+		// whose it is and a stored one impossible to name after its owner.
+		capabilities.UserID = moodle.NewAjaxSession(s.client, s.cookie).UserID(ctx)
 		s.cached = capabilities
 		s.cachedAt = time.Now()
 		return capabilities, nil

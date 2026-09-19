@@ -30,6 +30,10 @@ type AjaxSession struct {
 	client  *Client
 	cookie  SessionCookie
 	sesskey string
+	// userID is read from the same page as the sesskey. Without it a browser
+	// session has no identity at all: `auth status` could not say whose it
+	// was, and a stored one could not be named after its owner.
+	userID string
 
 	// mu guards unavailable, which is shared by every call on this session.
 	mu sync.Mutex
@@ -55,6 +59,10 @@ func NewAjaxSession(client *Client, cookie SessionCookie) *AjaxSession {
 // There is no API that hands it over: it is a CSRF token, and the only place a
 // client can read it is a page rendered for this session.
 var sesskeyPattern = regexp.MustCompile(`"sesskey"\s*:\s*"([^"]+)"`)
+
+// userIDPattern finds who the page was rendered for. Moodle puts it in the
+// same configuration block as the sesskey, so it costs no extra request.
+var userIDPattern = regexp.MustCompile(`"userId"\s*:\s*(\d+)`)
 
 // Sesskey fetches and remembers the session key.
 func (s *AjaxSession) Sesskey(ctx context.Context) (string, error) {
@@ -90,8 +98,24 @@ func (s *AjaxSession) Sesskey(ctx context.Context) (string, error) {
 
 	s.mu.Lock()
 	s.sesskey = string(match[1])
+	if who := userIDPattern.FindSubmatch(body); who != nil {
+		s.userID = string(who[1])
+	}
 	s.mu.Unlock()
 	return string(match[1]), nil
+}
+
+// UserID reports who this session belongs to, once a page has been read.
+//
+// Empty before that, and empty if the page did not carry it — which is not
+// the same as nobody, and callers must not read it that way.
+func (s *AjaxSession) UserID(ctx context.Context) string {
+	if _, err := s.Sesskey(ctx); err != nil {
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.userID
 }
 
 // ajaxReply is one entry of the endpoint's answer. The endpoint answers a
