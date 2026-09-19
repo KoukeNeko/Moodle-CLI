@@ -5,6 +5,7 @@
     "assignment": {
       "id": "1",
       "course_id": "2",
+      "course_short_name": "CS204",
       "cmid": "2",
       "name": "A1 direct submit",
       "due_date": "2026-09-26T02:36:58Z",

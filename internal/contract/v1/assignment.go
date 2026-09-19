@@ -12,12 +12,15 @@ import (
 
 // Assignment is one assignment on the wire.
 type Assignment struct {
-	ID       string  `json:"id"`
-	CourseID string  `json:"course_id"`
-	CMID     string  `json:"cmid"`
-	Name     string  `json:"name"`
-	DueDate  *string `json:"due_date"`
-	CutOff   *string `json:"cut_off_date"`
+	ID       string `json:"id"`
+	CourseID string `json:"course_id"`
+	// CourseShortName names the course this was read out of. Null when the
+	// route that answered did not carry it — reading pages does not.
+	CourseShortName *string `json:"course_short_name"`
+	CMID            string  `json:"cmid"`
+	Name            string  `json:"name"`
+	DueDate         *string `json:"due_date"`
+	CutOff          *string `json:"cut_off_date"`
 	// NeedsHandIn says whether saving content leaves the work as a draft. A
 	// consumer that ignores it will report unsubmitted work as submitted.
 	//
@@ -57,6 +60,7 @@ func newAssignment(item assignment.Summary) Assignment {
 	out := Assignment{
 		ID:                item.ID,
 		CourseID:          item.CourseID,
+		CourseShortName:   item.CourseShortName,
 		CMID:              item.CMID,
 		Name:              item.Name,
 		DueDate:           Timestamp(item.DueDate),

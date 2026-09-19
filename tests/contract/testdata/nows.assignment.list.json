@@ -5,6 +5,7 @@
     {
       "id": "2",
       "course_id": "2",
+      "course_short_name": null,
       "cmid": "2",
       "name": "A1 direct submit",
       "due_date": null,
@@ -18,6 +19,7 @@
     {
       "id": "3",
       "course_id": "2",
+      "course_short_name": null,
       "cmid": "3",
       "name": "A2 submit button",
       "due_date": null,
@@ -31,6 +33,7 @@
     {
       "id": "4",
       "course_id": "2",
+      "course_short_name": null,
       "cmid": "4",
       "name": "A3 statement",
       "due_date": null,

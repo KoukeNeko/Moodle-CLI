@@ -40,10 +40,18 @@ const (
 type Summary struct {
 	ID       string
 	CourseID string
-	CMID     string
-	Name     string
-	DueDate  *time.Time
-	CutOff   *time.Time
+	// CourseShortName is what distinguishes one row from another when a
+	// listing spans years: eight instances of a course share a full name and
+	// an activity name, and only the short name carries the year.
+	//
+	// Nil means the route that answered did not say. Reading a course page
+	// does not carry it, and an empty string there would read as a course
+	// without a short name, which Moodle does not allow.
+	CourseShortName *string
+	CMID            string
+	Name            string
+	DueDate         *time.Time
+	CutOff          *time.Time
 	// SubmissionDrafts reports whether Moodle keeps a separate draft state.
 	// When it does, saving content is not handing it in, and a second call is
 	// required.

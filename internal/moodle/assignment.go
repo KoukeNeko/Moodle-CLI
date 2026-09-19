@@ -36,7 +36,10 @@ const PathUpload = "/webservice/upload.php"
 // names were taken from real 4.5, 5.1 and 5.2 responses rather than guessed.
 type assignmentsDTO struct {
 	Courses []struct {
-		ID          int64 `json:"id"`
+		ID int64 `json:"id"`
+		// Short name comes back on this call, so the listing can name the
+		// course it read each assignment out of without a second request.
+		ShortName   string `json:"shortname"`
 		Assignments []struct {
 			ID                         int64   `json:"id"`
 			CMID                       int64   `json:"cmid"`
@@ -352,12 +355,13 @@ func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
 	for _, course := range dto.Courses {
 		for _, item := range course.Assignments {
 			summary := assignment.Summary{
-				ID:       strconv.FormatInt(item.ID, 10),
-				CourseID: strconv.FormatInt(course.ID, 10),
-				CMID:     strconv.FormatInt(item.CMID, 10),
-				Name:     item.Name,
-				DueDate:  unixTime(item.DueDate),
-				CutOff:   unixTime(item.CutOffDate),
+				ID:              strconv.FormatInt(item.ID, 10),
+				CourseID:        strconv.FormatInt(course.ID, 10),
+				CourseShortName: stringPtr(course.ShortName),
+				CMID:            strconv.FormatInt(item.CMID, 10),
+				Name:            item.Name,
+				DueDate:         unixTime(item.DueDate),
+				CutOff:          unixTime(item.CutOffDate),
 				// These two decide whether saving content is enough, or
 				// whether a second call is needed to hand the work in. This
 				// route always knows; the page-reading one leaves it nil.
@@ -778,3 +782,12 @@ func (w *AssignmentWriter) SubmitForGrading(ctx context.Context, assignmentID st
 // boolPtr marks a setting this route can actually see, as against one a
 // page-reading route has to leave unknown.
 func boolPtr(value bool) *bool { return &value }
+
+// stringPtr keeps "the site sent nothing" apart from "the site sent an empty
+// string". Only the caller knows which of the two it is looking at.
+func stringPtr(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}

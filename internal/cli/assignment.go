@@ -286,8 +286,17 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment) error {
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(table, "ID\tNAME\tDUE\tHAND-IN")
+	// COURSE earns its width on the accounts that need it most: measured on a
+	// teacher of 31 courses, this listing held two rows called "Problem Set 6"
+	// five years apart, eight called "Exercise 1" and eight "Final Project".
+	// The course's full name does not separate them either — eight years of
+	// one course share that too — so the short name is what carries the year.
+	fmt.Fprintln(table, "ID\tCOURSE\tNAME\tDUE\tHAND-IN")
 	for _, item := range items {
+		course := "-"
+		if item.CourseShortName != nil {
+			course = *item.CourseShortName
+		}
 		due := "-"
 		if item.DueDate != nil {
 			due = (*item.DueDate)[:10]
@@ -302,7 +311,8 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment) error {
 				handIn = "required"
 			}
 		}
-		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", item.ID, item.Name, due, handIn)
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n",
+			item.ID, course, item.Name, due, handIn)
 	}
 	return table.Flush()
 }

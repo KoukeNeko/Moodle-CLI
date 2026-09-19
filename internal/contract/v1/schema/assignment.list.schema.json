@@ -33,6 +33,7 @@
       "required": [
         "id",
         "course_id",
+        "course_short_name",
         "cmid",
         "name",
         "due_date",
@@ -51,6 +52,13 @@
         },
         "course_id": {
           "type": "string"
+        },
+        "course_short_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The course's short name, or null when the route that answered did not carry it"
         },
         "cmid": {
           "type": "string",
