@@ -40,10 +40,11 @@
           "enum": [
             "new",
             "draft",
+            "reopened",
             "submitted",
             "unknown"
           ],
-          "description": "draft means content is saved but is NOT being marked. unknown means the site reported a state this build does not recognise; it is deliberately not folded into one of the others."
+          "description": "draft means content is saved but is NOT being marked. reopened means a grader opened another attempt, so an earlier attempt was handed in. unknown means the site reported a state this build does not recognise; it is deliberately not folded into one of the others."
         },
         "handed_in": {
           "type": "boolean",

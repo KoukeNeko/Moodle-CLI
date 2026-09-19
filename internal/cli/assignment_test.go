@@ -1077,3 +1077,38 @@ func TestNoExtensionIsNotReportedAsOne(t *testing.T) {
 		t.Errorf("zero was read as a date:\n%s", stdout)
 	}
 }
+
+func TestAReopenedAttemptIsNotCalledADraft(t *testing.T) {
+	// 評分者重開一次繳交機會，跟「存了草稿沒交」是兩件事：先前那一次**交過了**，
+	// 而且通常已經被改過。講成 draft，等於對一個交過作業的人說他從來沒交。
+	// translateStatus 正上方的註解本來就禁止這種折疊，reopened 卻是唯一的例外。
+	a := newAssignmentFixture(t, true, false)
+	a.server.HandleValue(moodle.FunctionSubmissionStatus,
+		lastAttempt("reopened", []any{"attempt1.pdf"}))
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if strings.Contains(stdout, "draft") {
+		t.Errorf("a reopened attempt was reported as a draft:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "reopened") {
+		t.Errorf("the state Moodle reported was not passed on:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "earlier one was handed in") {
+		t.Errorf("nothing says the earlier attempt was submitted:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", jsonOut)
+	if !strings.Contains(jsonOut, `"status":"reopened"`) {
+		t.Errorf("the contract folded reopened into another state:\n%s", jsonOut)
+	}
+	if !strings.Contains(jsonOut, `"handed_in":false`) {
+		t.Errorf("a reopened attempt is not currently handed in:\n%s", jsonOut)
+	}
+}

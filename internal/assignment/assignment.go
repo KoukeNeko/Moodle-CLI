@@ -24,6 +24,11 @@ const (
 	// StatusDraft means content is saved but not handed in. Work in this
 	// state is not being marked.
 	StatusDraft Status = "draft"
+	// StatusReopened means a grader reopened the assignment for another
+	// attempt. It is not a draft: the earlier attempt was handed in, and is
+	// usually already marked. Saying "draft" would report the work as never
+	// submitted to someone whose first attempt was.
+	StatusReopened Status = "reopened"
 	// StatusSubmitted means the work has been handed in for grading.
 	StatusSubmitted Status = "submitted"
 	// StatusUnknown means Moodle reported something this build does not

@@ -452,8 +452,10 @@ func translateStatus(raw string) assignment.Status {
 	switch raw {
 	case "new":
 		return assignment.StatusNew
-	case "draft", "reopened":
+	case "draft":
 		return assignment.StatusDraft
+	case "reopened":
+		return assignment.StatusReopened
 	case "submitted":
 		return assignment.StatusSubmitted
 	default:

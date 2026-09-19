@@ -431,6 +431,8 @@ func describeStatus(status string) string {
 		return "new (nothing submitted yet)"
 	case "draft":
 		return "draft (saved but NOT handed in)"
+	case "reopened":
+		return "reopened (a grader opened another attempt; the earlier one was handed in)"
 	case "submitted":
 		return "submitted (handed in for grading)"
 	default:
