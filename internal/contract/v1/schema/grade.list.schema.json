@@ -162,8 +162,15 @@
           "format": "date-time"
         },
         "hidden": {
-          "type": "boolean",
-          "description": "The site is withholding this grade. Not the same as unmarked: reporting it as unmarked tells a student their marked work was never looked at."
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The site is withholding this grade. Null when the route could not tell: a page renders a withheld grade and an unmarked one with the same dash."
         },
         "locked": {
           "oneOf": [

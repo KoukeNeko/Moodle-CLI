@@ -18,7 +18,7 @@
         "feedback": "條理清楚，但沒有討論 starvation。",
         "feedback_format": 0,
         "graded_at": null,
-        "hidden": false,
+        "hidden": null,
         "locked": null
       },
       {
@@ -35,7 +35,7 @@
         "feedback": null,
         "feedback_format": null,
         "graded_at": null,
-        "hidden": false,
+        "hidden": null,
         "locked": null
       },
       {
@@ -52,7 +52,7 @@
         "feedback": null,
         "feedback_format": null,
         "graded_at": null,
-        "hidden": false,
+        "hidden": null,
         "locked": null
       }
     ],
@@ -70,7 +70,7 @@
       "feedback": null,
       "feedback_format": null,
       "graded_at": null,
-      "hidden": false,
+      "hidden": null,
       "locked": null
     },
     "not_gradable": false

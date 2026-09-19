@@ -166,8 +166,17 @@ func TestAnEmptyCalendarSaysSo(t *testing.T) {
 		t.Fatalf("got %d events", len(events))
 	}
 
+	// 空白的表格看起來像壞掉，所以要有一句話。但那句話不能是「沒有事情要做」：
+	// 行事曆回的是**這個帳號看得到的**東西，隱藏課程或分組限制擋掉的截止日
+	// 會從同一個空清單裡消失。對學生來說，這是唯一一個會讓他丟掉分數的錯答案。
 	human, _, _ := f.run("calendar", "upcoming")
-	if !strings.Contains(human, "Nothing to do") {
-		t.Errorf("an empty calendar reads as nothing at all:\n%s", human)
+	if human == "" {
+		t.Error("an empty calendar printed nothing at all")
+	}
+	if strings.Contains(human, "Nothing to do") {
+		t.Errorf("a filtered calendar was reported as an empty one:\n%s", human)
+	}
+	if !strings.Contains(human, "this account can see") {
+		t.Errorf("the answer does not say whose view it is:\n%s", human)
 	}
 }

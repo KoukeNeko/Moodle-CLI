@@ -79,7 +79,11 @@ func newCalendarUpcomingCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func writeCalendarTable(w io.Writer, events []v1.CalendarEvent) error {
 	if len(events) == 0 {
-		_, err := fmt.Fprintln(w, "Nothing to do.")
+		// Not "nothing to do": the calendar answers with what this account can
+		// see. A deadline on a hidden course, or one a group restriction keeps
+		// away, is filtered out of the same empty list — and telling a student
+		// they have nothing due is the one wrong answer that costs them marks.
+		_, err := fmt.Fprintln(w, "Nothing due that this account can see.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

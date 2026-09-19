@@ -112,7 +112,7 @@ func TestAHeldBackGradeIsNotReportedAsUnmarked(t *testing.T) {
 		t.Fatalf("exit %d", code)
 	}
 	report := gradeReport(t, stdout)
-	if !report.Items[0].Hidden {
+	if report.Items[0].Hidden == nil || !*report.Items[0].Hidden {
 		t.Error("a withheld grade was not reported as withheld")
 	}
 
@@ -512,5 +512,29 @@ func TestAGradeFlagTheSiteDidGiveIsKept(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"locked":true`) {
 		t.Errorf("a flag the site did give was lost:\n%s", stdout)
+	}
+}
+
+func TestARouteThatCannotSeeAFlagDoesNotAnswerIt(t *testing.T) {
+	// 同一份成績表，兩條路線知道的不一樣多。網頁把「被扣住的分數」跟「還沒改的
+	// 分數」畫成同一個破折號，所以讀頁面那條路**看不出來**——而 false 會讓讀的人
+	// 以為站台說了「沒有被隱藏」。
+	//
+	// 實測：WS 路線回 hidden=false（站台真的說了），頁面路線回 null。
+	f := newFixture(t)
+	f.withGrades(gradeItem(1, "Essay 1", "mod", nil))
+	f.server.HandleValue(moodle.FunctionGradableUsers, map[string]any{
+		"users": []any{map[string]any{"id": 4}}, "warnings": []any{},
+	})
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "grade.list", stdout)
+	// 這一條走 WS，站台有送 gradeishidden，所以它是一個答案而不是 null。
+	if !strings.Contains(stdout, `"hidden":false`) {
+		t.Errorf("a flag the site did send was dropped:\n%s", stdout)
 	}
 }

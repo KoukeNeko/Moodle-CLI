@@ -139,7 +139,7 @@ func (b *GradeBackend) Course(ctx context.Context, courseID string) (grade.Cours
 			Feedback:       raw.Feedback,
 			FeedbackFormat: raw.FeedbackFormat,
 			GradedAt:       numberTime(raw.GradedAt),
-			Hidden:         raw.GradeIsHidden,
+			Hidden:         boolPtr(raw.GradeIsHidden),
 			Locked:         raw.GradeIsLocked,
 			UsesScale:      raw.ScaleID != nil,
 		}

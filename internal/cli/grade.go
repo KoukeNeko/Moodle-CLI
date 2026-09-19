@@ -165,7 +165,7 @@ func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 // Moodle's own rendering wins wherever it exists: for an item graded on a
 // scale or in letters the raw number is a position in a list, not a mark.
 func gradeCell(item v1.Grade) string {
-	if item.Hidden {
+	if item.Hidden != nil && *item.Hidden {
 		return "hidden"
 	}
 	if item.Grade == nil {

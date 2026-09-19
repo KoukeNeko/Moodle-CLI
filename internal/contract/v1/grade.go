@@ -29,7 +29,7 @@ type Grade struct {
 	// Hidden marks a grade the site is withholding. It is not the same as an
 	// unmarked one, and reporting it as unmarked would tell a student their
 	// marked work was never looked at.
-	Hidden bool `json:"hidden"`
+	Hidden *bool `json:"hidden"`
 	// Locked is null when the site did not say, which is what a student is
 	// told: Moodle sends it only to an account that can manage grades.
 	Locked *bool `json:"locked"`
