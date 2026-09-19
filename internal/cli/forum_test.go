@@ -433,3 +433,45 @@ func TestAThreadNobodyRepliedToIsNotCalledIncomplete(t *testing.T) {
 		t.Errorf("a complete thread was marked partial:\n%s", stderr)
 	}
 }
+
+func TestAnAbsentThreadCountIsNotZeroThreads(t *testing.T) {
+	// numdiscussions 在 Moodle 自己的 returns 宣告裡是 VALUE_OPTIONAL，所以回覆
+	// 可以整個不帶它。用 int 接住就變成 0，而 THREADS 欄位印出 0 的意思是
+	// 「這個論壇沒有討論串」——一個站台從來沒講過的事。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionForums, []any{
+		map[string]any{"id": 2, "cmid": 5, "course": 2, "type": "general", "name": "Q&amp;A"},
+	})
+
+	stdout, stderr, code := f.run("forum", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if strings.Contains(stdout, "\t0\n") || strings.HasSuffix(strings.TrimRight(stdout, "\n"), " 0") {
+		t.Errorf("a forum whose count was never sent was reported as empty:\n%s", stdout)
+	}
+
+	jsonOut, _, code := f.run("forum", "list", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "forum.list", jsonOut)
+	if !strings.Contains(jsonOut, `"discussions":null`) {
+		t.Errorf("an absent count became zero in the contract:\n%s", jsonOut)
+	}
+}
+
+func TestAThreadCountTheSiteDidSendIsKept(t *testing.T) {
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.withForum()
+
+	jsonOut, _, code := f.run("forum", "list", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(jsonOut, `"discussions":1`) {
+		t.Errorf("a count the site did send was lost:\n%s", jsonOut)
+	}
+}

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -157,7 +158,13 @@ func writeForumTable(w io.Writer, forums []v1.Forum) error {
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "ID\tNAME\tTYPE\tTHREADS")
 	for _, item := range forums {
-		fmt.Fprintf(table, "%s\t%s\t%s\t%d\n", item.ID, item.Name, item.Kind, item.Discussions)
+		// Moodle leaves the count out rather than sending zero, and a column
+		// reading 0 says the forum is empty. A dash says the site did not say.
+		threads := "-"
+		if item.Discussions != nil {
+			threads = strconv.Itoa(*item.Discussions)
+		}
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", item.ID, item.Name, item.Kind, threads)
 	}
 	return table.Flush()
 }

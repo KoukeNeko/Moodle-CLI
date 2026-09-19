@@ -54,8 +54,15 @@
             "type": "string"
           },
           "discussions": {
-            "type": "integer",
-            "description": "The count the site reports, which is not always how many a listing returns"
+            "oneOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many threads the site reports, which is not always how many a listing returns. Null when the site did not report a count: the field is optional in Moodle's declaration, and zero would read as an empty forum."
           }
         }
       }

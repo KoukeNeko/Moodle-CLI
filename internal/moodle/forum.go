@@ -26,13 +26,16 @@ const (
 
 // forumDTO is Moodle's reply to mod_forum_get_forums_by_courses.
 type forumDTO struct {
-	ID             int64  `json:"id"`
-	CMID           int64  `json:"cmid"`
-	Course         int64  `json:"course"`
-	Type           string `json:"type"`
-	Name           string `json:"name"`
-	Intro          string `json:"intro"`
-	NumDiscussions int    `json:"numdiscussions"`
+	ID     int64  `json:"id"`
+	CMID   int64  `json:"cmid"`
+	Course int64  `json:"course"`
+	Type   string `json:"type"`
+	Name   string `json:"name"`
+	Intro  string `json:"intro"`
+	// NumDiscussions is VALUE_OPTIONAL in Moodle's own returns declaration, so
+	// a reply can leave it out. Decoded as an int that is zero, a forum whose
+	// count was never sent becomes one with no threads in it.
+	NumDiscussions *int `json:"numdiscussions"`
 }
 
 // discussionsDTO is Moodle's reply to mod_forum_get_forum_discussions.

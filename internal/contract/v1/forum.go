@@ -16,7 +16,8 @@ type Forum struct {
 	CourseID    string `json:"course_id"`
 	// Discussions is the count the site reports, which is not always the
 	// number a listing returns: a site can hide some from this account.
-	Discussions int `json:"discussions"`
+	// Discussions is null when the site did not report a count.
+	Discussions *int `json:"discussions"`
 }
 
 // ForumList converts a listing into its envelope.

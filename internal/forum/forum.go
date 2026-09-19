@@ -25,7 +25,9 @@ type Forum struct {
 	CourseID    string
 	// Discussions is how many threads the site reports, which is not always
 	// the number a listing returns: a site can hide some from this account.
-	Discussions int
+	// Nil when the site did not report it at all — the field is optional in
+	// Moodle's own declaration, and zero would read as an empty forum.
+	Discussions *int
 }
 
 // Discussion is one thread.
