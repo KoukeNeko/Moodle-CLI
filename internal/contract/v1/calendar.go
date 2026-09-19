@@ -29,8 +29,13 @@ type CalendarEvent struct {
 	ActionName *string `json:"action_name"`
 	// Actionable reports whether the caller can still act: an event can be
 	// listed and past acting on.
-	Actionable bool `json:"actionable"`
-	ItemCount  *int `json:"item_count"`
+	Actionable *bool `json:"actionable"`
+	ItemCount  *int  `json:"item_count"`
+	// Source names which of the site's answers returned this event:
+	// "calendar" for the site's own calendar, "actions" for an outstanding
+	// action it did not show. The two search different sets, so an event from
+	// the second has not been shown to be on this account's calendar.
+	Source string `json:"source"`
 	// URL is null when Moodle's link carried a session key, which is never
 	// passed on.
 	URL *string `json:"url"`
@@ -51,11 +56,18 @@ func CalendarUpcoming(result calendar.Result, siteName, accountName string) Enve
 			CourseShortName: item.CourseShortName,
 			DueAt:           Timestamp(item.At),
 			Overdue:         item.Overdue,
+			Source:          string(item.Source),
 			URL:             optional(item.URL),
 		}
 		if item.Action != nil {
 			event.ActionName = optional(item.Action.Name)
-			event.Actionable = item.Action.Actionable
+			// Null here is not false. An event with no action at all — a
+			// teacher's view of a deadline, or work already handed in — is
+			// not an event whose window has closed, and rendering both as
+			// false labelled an assignment that is open for another fortnight
+			// as closed.
+			actionable := item.Action.Actionable
+			event.Actionable = &actionable
 			if item.Action.ItemCount > 0 {
 				count := item.Action.ItemCount
 				event.ItemCount = &count

@@ -16,7 +16,25 @@
       "action_name": "Add submission",
       "actionable": true,
       "item_count": 1,
+      "source": "calendar",
       "url": "http://localhost:8522/mod/assign/view.php?id=4"
+    },
+    {
+      "id": "1",
+      "title": "A1 direct submit is due",
+      "activity": "A1 direct submit",
+      "kind": "due",
+      "module": "assign",
+      "cmid": "2",
+      "course_id": "2",
+      "course_short_name": "CS204",
+      "due_at": "2026-09-26T02:38:30Z",
+      "overdue": false,
+      "action_name": null,
+      "actionable": null,
+      "item_count": null,
+      "source": "calendar",
+      "url": "http://localhost:8522/mod/assign/view.php?id=2"
     },
     {
       "id": "2",
@@ -32,6 +50,7 @@
       "action_name": "Add submission",
       "actionable": true,
       "item_count": 1,
+      "source": "calendar",
       "url": "http://localhost:8522/mod/assign/view.php?id=3"
     }
   ],

@@ -45,7 +45,22 @@ type Event struct {
 	// URL points at the activity. Anything Moodle sends carrying a session key
 	// is dropped rather than passed on.
 	URL string
+	// Source is which answer this came from; see Source.
+	Source Source
 }
+
+// Source says which of the site's answers an event came from. The two search
+// different universes, so an event that only the action list returned has not
+// been shown to be on this account's calendar — and a listing that quietly
+// mixed them would be claiming exactly that.
+type Source string
+
+const (
+	// FromCalendar: the site's own calendar returned this event.
+	FromCalendar Source = "calendar"
+	// FromActions: only the list of outstanding actions returned it.
+	FromActions Source = "actions"
+)
 
 // Action is what Moodle suggests doing about an event.
 type Action struct {

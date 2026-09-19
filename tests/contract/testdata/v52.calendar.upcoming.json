@@ -16,6 +16,7 @@
       "action_name": "Add submission",
       "actionable": true,
       "item_count": 1,
+      "source": "calendar",
       "url": "http://localhost:8521/mod/assign/view.php?id=4"
     },
     {
@@ -32,6 +33,7 @@
       "action_name": "Add submission",
       "actionable": true,
       "item_count": 1,
+      "source": "calendar",
       "url": "http://localhost:8521/mod/assign/view.php?id=2"
     },
     {
@@ -48,6 +50,7 @@
       "action_name": "Add submission",
       "actionable": true,
       "item_count": 1,
+      "source": "calendar",
       "url": "http://localhost:8521/mod/assign/view.php?id=3"
     }
   ],

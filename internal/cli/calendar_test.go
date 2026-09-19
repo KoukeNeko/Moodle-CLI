@@ -176,7 +176,13 @@ func TestAnEmptyCalendarSaysSo(t *testing.T) {
 	if strings.Contains(human, "Nothing to do") {
 		t.Errorf("a filtered calendar was reported as an empty one:\n%s", human)
 	}
-	if !strings.Contains(human, "this account can see") {
+	// 研究的停損點：不要在每個空清單後面掛一串免責聲明，而是把「問的是哪一個集合」
+	// 寫進名詞本身。所以這裡要的是主詞（誰的行事曆）與範圍（哪一段期間），
+	// 不是一句「可能還有別的」。
+	if !strings.Contains(human, "this account's calendar") {
 		t.Errorf("the answer does not say whose view it is:\n%s", human)
+	}
+	if !strings.Contains(human, "period") {
+		t.Errorf("the answer does not say which period it covers:\n%s", human)
 	}
 }

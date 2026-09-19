@@ -83,7 +83,13 @@ func writeCalendarTable(w io.Writer, events []v1.CalendarEvent) error {
 		// see. A deadline on a hidden course, or one a group restriction keeps
 		// away, is filtered out of the same empty list — and telling a student
 		// they have nothing due is the one wrong answer that costs them marks.
-		_, err := fmt.Fprintln(w, "Nothing due that this account can see.")
+		// Name the set that was asked for rather than deny the world. The
+		// question this command put to the site was "this account's calendar
+		// between now and the horizon, plus anything still outstanding", and
+		// that is the only thing an empty answer is evidence about.
+		_, err := fmt.Fprintln(w,
+			"Nothing on this account's calendar in the period asked for, "+
+				"and nothing outstanding.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
@@ -97,7 +103,10 @@ func writeCalendarTable(w io.Writer, events []v1.CalendarEvent) error {
 			status = "OVERDUE"
 			overdue++
 		}
-		if !event.Actionable && status == "" {
+		// Only when Moodle offered an action and said it can no longer be
+		// taken. No action at all is not a closed window: it is an event this
+		// account is not the one to act on.
+		if event.Actionable != nil && !*event.Actionable && status == "" {
 			status = "closed"
 		}
 		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n",
