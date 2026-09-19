@@ -200,12 +200,21 @@ func (c *Client) ExchangeSession(ctx context.Context, cookie SessionCookie, pass
 
 	location := response.Header.Get("Location")
 	if response.StatusCode < 300 || response.StatusCode > 399 || location == "" {
-		// Moodle answers a request it does not recognise as signed in by
-		// serving the login page, which is a 200 rather than a redirect.
+		// A refusal here is not evidence that the session is bad, and saying
+		// so was wrong: launch.php also refuses a perfectly good session.
+		// Moodle only performs this exchange while $SESSION->justloggedin is
+		// still set, and the first page the session loads clears it — measured
+		// on 4.5, 5.1 and 5.2: sign in, read /my/, and the exchange returns
+		// pluginnotenabledorconfigured for a session that /my/ just answered
+		// with 200. A cookie copied out of a browser someone has been using is
+		// in that state by definition, so "expired, or from another site" is
+		// the one reading the evidence does not support.
 		return TokenCallback{}, errs.New(errs.CodeAuthentication,
-			"the site did not accept that browser session").
+			"the site would not exchange that browser session for a token").
 			WithReason(errs.ReasonTokenExpired).
-			WithHint("the session may have expired, or it may belong to a different site")
+			WithHint("Moodle only offers this exchange to a session that has just " +
+				"signed in, unless the site allows mobile login through a browser; " +
+				"the session may also have expired or belong to a different site")
 	}
 	return ParseTokenCallback(location)
 }

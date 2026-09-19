@@ -130,6 +130,27 @@ func TestARejectedSessionIsAnAuthenticationFailure(t *testing.T) {
 	}
 }
 
+func TestARefusedExchangeDoesNotCallTheSessionExpired(t *testing.T) {
+	// 實測 4.5、5.1、5.2：登入後先讀 /my/，同一個 cookie 讀 /my/ 拿到 200，
+	// launch.php 卻回 pluginnotenabledorconfigured——Moodle 只在
+	// $SESSION->justloggedin 還在時換票，而第一個頁面就會把旗標清掉。
+	// 從瀏覽器複製出來的 cookie 一定是這個狀態，所以「過期或屬於別的站台」
+	// 正是現有證據撐不起來的那句話。
+	s := newLaunchSite(t)
+	s.reply = func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("<html>pluginnotenabledorconfigured</html>"))
+	}
+	_, err := s.authenticate(t, "MoodleSession=good-session")
+	if err == nil {
+		t.Fatal("a refused exchange was reported as a success")
+	}
+	hint := errs.From(err).Hint
+	if !strings.Contains(hint, "just") {
+		t.Errorf("the hint does not offer the reason a good session is refused:\n%s", hint)
+	}
+}
+
 func TestACallbackForAnotherLoginIsRefused(t *testing.T) {
 	// The passport ties the reply to the request that asked for it. Without
 	// the check, anything that can answer this request could hand over a
