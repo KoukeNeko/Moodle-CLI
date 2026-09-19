@@ -11,7 +11,7 @@
     "modified_at": null,
     "extension_due_date": null,
     "group_submission": false,
-    "members_still_to_submit": 0,
+    "members_still_to_submit": null,
     "earlier_attempts": [],
     "timer_ends_at": null,
     "online_submission": null,

@@ -153,9 +153,13 @@ type State struct {
 	// which is not the same sentence.
 	GroupSubmission bool
 	// MembersStillToSubmit counts the group members Moodle says have yet to
-	// submit. It is meaningful only on an assignment that requires every
-	// member to; zero covers both "none left" and "the setting is off".
-	MembersStillToSubmit int
+	// submit, nil when the reply did not carry the list at all.
+	//
+	// Zero still covers two situations even when the list did arrive: nobody
+	// is left, and the assignment does not require every member to submit —
+	// Moodle fills the list only in the second case. So zero is not evidence
+	// that a group has finished, and only a count above zero says anything.
+	MembersStillToSubmit *int
 	// OnlineSubmission reports whether Moodle has any submission plugin
 	// switched on. False is an offline assignment — marked from work done
 	// somewhere else — which is a normal, deliberate setting and not a fault:

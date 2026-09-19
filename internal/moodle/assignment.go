@@ -404,6 +404,21 @@ func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
 	return out
 }
 
+// countMembers reports how many group members have yet to submit, nil when
+// that cannot be told from the reply.
+//
+// Moodle initialises the list empty and fills it only when the assignment
+// requires every member to submit, so an empty list is both "nobody is left"
+// and "this assignment never asks". A JSON null is neither: the key was not
+// sent at all. Only a list that actually arrived can be counted.
+func countMembers(members []int64) *int {
+	if members == nil {
+		return nil
+	}
+	count := len(members)
+	return &count
+}
+
 // timerEnd is when a started time limit runs out, nil when none is running.
 //
 // Moodle's own timer takes the earlier of the limit and the assignment's
@@ -494,7 +509,7 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 		CanSubmit:            last.CanSubmit,
 		ExtensionDue:         unixTime(last.ExtensionDueDate),
 		GroupSubmission:      last.SubmissionGroup != 0,
-		MembersStillToSubmit: len(last.MembersWhoNeedToSubmit),
+		MembersStillToSubmit: countMembers(last.MembersWhoNeedToSubmit),
 		GradingStatus:        last.GradingStatus,
 		Earlier:              earlierAttempts(dto),
 		TimerEndsAt:          timerEnd(last),

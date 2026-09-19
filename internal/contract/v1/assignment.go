@@ -198,9 +198,10 @@ type SubmissionState struct {
 	// then describes the group's work, not this account's.
 	GroupSubmission bool `json:"group_submission"`
 	// MembersStillToSubmit counts group members Moodle says have yet to
-	// submit. Zero covers both "none left" and "the assignment does not
-	// require every member to", so it is not proof the group is finished.
-	MembersStillToSubmit int `json:"members_still_to_submit"`
+	// submit. Null when the reply did not carry the list; zero still covers
+	// both "none left" and "the assignment does not require every member to",
+	// so it is never proof that a group has finished.
+	MembersStillToSubmit *int `json:"members_still_to_submit"`
 	// EarlierAttempts is what this account handed in before a grader reopened
 	// the assignment, oldest first. It is never null — an empty list means the
 	// assignment was never reopened.

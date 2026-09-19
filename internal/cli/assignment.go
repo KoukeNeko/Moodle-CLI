@@ -455,13 +455,12 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 		fmt.Fprintln(w, "Team:      this is a group submission, so the state above "+
 			"is the group's")
 	}
-	if state.MembersStillToSubmit > 0 {
+	if waiting := state.MembersStillToSubmit; waiting != nil && *waiting > 0 {
 		phrase := "members still have"
-		if state.MembersStillToSubmit == 1 {
+		if *waiting == 1 {
 			phrase = "member still has"
 		}
-		fmt.Fprintf(w, "Waiting:   %d group %s to submit\n",
-			state.MembersStillToSubmit, phrase)
+		fmt.Fprintf(w, "Waiting:   %d group %s to submit\n", *waiting, phrase)
 	}
 	if state.ExtensionDueDate != nil {
 		// The assignment's own cut-off is printed from the assignment, and it

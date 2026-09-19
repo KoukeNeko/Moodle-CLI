@@ -102,8 +102,15 @@
           "description": "True when this is a group's submission, so handed_in describes the group's work and not this account's."
         },
         "members_still_to_submit": {
-          "type": "integer",
-          "description": "Group members the site says have yet to submit. Zero also covers an assignment that does not require every member to, so it is not proof the group has finished."
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Group members the site says have yet to submit. Null when the reply did not carry the list. Zero still covers both \"none left\" and \"the assignment does not require every member to submit\", so it never proves a group has finished."
         },
         "earlier_attempts": {
           "type": "array",
