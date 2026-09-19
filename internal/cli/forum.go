@@ -184,8 +184,15 @@ func writeForumTable(w io.Writer, forums []v1.Forum, named bool) error {
 		if item.Discussions != nil {
 			threads = strconv.Itoa(*item.Discussions)
 		}
+		// A blank cell reads as "this forum has no type", and every forum has
+		// one. A course page does not name it, so the dash says the route did
+		// not learn it — the same thing the count next to it means.
+		kind := item.Kind
+		if kind == "" {
+			kind = "-"
+		}
 		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n",
-			item.ID, item.CourseID, item.Name, item.Kind, threads)
+			item.ID, item.CourseID, item.Name, kind, threads)
 	}
 	return table.Flush()
 }

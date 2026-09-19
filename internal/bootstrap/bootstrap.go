@@ -138,14 +138,27 @@ func Run(ctx context.Context, build Build, args []string) int {
 					return moodle.NewCalendarAjaxBackend(s)
 				})...)
 		},
-		Forums: func(session *auth.Session, _ *site.Capabilities) *forum.Service {
-			return forum.NewService(pickBackends(session,
+		Forums: func(session *auth.Session, capabilities *site.Capabilities) *forum.Service {
+			backends := pickBackends(session,
 				func() forum.Backend {
 					return moodle.NewForumBackend(session.Client(), session.Token())
 				},
 				func(s *moodle.AjaxSession) forum.Backend {
 					return moodle.NewForumAjaxBackend(s)
-				})...)
+				})
+			if cookie := session.Cookie(); cookie.Value != "" {
+				// The AJAX endpoint does not offer the forum function —
+				// measured, it answers servicenotavailable on 4.5, 5.1 and
+				// 5.2 — so on a site without a token the course page is the
+				// only place left that names a course's forums.
+				ajax := moodle.NewAjaxSession(session.Client(), cookie)
+				backends = append(backends, moodle.NewForumHTMLBackend(
+					moodle.NewPageReader(session.Client(), cookie),
+					func(ctx context.Context) ([]string, error) {
+						return courseIDs(ctx, capabilities, ajax)
+					}))
+			}
+			return forum.NewService(backends...)
 		},
 		Files: func(session *auth.Session, capabilities *site.Capabilities) *file.Downloader {
 			return file.NewDownloader(

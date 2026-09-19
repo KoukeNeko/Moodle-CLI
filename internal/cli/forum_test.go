@@ -336,6 +336,33 @@ func TestACourseTheAccountCannotReadIsNotAForumlessCourse(t *testing.T) {
 	}
 }
 
+func TestAForumReadFromAPageSaysWhatThePageDidNotCarry(t *testing.T) {
+	// 讀課程頁的那條路線拿不到論壇類型，也拿不到討論串數——頁面上沒有。
+	// 空白的類型欄讀起來像「這個論壇沒有類型」，而每個論壇都有；0 則讀起來像
+	// 「沒有討論串」。兩個都要顯示成「這條路線沒問到」。
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionForums, []any{
+		map[string]any{
+			"id": 2, "cmid": 5, "course": 2, "type": "",
+			"name": "Announcements", "intro": "",
+			// numdiscussions 缺席，跟頁面路線一樣
+		},
+	})
+
+	stdout, stderr, code := f.run("forum", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if strings.Contains(stdout, "\t0\t") || strings.Contains(stdout, " 0 ") {
+		t.Errorf("a count the route never learned was rendered as zero:\n%s", stdout)
+	}
+	// 兩欄都要有「不知道」的記號，而不是留白。
+	if strings.Count(stdout, "-") < 2 {
+		t.Errorf("the unknown type and count are not both marked unknown:\n%s", stdout)
+	}
+}
+
 func TestACourseTheAccountCanReadButHasNoVisibleForumsIsNotRefused(t *testing.T) {
 	// 探針確認讀得到，就不能拒絕。而且即使如此也只能說「這個帳號看不到論壇」：
 	// 那支函式還會依活動可見性與 mod/forum:viewdiscussion 過濾。
