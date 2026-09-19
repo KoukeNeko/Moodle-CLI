@@ -28,6 +28,12 @@ type classification struct {
 	code   errs.Code
 	reason errs.Reason
 	hint   string
+	// retryable marks a refusal the site will stop giving on its own. It is
+	// deliberately not derived from the code: CodeUnavailable covers both a
+	// site that is down for ten minutes and one that does not offer the
+	// function at all, and telling a script to retry the second is worse than
+	// saying nothing.
+	retryable bool
 }
 
 // knownErrorCodes are the Moodle errorcodes worth translating. Anything else
@@ -37,32 +43,32 @@ var knownErrorCodes = map[string]classification{
 	// Credential problems. The request was rejected before it ran, so a
 	// retry after re-authenticating is safe.
 	"invalidtoken": {errs.CodeAuthentication, errs.ReasonTokenExpired,
-		"sign in again with `moodle auth login`"},
+		"sign in again with `moodle auth login`", false},
 	// The session behind a browser-session credential is gone. Moodle says so
 	// in as many words, and it is the same problem as an expired token: the
 	// request never ran, so re-authenticating is the whole fix.
 	"servicerequireslogin": {errs.CodeAuthentication, errs.ReasonTokenExpired,
-		"sign in again with `moodle auth login`"},
+		"sign in again with `moodle auth login`", false},
 	"accessexception": {errs.CodeAuthentication, errs.ReasonTokenExpired,
-		"sign in again with `moodle auth login`"},
+		"sign in again with `moodle auth login`", false},
 	"invalidlogin": {errs.CodeAuthentication, "",
-		"check the username and password"},
+		"check the username and password", false},
 	"usernotfullysetup": {errs.CodeAuthentication, "",
-		"finish setting up the account in a browser first"},
+		"finish setting up the account in a browser first", false},
 
 	// The site or the service is not offering what we need.
 	"enablewsdescription": {errs.CodeUnavailable, errs.ReasonMobileServicesDisabled,
-		"an administrator must enable web services on this site"},
+		"an administrator must enable web services on this site", false},
 	"servicenotavailable": {errs.CodeUnavailable, errs.ReasonMobileServicesDisabled,
-		"an administrator must enable the mobile web service on this site"},
-	"accessdenied": {errs.CodeUnavailable, errs.ReasonCapability, ""},
+		"an administrator must enable the mobile web service on this site", false},
+	"accessdenied": {errs.CodeUnavailable, errs.ReasonCapability, "", false},
 	"pluginnotenabledorconfigured": {errs.CodeUnavailable, errs.ReasonCapability,
-		"this site is not configured for the app login flow"},
+		"this site is not configured for the app login flow", false},
 	"qrcodedisabled": {errs.CodeUnavailable, errs.ReasonCapability,
-		"an administrator must enable QR login on this site"},
-	"apprequired": {errs.CodeUnavailable, errs.ReasonCapability, ""},
+		"an administrator must enable QR login on this site", false},
+	"apprequired": {errs.CodeUnavailable, errs.ReasonCapability, "", false},
 	"httpsrequired": {errs.CodeUnavailable, errs.ReasonCapability,
-		"this flow only works on an https site"},
+		"this flow only works on an https site", false},
 
 	// Permissions: the user is who they say they are, but may not do this.
 	//
@@ -71,41 +77,49 @@ var knownErrorCodes = map[string]classification{
 	// course — an account reading a course it never enrolled in. An expired
 	// session never reaches here: it is caught earlier, at the login page the
 	// site serves instead of an answer.
-	"nopermissions": {errs.CodePermissionDenied, "", ""},
+	"nopermissions": {errs.CodePermissionDenied, "", "", false},
 	// 單數的 nopermission 是 required_capability_exception 的 errorcode，跟
 	// 複數那個不是同一個碼。少了它，一個「你在這門課沒有這個權限」會被報成
 	// 上游錯誤——指向站台，而該做的是換一個帳號或換一門課。
-	"nopermission":                  {errs.CodePermissionDenied, "", ""},
-	"nopermissiontoviewpage":        {errs.CodePermissionDenied, "", ""},
-	"requireloginerror":             {errs.CodePermissionDenied, "", ""},
-	"required_capability_exception": {errs.CodePermissionDenied, "", ""},
-	"cannotviewprofile":             {errs.CodePermissionDenied, "", ""},
+	"nopermission":                  {errs.CodePermissionDenied, "", "", false},
+	"nopermissiontoviewpage":        {errs.CodePermissionDenied, "", "", false},
+	"requireloginerror":             {errs.CodePermissionDenied, "", "", false},
+	"required_capability_exception": {errs.CodePermissionDenied, "", "", false},
+	"cannotviewprofile":             {errs.CodePermissionDenied, "", "", false},
 	// notingroup 是分組擋下來的：在獨立分組的活動上問一個自己不屬於的組，
 	// Moodle 丟 moodle_exception 而不是 required_capability_exception，所以
 	// 它不在上面那幾個碼裡。沒分類時會報成上游錯誤，訊息還是站台沒翻到的
 	// `error/notingroup`——看起來像站台壞了，而該換的是問題裡的那個組。
 	"notingroup": {errs.CodePermissionDenied, "",
-		"this account is not in that group, and the activity separates them"},
+		"this account is not in that group, and the activity separates them", false},
 	"autologinnotallowedtoadmins": {errs.CodePermissionDenied, "",
-		"Moodle refuses this flow for site administrators; use a normal account"},
+		"Moodle refuses this flow for site administrators; use a normal account", false},
 
 	// Bad input.
-	"invalidparameter":          {errs.CodeValidation, "", ""},
-	"invalidextparam":           {errs.CodeValidation, "", ""},
-	"invalidrecord":             {errs.CodeNotFound, "", ""},
-	"invalidrecordunknown":      {errs.CodeNotFound, "", ""},
-	"invalidcoursemodule":       {errs.CodeNotFound, "", ""},
-	"dmlmissingrecordexception": {errs.CodeNotFound, "", ""},
-	"invalidkey":                {errs.CodeValidation, "", "the key is single-use and short-lived; get a fresh one"},
+	"invalidparameter":          {errs.CodeValidation, "", "", false},
+	"invalidextparam":           {errs.CodeValidation, "", "", false},
+	"invalidrecord":             {errs.CodeNotFound, "", "", false},
+	"invalidrecordunknown":      {errs.CodeNotFound, "", "", false},
+	"invalidcoursemodule":       {errs.CodeNotFound, "", "", false},
+	"dmlmissingrecordexception": {errs.CodeNotFound, "", "", false},
+	"invalidkey":                {errs.CodeValidation, "", "the key is single-use and short-lived; get a fresh one", false},
 
 	// The site is up but refusing work.
-	"maintenanceinprogress": {errs.CodeUnavailable, "", "the site is in maintenance mode"},
+	//
+	// sitemaintenance is the one Moodle actually sends, from both the REST
+	// endpoint and login/token.php — measured. maintenanceinprogress is kept
+	// because other versions and plugins use it, and a site in maintenance
+	// reported as an upstream fault sends a reader looking for a broken site.
+	"sitemaintenance": {errs.CodeUnavailable, "",
+		"the site is in maintenance mode; it will answer again when that ends", true},
+	"maintenanceinprogress": {errs.CodeUnavailable, "",
+		"the site is in maintenance mode; it will answer again when that ends", true},
 	// The activity is on its way out: Moodle has accepted a delete and is
 	// working through it. Nothing is wrong with the site, and nothing here
 	// will start working again, so reporting an upstream fault invited a
 	// retry that can only ever end in the activity being gone.
 	"activityisscheduledfordeletion": {errs.CodeUnavailable, "",
-		"the site is deleting this activity; it will not come back"},
+		"the site is deleting this activity; it will not come back", false},
 }
 
 // asError converts a Moodle exception into our error type.
@@ -134,15 +148,15 @@ func (e exception) asError(function string) error {
 			Upstream: upstream,
 		}
 	}
-	out := &errs.Error{
-		Code:     known.code,
-		Reason:   known.reason,
-		Outcome:  errs.OutcomeKnown,
-		Message:  message,
-		Hint:     known.hint,
-		Upstream: upstream,
+	return &errs.Error{
+		Code:      known.code,
+		Reason:    known.reason,
+		Outcome:   errs.OutcomeKnown,
+		Retryable: known.retryable,
+		Message:   message,
+		Hint:      known.hint,
+		Upstream:  upstream,
 	}
-	return out
 }
 
 func firstNonEmpty(values ...string) string {

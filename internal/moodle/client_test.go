@@ -406,3 +406,52 @@ func TestAnActivityOnItsWayOutIsNotASiteFault(t *testing.T) {
 		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
 	}
 }
+
+func TestMaintenanceIsTemporaryAndSaidToBe(t *testing.T) {
+	// 維護模式會結束。報成上游錯誤，讀的人會去查一個沒有壞的站台；
+	// 而 retryable=false 會叫腳本放棄一個十分鐘後就會回來的站台。
+	// 實測 Moodle 送的碼是 sitemaintenance（REST 與 login/token.php 都是），
+	// 不是我們表裡原本寫的 maintenanceinprogress。
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("core_enrol_get_users_courses", []any{})
+	server.FailException("core_enrol_get_users_courses",
+		"core\\exception\\moodle_exception", "sitemaintenance",
+		"The site is undergoing maintenance and is currently not available")
+
+	var out []any
+	err := newClient(t, server).Call(context.Background(), "tok",
+		"core_enrol_get_users_courses", nil, &out)
+	if err == nil {
+		t.Fatal("a site in maintenance was treated as answering")
+	}
+	e := errs.From(err)
+	if e.Code != errs.CodeUnavailable {
+		t.Errorf("code = %q, want unavailable", e.Code)
+	}
+	if !e.Retryable {
+		t.Error("a site that will answer again was reported as not worth retrying")
+	}
+}
+
+func TestAFunctionTheSiteDoesNotOfferIsNotWorthRetrying(t *testing.T) {
+	// retryable 不能從 code 推出來：CodeUnavailable 同時涵蓋「站台停機十分鐘」
+	// 與「這個站台根本沒有這支函式」。對後者說可以重試，比什麼都不說更糟。
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("core_enrol_get_users_courses", []any{})
+	server.FailException("core_enrol_get_users_courses",
+		"webservice_access_exception", "enablewsdescription",
+		"Web services are not enabled")
+
+	var out []any
+	err := newClient(t, server).Call(context.Background(), "tok",
+		"core_enrol_get_users_courses", nil, &out)
+	e := errs.From(err)
+	if e == nil || e.Code != errs.CodeUnavailable {
+		t.Fatalf("code = %v, want unavailable", e)
+	}
+	if e.Retryable {
+		t.Error("a site that will never offer this was reported as worth retrying")
+	}
+}

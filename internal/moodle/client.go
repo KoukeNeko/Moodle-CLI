@@ -373,6 +373,7 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 	code := errs.CodeUpstream
 	reason := errs.Reason("")
 	hint := ""
+	retryable := false
 	switch {
 	case response.StatusCode == http.StatusUnauthorized, response.StatusCode == http.StatusForbidden:
 		code = errs.CodeAuthentication
@@ -394,9 +395,11 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 		code = errs.CodeUnavailable
 		reason = errs.ReasonRateLimited
 		hint = "the site is asking for fewer requests; " + waitAdvice(response)
+		retryable = true
 	case response.StatusCode == http.StatusServiceUnavailable:
 		code = errs.CodeUnavailable
 		hint = "the site is temporarily unavailable; " + waitAdvice(response)
+		retryable = true
 	case response.StatusCode >= 500:
 		code = errs.CodeUpstream
 	}
@@ -408,6 +411,9 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 		message += ": " + detail
 	}
 	err := errs.New(code, message).WithHint(hint)
+	if retryable {
+		err = err.AsRetryable()
+	}
 	if reason != "" {
 		err = err.WithReason(reason)
 	}
@@ -451,7 +457,7 @@ func networkError(ctx context.Context, cause error, function string) error {
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		if errors.Is(ctxErr, context.DeadlineExceeded) {
 			return errs.Wrap(errs.CodeNetwork, cause,
-				fmt.Sprintf("%s timed out", function))
+				fmt.Sprintf("%s timed out", function)).AsRetryable()
 		}
 		return errs.Wrap(errs.CodeNetwork, cause, "cancelled")
 	}
@@ -461,7 +467,10 @@ func networkError(ctx context.Context, cause error, function string) error {
 	if errors.As(cause, &dnsErr) {
 		hint = "check the site URL and your network connection"
 	}
-	return errs.Wrap(errs.CodeNetwork, cause, message).WithHint(hint)
+	// The request never reached the site, so nothing there changed and the
+	// same call is safe to make again. That is the one thing a caller most
+	// wants to know here, and the contract had been answering "no" to it.
+	return errs.Wrap(errs.CodeNetwork, cause, message).WithHint(hint).AsRetryable()
 }
 
 func (c *Client) traceRequest(request *http.Request, values url.Values) {

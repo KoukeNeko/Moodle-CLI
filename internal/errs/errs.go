@@ -86,9 +86,14 @@ type Upstream struct {
 
 // Error is the single error type crossing package boundaries.
 type Error struct {
-	Code      Code
-	Reason    Reason
-	Outcome   Outcome
+	Code    Code
+	Reason  Reason
+	Outcome Outcome
+	// Retryable says the same request may succeed later without anything
+	// changing on the caller's side: the site is busy, down for maintenance,
+	// or the network dropped. It is false for everything else, including a
+	// site that does not offer the function at all — retrying that one can
+	// only fail again.
 	Retryable bool
 	// Message is English prose for humans. Programs must branch on Code,
 	// Reason and Outcome, never on this text.
@@ -150,6 +155,15 @@ func (e *Error) WithReason(reason Reason) *Error {
 func (e *Error) WithHint(hint string) *Error {
 	out := *e
 	out.Hint = hint
+	return &out
+}
+
+// AsRetryable returns a copy marked as worth trying again. Use it only where
+// the reason for failure is known to be temporary; guessing from the code
+// alone would tell a script to hammer a site that will never answer.
+func (e *Error) AsRetryable() *Error {
+	out := *e
+	out.Retryable = true
 	return &out
 }
 
