@@ -9,6 +9,7 @@
  *
  * 用法（容器內）：
  *   php /fixture-truth.php submittable <username>   還沒交的作業 id，一行一個
+ *   php /fixture-truth.php courseid <shortname>   課程 id
  *   php /fixture-truth.php forums <courseid>        該課程的論壇數（不套權限）
  *   php /fixture-truth.php readable <username> <courseid>  1／0
  */
@@ -35,12 +36,26 @@ switch ($what) {
         // 刻意不管可用性限制與權限——那些是測試要觀察的東西，不是前提。
         $user = user_by_name($argv[2]);
         foreach ($DB->get_records('assign', null, 'id') as $assign) {
-            $submission = $DB->get_record('assign_submission',
-                ['assignment' => $assign->id, 'userid' => $user->id, 'latest' => 1]);
+            // get_records, not get_record: a reopened attempt writes a second
+            // row before it clears latest on the first, and get_record turns
+            // that into a fatal. A control plane that dies half way through
+            // prints a shorter list and says nothing — the caller then reads
+            // the missing ids as "already submitted", which is the one answer
+            // this file exists to make impossible.
+            $rows = $DB->get_records('assign_submission',
+                ['assignment' => $assign->id, 'userid' => $user->id, 'latest' => 1],
+                'attemptnumber DESC');
+            $submission = reset($rows);
             if (!$submission || $submission->status !== 'submitted') {
                 echo $assign->id . "\n";
             }
         }
+        break;
+
+    case 'courseid':
+        // 課程 id 是站台配的，fixture 只知道短名。問 CLI 也可以——但接下來要斷言的
+        // 正是「這個帳號讀不到這門課」，用讀不到的東西找 id 是問錯人。
+        echo $DB->get_field('course', 'id', ['shortname' => $argv[2]], MUST_EXIST) . "\n";
         break;
 
     case 'forums':
@@ -62,6 +77,6 @@ switch ($what) {
         break;
 
     default:
-        fwrite(STDERR, "usage: fixture-truth.php submittable|forums|readable|release\n");
+        fwrite(STDERR, "usage: fixture-truth.php submittable|courseid|forums|readable|release\n");
         exit(2);
 }

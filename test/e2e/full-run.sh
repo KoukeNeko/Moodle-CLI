@@ -357,14 +357,24 @@ if [ $HAVE_KEYRING = 1 ]; then
 
   note "改用瀏覽器已經登入的 session"
   JAR="$WORKDIR/jar.txt"
+  # head -1：4.5 與 5.1 的登入頁把表單畫了兩次，兩個 token 會串成一行送出去，
+  # 站台回「Invalid login」，於是這一節在那兩個版本上一直在測一個沒登入的
+  # session——失敗的畫面跟產品真的壞掉一模一樣。
   LOGINTOKEN=$(curl -fsS -c "$JAR" "http://127.0.0.1:$STD_PORT/login/index.php" \
-    | grep -o 'name="logintoken" value="[^"]*"' | sed 's/.*value="\([^"]*\)".*/\1/')
+    | grep -o 'name="logintoken" value="[^"]*"' | head -1 \
+    | sed 's/.*value="\([^"]*\)".*/\1/')
   curl -fsS -b "$JAR" -c "$JAR" -o /dev/null \
     -d "username=grad1&password=Student123!&logintoken=$LOGINTOKEN" \
     "http://127.0.0.1:$STD_PORT/login/index.php" 2>/dev/null
-  MOODLESESSION=$(grep -i moodlesession "$JAR" | awk '{print $7}')
+  MOODLESESSION=$(grep -i moodlesession "$JAR" | awk '{print $7}' | tail -1)
   SECRETS+=("$MOODLESESSION")
   run auth login --method browser-session --session-cookie "MoodleSession=$MOODLESESSION"
+  # 這個確認要放在登入「之後」。launch.php 的換票只在 $SESSION->justloggedin 還
+  # 在的時候成立，而那個旗標會被登入後的第一個頁面清掉——先讀 /my/ 去證明
+  # session 是好的，就會親手把它弄壞，然後看到一個自己造成的失敗。
+  SESSION_HTTP=$(curl -s -o /dev/null -w '%{http_code}' \
+    -b "MoodleSession=$MOODLESESSION" "http://127.0.0.1:$STD_PORT/my/")
+  note "事後（問站台，不是問 CLI）：這個 session 讀 /my/ 得到 HTTP $SESSION_HTTP"
   run auth status
   run auth logout
 
@@ -461,11 +471,25 @@ TARGET=$(pick_submittable)
 # world the next section assumes was never established, and a case that cannot
 # arrange its world has no standing to judge the product.
 if [ -n "$TARGET" ] && [ -n "$STD_CONTAINER" ]; then
-  if ! E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
-       submittable grad1 2>/dev/null | grep -qx "$TARGET"; then
-    echo "前提沒有成立：CLI 說作業 $TARGET 還沒交，資料庫不同意。" >&2
-    echo "這不是產品回歸，是測試的世界沒有建立起來——先查 assignment status。" >&2
-    exit 3
+  # Silence here once cost an afternoon: the control plane died part way
+  # through its list, the guard saw a list without $TARGET in it, and blamed
+  # `assignment status`. A control plane that fails and one that disagrees are
+  # different faults, so they get different exits — and either way the list it
+  # actually produced is written down, because the answer is gone by the time
+  # anyone reads the log.
+  TRUTH_OUT="$WORKDIR/submittable.txt"
+  if E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+       submittable grad1 > "$TRUTH_OUT" 2> "$WORKDIR/submittable.err"; then
+    if ! grep -qx "$TARGET" "$TRUTH_OUT"; then
+      echo "前提沒有成立：CLI 說作業 $TARGET 還沒交，資料庫不同意。" >&2
+      echo "資料庫說可交的是：$(tr '\n' ' ' < "$TRUTH_OUT")" >&2
+      echo "這不是產品回歸，是測試的世界沒有建立起來——先查 assignment status。" >&2
+      exit 3
+    fi
+  else
+    echo "控制面問不到答案，所以這一輪不能判斷任何事。" >&2
+    sed 's/^/  /' "$WORKDIR/submittable.err" >&2
+    exit 9
   fi
 fi
 if [ -z "$TARGET" ]; then

@@ -413,6 +413,10 @@ $plan = [
         ['duedate' => $now - 2 * $DAY, 'requiresubmissionstatement' => 1], 'new', null],
     ['CS5006', 'Progress Log',
         ['duedate' => $now + 3 * $DAY, 'cutoffdate' => $now + 10 * $DAY], 'submitted', null],
+    // 這一份是留給 full-run.sh 交的，所以不加限制、不要求聲明、不預先繳交。
+    // 以前那個角色由 Chapter 2 Draft 兼著，直到 seed-permissions 把它用日期擋起來
+    // ——兩個 fixture 各自都對，合起來就沒有作業可交了，整套測試停在第 10 節。
+    ['CS5006', 'Weekly Reflection', ['duedate' => $now + 14 * $DAY], 'new', null],
 ];
 
 $made = 0;
