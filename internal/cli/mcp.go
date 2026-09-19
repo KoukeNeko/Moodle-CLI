@@ -2,11 +2,25 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
+	"os"
+	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 )
+
+// capabilityTTL is how long the site's answer is kept. The environment
+// variable exists so the expiry can be exercised against a real site without
+// a five-minute test.
+func capabilityTTL() time.Duration {
+	if raw := os.Getenv("MOODLE_CAPABILITY_TTL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			return d
+		}
+	}
+	return 5 * time.Minute
+}
 
 func newMCPCommand(deps Deps, mode *safety.Mode) *cobra.Command {
 	cmd := &cobra.Command{
@@ -62,6 +76,12 @@ func newMCPServeCommand(deps Deps, mode *safety.Mode) *cobra.Command {
 			if resolved.Site != nil && resolved.Account != nil {
 				deps.Auth.KeepCredentialFresh(session, resolved.Site.ID, resolved.Account.ID)
 			}
+			// Five minutes is a compromise between two wrong answers. Never
+			// asking again means a function switched on by an administrator
+			// stays refused for the life of the server — measured. Asking on
+			// every tool call doubles the traffic this server puts on a
+			// university's Moodle for a setting that changes yearly.
+			session.ExpireCapabilitiesAfter(capabilityTTL())
 			// The handshake happens before any tool call, so a site that
 			// cannot be reached is reported now rather than inside a tool.
 			capabilities, err := session.Capabilities(cmd.Context())

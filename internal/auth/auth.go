@@ -9,6 +9,7 @@ package auth
 
 import (
 	"context"
+	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
@@ -93,6 +94,15 @@ type Session struct {
 	// nothing else. It is held here because every feature builds its own
 	// backends and each would otherwise have to be told separately.
 	wsOnly bool
+	// cachedAt and capabilityTTL expire what the site said it offers.
+	//
+	// A command lasting half a second has nothing to gain from asking twice,
+	// so the TTL is zero there and the answer is kept for the run. A process
+	// that lives for hours is a different case: measured, an MCP server whose
+	// site gained a function went on refusing to use it for ever, from its own
+	// cache, without asking again.
+	cachedAt      time.Time
+	capabilityTTL time.Duration
 }
 
 // Open builds a session from a stored credential.
@@ -177,6 +187,21 @@ func (s *Session) Cookie() moodle.SessionCookie {
 	return s.cookie
 }
 
+// capabilityStale reports whether what the site said is old enough to ask
+// again. Without a TTL nothing is ever stale, which is right for a command.
+func (s *Session) capabilityStale() bool {
+	return s.capabilityTTL > 0 && time.Since(s.cachedAt) > s.capabilityTTL
+}
+
+// ExpireCapabilitiesAfter makes a long-lived session ask the site again from
+// time to time.
+//
+// Only a process that outlives the answer needs this. A site's administrator
+// can switch a function on while an MCP server is running, and a server that
+// never asks again keeps telling its agent the tool is unavailable — measured,
+// and only a restart cleared it.
+func (s *Session) ExpireCapabilitiesAfter(d time.Duration) { s.capabilityTTL = d }
+
 // KeepCredentialFresh lets a session recover from a credential replaced while
 // it is running.
 //
@@ -208,7 +233,7 @@ func (s *Session) HasToken() bool { return s.token != "" }
 // Nothing is cached between runs: the CLI is short-lived, and a stale idea of
 // what a site allows is worse than the one request it would save.
 func (s *Session) Capabilities(ctx context.Context) (*site.Capabilities, error) {
-	if s.cached != nil {
+	if s.cached != nil && !s.capabilityStale() {
 		return s.cached, nil
 	}
 	if s.token == "" && s.cookie.Value != "" {
@@ -221,12 +246,21 @@ func (s *Session) Capabilities(ctx context.Context) (*site.Capabilities, error) 
 		capabilities.AccountID = s.accountID
 		capabilities.Credential = site.CredentialBrowserSession
 		s.cached = capabilities
+		s.cachedAt = time.Now()
 		return capabilities, nil
 	}
 	capabilities, err := s.client.SiteInfo(ctx, s.token, s.accountID)
 	if err != nil {
+		if s.cached != nil {
+			// The site was reachable once and is not now. Keeping the old
+			// answer beats failing the call: it is what this process has been
+			// using all along, and the request underneath will report the
+			// site's own trouble in its own words.
+			return s.cached, nil
+		}
 		return nil, err
 	}
 	s.cached = capabilities
+	s.cachedAt = time.Now()
 	return capabilities, nil
 }

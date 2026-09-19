@@ -20,7 +20,13 @@ import (
 // agent session is a session, and letting a tool call choose a different site
 // would make every answer's provenance a question.
 type Deps struct {
-	Capabilities *site.Capabilities
+	// Capabilities asks what the site offers, rather than holding the answer.
+	//
+	// A tool call in this server can happen hours after the last one, and a
+	// site's administrator can switch a function on in between. Captured once,
+	// the answer went on refusing a tool that had become available — measured,
+	// and only a restart cleared it.
+	Capabilities func(context.Context) (*site.Capabilities, error)
 	SiteName     string
 	AccountName  string
 
@@ -53,7 +59,11 @@ func Register(deps Deps, allowWrite bool) *Registry {
 		Description: "The courses the signed-in student is enrolled in.",
 		Schema:      schema(noArguments),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
-			result, err := deps.Courses.List(ctx, deps.Capabilities, course.ListQuery{})
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			result, err := deps.Courses.List(ctx, capabilities, course.ListQuery{})
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -77,7 +87,11 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
-			result, err := deps.Assignments.List(ctx, deps.Capabilities, args.Strings("course_ids"))
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			result, err := deps.Assignments.List(ctx, capabilities, args.Strings("course_ids"))
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -102,19 +116,23 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
 			ref, err := args.Required("assignment")
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			id, err := deps.Assignments.Locate(ctx, deps.Capabilities, ref)
+			id, err := deps.Assignments.Locate(ctx, capabilities, ref)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			detail, err := deps.Assignments.Show(ctx, deps.Capabilities, id)
+			detail, err := deps.Assignments.Show(ctx, capabilities, id)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			state, err := deps.Assignments.Status(ctx, deps.Capabilities, id)
+			state, err := deps.Assignments.Status(ctx, capabilities, id)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -139,15 +157,19 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
 			ref, err := args.Required("assignment")
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			id, err := deps.Assignments.Locate(ctx, deps.Capabilities, ref)
+			id, err := deps.Assignments.Locate(ctx, capabilities, ref)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			state, err := deps.Assignments.Status(ctx, deps.Capabilities, id)
+			state, err := deps.Assignments.Status(ctx, capabilities, id)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -162,7 +184,11 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"so there is no percentage to compute from it.",
 		Schema: schema(noArguments),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
-			result, err := deps.Grades.Overview(ctx, deps.Capabilities)
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			result, err := deps.Grades.Overview(ctx, capabilities)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -183,11 +209,15 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
 			id, err := args.Required("course_id")
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			result, err := deps.Grades.Course(ctx, deps.Capabilities, id)
+			result, err := deps.Grades.Course(ctx, capabilities, id)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -209,13 +239,17 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
 			query := calendar.Query{}
 			if days := args.Int("days"); days > 0 {
 				until := now().AddDate(0, 0, days)
 				query.Until = &until
 			}
 			query.Limit = args.Int("limit")
-			result, err := deps.Calendar.Upcoming(ctx, deps.Capabilities, query)
+			result, err := deps.Calendar.Upcoming(ctx, capabilities, query)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -235,7 +269,11 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
-			result, err := deps.Forums.List(ctx, deps.Capabilities, args.Strings("course_ids"))
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			result, err := deps.Forums.List(ctx, capabilities, args.Strings("course_ids"))
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -256,11 +294,15 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
 			ref, err := args.Required("forum")
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			result, err := deps.Forums.Discussions(ctx, deps.Capabilities, ref)
+			result, err := deps.Forums.Discussions(ctx, capabilities, ref)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -282,11 +324,15 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
 			ref, err := args.Required("discussion")
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			result, err := deps.Forums.Thread(ctx, deps.Capabilities, ref)
+			result, err := deps.Forums.Thread(ctx, capabilities, ref)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
@@ -357,15 +403,19 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"additionalProperties": false
 		}`),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
 			ref, err := args.Required("assignment")
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			id, err := deps.Assignments.Locate(ctx, deps.Capabilities, ref)
+			id, err := deps.Assignments.Locate(ctx, capabilities, ref)
 			if err != nil {
 				return v1.Envelope{}, err
 			}
-			result, err := deps.Assignments.Submit(ctx, deps.Capabilities, assignment.SubmitRequest{
+			result, err := deps.Assignments.Submit(ctx, capabilities, assignment.SubmitRequest{
 				AssignmentID:    id,
 				Files:           args.Strings("files"),
 				DraftOnly:       args.Bool("draft_only"),

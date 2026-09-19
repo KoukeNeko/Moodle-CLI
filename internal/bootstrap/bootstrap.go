@@ -174,7 +174,9 @@ func Run(ctx context.Context, build Build, args []string) int {
 		ServeMCP: func(ctx context.Context, session cli.MCPSession) error {
 			client, token := session.Session.Client(), session.Session.Token()
 			deps := mcp.Deps{
-				Capabilities: session.Capabilities,
+				// Asked per tool call rather than captured: this process
+				// outlives the answer, and the session expires it on a timer.
+				Capabilities: session.Session.Capabilities,
 				SiteName:     session.SiteName,
 				AccountName:  session.AccountName,
 				Courses: course.NewService(

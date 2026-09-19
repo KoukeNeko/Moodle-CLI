@@ -129,7 +129,7 @@ func build(t *testing.T, allowWrite bool) (*mcp.Registry, *fakeAssignments, *fak
 	}
 	clock := &fakeCalendar{}
 	deps := mcp.Deps{
-		Capabilities: site.NewCapabilities(),
+		Capabilities: staticCapabilities(site.NewCapabilities()),
 		SiteName:     "school",
 		AccountName:  "student1",
 		Courses:      course.NewService(fakeCourses{}),
@@ -216,7 +216,7 @@ func TestTheWritingToolIsRefusedByTheUseCaseToo(t *testing.T) {
 	registry, assignments, _ := build(t, false)
 	_ = registry
 	deps := mcp.Deps{
-		Capabilities: site.NewCapabilities(),
+		Capabilities: staticCapabilities(site.NewCapabilities()),
 		Assignments: assignment.NewService(assignments,
 			safety.Mode{ReadOnly: true}, assignments),
 	}
@@ -372,7 +372,7 @@ func TestAnAgentIsNotToldToDoWhatItCannotDo(t *testing.T) {
 	// terminal. An agent has neither a terminal nor a way to authenticate, so
 	// as advice it is worse than useless: it reads as something to try.
 	deps := mcp.Deps{
-		Capabilities: site.NewCapabilities(),
+		Capabilities: staticCapabilities(site.NewCapabilities()),
 		SiteName:     "school",
 		AccountName:  "student1",
 		Courses:      course.NewService(rejectingCourses{}),
@@ -404,4 +404,10 @@ func TestAnAgentIsNotToldToDoWhatItCannotDo(t *testing.T) {
 	if !strings.Contains(hint, "--site school") {
 		t.Errorf("the hint does not name the site to sign in to:\n%s", hint)
 	}
+}
+
+// staticCapabilities stands in for a session that never changes its mind,
+// which is every test here but the one about expiry.
+func staticCapabilities(c *site.Capabilities) func(context.Context) (*site.Capabilities, error) {
+	return func(context.Context) (*site.Capabilities, error) { return c, nil }
 }
