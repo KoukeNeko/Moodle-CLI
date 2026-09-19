@@ -152,6 +152,14 @@ type State struct {
 	// submit. It is meaningful only on an assignment that requires every
 	// member to; zero covers both "none left" and "the setting is off".
 	MembersStillToSubmit int
+	// TimerEndsAt is when a started time limit runs out, nil when the
+	// assignment has no limit or this account has not started it.
+	//
+	// It is not a deadline. Moodle accepts work after the timer expires and
+	// marks it as over time; what actually closes submission is the cut-off.
+	// Calling this the deadline would be a confident wrong answer in the other
+	// direction from ignoring it.
+	TimerEndsAt *time.Time
 	// Earlier is what this account handed in before a grader reopened the
 	// assignment, oldest first. It is empty on an assignment that was never
 	// reopened, and the site sends it to the student themselves rather than

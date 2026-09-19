@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -122,6 +123,9 @@ type lastAttemptDTO struct {
 	// can have different answers, and Moodle folds it into whether a
 	// submission is still open rather than into the dates it publishes.
 	ExtensionDueDate int64 `json:"extensionduedate"`
+	// TimeLimit is how long a started attempt may run, in seconds; zero when
+	// the assignment sets none.
+	TimeLimit int64 `json:"timelimit"`
 	// Submission is absent entirely until a submission record exists, which
 	// is different from one that exists and is empty: a record with status
 	// "new" is a real state Moodle reports.
@@ -390,6 +394,28 @@ func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
 	return out
 }
 
+// timerEnd is when a started time limit runs out, nil when none is running.
+//
+// Moodle's own timer takes the earlier of the limit and the assignment's
+// closing date (mod/assign timelimit_panel), so a limit that would outlast the
+// cut-off does not extend anything. This route has the limit but not those
+// dates, so it reports only the limit's own end and leaves the comparison to
+// whoever holds both.
+//
+// The clock starts server-side when the attempt is started, so timestarted
+// being absent is the signal that it has not: a limit alone means "if you
+// start", not "you have started".
+func timerEnd(last *lastAttemptDTO) *time.Time {
+	if last.TimeLimit <= 0 || last.Submission == nil {
+		return nil
+	}
+	started := last.Submission.TimeStarted
+	if started == nil || *started <= 0 {
+		return nil
+	}
+	return unixTime(*started + last.TimeLimit)
+}
+
 // earlierAttempts maps what the account handed in before it was reopened.
 //
 // Moodle counts attempts from zero and sends them oldest first; both are kept
@@ -461,6 +487,7 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 		MembersStillToSubmit: len(last.MembersWhoNeedToSubmit),
 		GradingStatus:        last.GradingStatus,
 		Earlier:              earlierAttempts(dto),
+		TimerEndsAt:          timerEnd(last),
 		Provenance:           site.NewProvenance(site.BackendWS),
 	}
 	if !last.SubmissionsEnabled {

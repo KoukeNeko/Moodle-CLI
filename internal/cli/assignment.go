@@ -403,6 +403,14 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 	if state.GradingStatus != nil {
 		fmt.Fprintf(w, "Grading:   %s\n", *state.GradingStatus)
 	}
+	if state.TimerEndsAt != nil {
+		// Deliberately not called a deadline. Moodle accepts work after the
+		// timer expires and marks it as over time; the cut-off is what closes
+		// submission. But a student reading only the due date has no idea a
+		// clock is running at all, and it can run out weeks earlier.
+		fmt.Fprintf(w, "Timer:     started; the time limit runs out at %s\n",
+			when(state.TimerEndsAt))
+	}
 	for _, earlier := range state.EarlierAttempts {
 		// Without this a reopened assignment reads as a first attempt that was
 		// never handed in: the current one really is empty, and the work the

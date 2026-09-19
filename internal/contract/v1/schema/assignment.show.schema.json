@@ -155,7 +155,8 @@
             "extension_due_date",
             "group_submission",
             "members_still_to_submit",
-            "earlier_attempts"
+            "earlier_attempts",
+            "timer_ends_at"
           ],
           "additionalProperties": false,
           "properties": {
@@ -259,6 +260,18 @@
                   }
                 }
               }
+            },
+            "timer_ends_at": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "When a started time limit runs out, null when none is running. Not a deadline: Moodle accepts work afterwards and marks it as over time; the cut-off closes submission."
             }
           }
         },

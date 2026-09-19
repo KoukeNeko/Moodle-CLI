@@ -1229,3 +1229,63 @@ func TestAFirstAttemptHasNoHistoryRatherThanNull(t *testing.T) {
 		t.Errorf("an absent history must be the empty array, not null:\n%s", jsonOut)
 	}
 }
+
+func TestARunningTimeLimitIsShownWithoutBeingCalledADeadline(t *testing.T) {
+	// 限時作業一旦開始，時限可能比截止日早幾個星期到期——而只讀截止日的學生
+	// 完全不知道有計時器在跑。但它**不是死線**：Moodle 逾時之後照樣收件、標記
+	// 成超時，真正關掉繳交的是 cutoff。講成 deadline 是往另一個方向的錯答案。
+	a := newAssignmentFixture(t, true, false)
+	state := lastAttempt("draft", nil)
+	attempt, _ := state["lastattempt"].(map[string]any)
+	attempt["timelimit"] = 3600
+	submission, _ := attempt["submission"].(map[string]any)
+	submission["timestarted"] = 1789000000
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, state)
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Timer:") {
+		t.Errorf("a running time limit went unmentioned:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "Deadline") || strings.Contains(stdout, "deadline") {
+		t.Errorf("the timer was called a deadline, which it is not:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", jsonOut)
+	if !strings.Contains(jsonOut, `"timer_ends_at":"`) {
+		t.Errorf("the contract did not carry the timer:\n%s", jsonOut)
+	}
+}
+
+func TestATimeLimitNotYetStartedIsNotRunning(t *testing.T) {
+	// 時限存在不代表它在跑。Moodle 是在學生按下開始時才用伺服器時間寫
+	// timestarted，所以它缺席就是「還沒開始」——報成正在倒數，會讓人以為
+	// 自己錯過了一個根本還沒啟動的計時器。
+	a := newAssignmentFixture(t, true, false)
+	state := lastAttempt("new", nil)
+	attempt, _ := state["lastattempt"].(map[string]any)
+	attempt["timelimit"] = 3600
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, state)
+
+	stdout, _, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "Timer:") {
+		t.Errorf("a time limit that has not started was reported as running:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(jsonOut, `"timer_ends_at":null`) {
+		t.Errorf("a timer that is not running must be null:\n%s", jsonOut)
+	}
+}

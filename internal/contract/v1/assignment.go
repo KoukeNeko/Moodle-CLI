@@ -198,7 +198,11 @@ type SubmissionState struct {
 	// the assignment, oldest first. It is never null — an empty list means the
 	// assignment was never reopened.
 	EarlierAttempts []Attempt `json:"earlier_attempts"`
-	FileCount       int       `json:"file_count"`
+	// TimerEndsAt is when a started time limit runs out, null when none is
+	// running. It is not a deadline: Moodle accepts work afterwards and marks
+	// it as over time, and the cut-off is what closes submission.
+	TimerEndsAt *string `json:"timer_ends_at"`
+	FileCount   int     `json:"file_count"`
 	// Files is what Moodle actually holds, so a caller can check that what was
 	// received is what they meant to send.
 	Files []File `json:"files"`
@@ -247,6 +251,7 @@ func newSubmissionState(assignmentID string, state assignment.State) SubmissionS
 		GroupSubmission:      state.GroupSubmission,
 		MembersStillToSubmit: state.MembersStillToSubmit,
 		EarlierAttempts:      newAttempts(state.Earlier),
+		TimerEndsAt:          Timestamp(state.TimerEndsAt),
 		FileCount:            state.FileCount,
 		Files:                newFiles(state.Files),
 	}

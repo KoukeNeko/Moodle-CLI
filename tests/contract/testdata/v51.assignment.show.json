@@ -47,6 +47,7 @@
       "group_submission": false,
       "members_still_to_submit": 0,
       "earlier_attempts": [],
+      "timer_ends_at": null,
       "file_count": 0,
       "files": []
     }
