@@ -56,10 +56,11 @@ func newAPIFunctionsCommand(r *Renderer, deps Deps) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "functions",
-		Short: "List the functions this site exposes, and what is known about them",
-		Long: "Lists what the site actually offers, with what this project knows about\n" +
-			"each one: whether it has been reviewed, whether it can change anything,\n" +
-			"and whether a failed call may be repeated.\n\n" +
+		Short: "List the functions this account can call, and what is known about them",
+		Long: "Lists what the web service this account signs in through offers, with\n" +
+			"what this project knows about each one: whether it has been reviewed,\n" +
+			"whether it can change anything, and whether a failed call may be\n" +
+			"repeated.\n\n" +
 			"A function that has not been reviewed is assumed to write and is never\n" +
 			"retried. That is not a gap in the list, it is the answer.",
 		Args:        cobra.NoArgs,
@@ -193,7 +194,10 @@ func collectParams(pairs []string, raw string) (map[string]any, error) {
 
 func writeFunctionTable(w io.Writer, functions []v1.APIFunction, total int) error {
 	if len(functions) == 0 {
-		_, err := fmt.Fprintf(w, "No matching functions (the site offers %d).\n", total)
+		// Same subject as everywhere else this count appears: the list is what
+		// the token's external service exposes, not what the site installed.
+		_, err := fmt.Fprintf(w,
+			"No matching functions (%d are offered to this account).\n", total)
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

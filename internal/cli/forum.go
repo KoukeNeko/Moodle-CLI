@@ -192,7 +192,11 @@ func writeForumTable(w io.Writer, forums []v1.Forum, named bool) error {
 
 func writeDiscussionTable(w io.Writer, discussions []v1.Discussion) error {
 	if len(discussions) == 0 {
-		_, err := fmt.Fprintln(w, "No discussions.")
+		// mod_forum_get_forum_discussions applies can_view_discussion and the
+		// forum's group mode before it answers, and skips what fails with a
+		// warning rather than an error. So this is about the reader, not the
+		// forum — the same distinction the listing above makes.
+		_, err := fmt.Fprintln(w, "No discussions visible to this account in this forum.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

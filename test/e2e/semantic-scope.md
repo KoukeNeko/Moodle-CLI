@@ -40,7 +40,7 @@ C(x) ⇒ E(x)
 | `course list` | `core_enrol_get_users_courses` | 這個帳號的選課 | `onlyactive` 寫死 true；隱藏課程；已結束；沒有選課但讀得到的課程不在裡面 | 這個帳號沒有選過課。**實測**：停權一筆選課，清單就空了 |
 | `assignment list` | `mod_assign_get_assignments` | 不指定課程時＝選課的課程 | 選課；課程可見性；投影會依繳交狀態省略欄位 | 沒有作業。**實測**：類別層的 manager 讀得到一門有兩份作業的課，清單是空的 |
 | `forum list` | `mod_forum_get_forums_by_courses` | 不指定課程時＝選課的課程 | 選課；活動可見性；`mod/forum:viewdiscussion`；被過濾的課程只進 warnings | 這個帳號看不到論壇。**實測**：同一個 manager 指定課程就讀到了 |
-| `forum discussions` | `mod_forum_get_forum_discussions` | 該論壇 | `can_view_discussion()`；Q&A 論壇在自己發文前看不到別人的 | 這個論壇沒有討論串。**未實測** |
+| `forum discussions` | `mod_forum_get_forum_discussions` | 該論壇 | `can_view_discussion()`；論壇的分組模式；被擋掉的只進 warnings 不報錯 | 這個論壇沒有討論串。**Q&A 那一路沒重現**：把論壇改成 qanda 之後，沒在裡面發過文的學生仍然讀得到只有一則貼文的討論——Moodle 擋的是回覆不是開頭那一則 |
 | `grade list` | `gradereport_user_get_grade_items` | 該課程該帳號 | 項目 `hidden`／hidden-until；user report 的可見度設定；含隱藏項目的總分也會被藏 | 沒有成績。**實測**：整門課項目設隱藏後報表全空，而 92、78.5 與總分 170.50 都還在 |
 | `grade overview` | `gradereport_overview_get_course_grades` | 這個帳號被評分的課程 | 只含被評分者（教職員不在內）；跳過 `showgrades=0` 的課程；站台隱藏的課程 | 沒有課程總分。**實測**：教 31 門課的教師、封存課裡有 135 分的學生、關掉 showgrades 後有 20 筆總分的學生，三種都是空的 |
 | `calendar upcoming` | `core_calendar_get_calendar_monthly_view`＋`core_calendar_get_action_events_by_timesort` | 月曆為基底，動作清單左接 | 月檢視套用行事曆的可見度；動作清單只回有動作回呼的事件，但預設**不**排除停權選課的課程 | 沒有到期的事情。**實測**：改用動作清單當唯一來源時，學生看到四分之一、教師看到零 |
@@ -50,6 +50,7 @@ C(x) ⇒ E(x)
 
 ## 還沒查的
 
-- `forum discussions` 的 Q&A 情境（研究列為中風險）。
+- `forum discussions` 的分組情境：全部討論都屬於另一組時，清單會不會是空的。
+  （Q&A 那一路已試過，見上表。）
 - `assignment status/show` 的投影：`lastattempt` 之類的子結構綁在能力上。
 - `auth methods` 的公開設定缺席。
