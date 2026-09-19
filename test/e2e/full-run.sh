@@ -772,6 +772,25 @@ if [ "${SUSPENDED:-0}" -gt 0 ] && [ -n "$UG2_TOKEN" ]; then
   unset MOODLE_WS_TOKEN
 fi
 
+# 通則：每一個空清單都要講出它問的是哪一個集合。
+#
+# 上面那些斷言是一句一句擋的，每找到一種新的說謊方式就得再寫一條。這一條問的
+# 是「這個答案有沒有主詞」，所以連還沒有人想過的說法也擋得住。拿身分最邊緣的
+# 那幾個帳號跑：零選課、停權、封存班、只掛在類別上的管理者。
+for who in nocourse ug2 s2024-1 mgr1; do
+  WHO_TOKEN=$(curl -fsS "http://127.0.0.1:$STD_PORT/login/token.php" \
+    -d username="$who" -d 'password=Student123!' -d service=moodle_mobile_app \
+    | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))' 2>/dev/null)
+  [ -z "$WHO_TOKEN" ] && continue
+  SECRETS+=("$WHO_TOKEN")
+  export MOODLE_WS_TOKEN="$WHO_TOKEN"
+  for what in "course list" "assignment list" "forum list" "grade overview" "calendar upcoming"; do
+    # shellcheck disable=SC2086
+    assert_names_its_set "$who：$what 的空答案有主詞" $what
+  done
+  unset MOODLE_WS_TOKEN
+done
+
 # 學生這一側也要量，而且量的是數字不是句子：行事曆以前只回「有動作的」那幾筆，
 # 對 grad1 是四分之一。少講不會觸發任何一條「不得宣稱」的斷言。
 GRAD_CAL=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \

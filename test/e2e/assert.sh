@@ -54,6 +54,32 @@ assert_not_claiming() {
   assert_passed "$name"
 }
 
+# assert_names_its_set <名稱> <命令...>
+#
+# 通則，不是個案：**任何**空的清單都必須講出它問的是哪一個集合。
+#
+# 前面那些 assert_not_claiming 是一句一句擋的，每發現一種新的說謊方式就要再加
+# 一條。這一條問的是不同的問題——「這個答案有沒有主詞」——所以一個還沒有人想過
+# 的新命令、或一個被改壞的舊句子，都會在這裡被攔下來，不必先有人受害。
+#
+# 判準刻意寬鬆：只要出現任何一個「界定範圍」的詞就算。要的是讓「No forums.」
+# 這種光禿禿的斷言過不了關，不是規定文案怎麼寫。
+assert_names_its_set() {
+  local name="$1"; shift
+  local out
+  out=$("$BIN" "$@" 2>&1)
+  # 有資料的就不是這一條要管的
+  if printf '%s' "$out" | head -1 | grep -qE '^(ID|WHEN|COURSE|ITEM|METHOD)'; then
+    assert_passed "$name（有資料，不適用）"
+    return
+  fi
+  if printf '%s' "$out" | grep -qE 'this account|enrolled on|visible|report covers|period asked for|grade report'; then
+    assert_passed "$name"
+    return
+  fi
+  assert_failed "$name" "空的答案沒有說出它問的是哪一個集合" "$out"
+}
+
 assert_passed() {
   ASSERT_PASS=$((ASSERT_PASS + 1))
   printf '  ✓ %s\n' "$1" | tee -a "$TRANSCRIPT"
