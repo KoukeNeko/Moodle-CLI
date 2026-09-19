@@ -17,50 +17,62 @@ LOGS="$REPO_DIR/test/e2e/logs"
 
 resolve() { case "$1" in */*) printf '%s' "$1" ;; *) printf '%s' "$LOGS/$1" ;; esac; }
 
-# 哪一座站台跑的。不同版本的站台之間比對沒有意義——題材、id、甚至功能都不一樣，
-# 差異會多到把真正的訊號淹掉。第一次寫這支的時候沒想到，於是拿 v45 的結果去跟
-# v52 的比，報出 3794 行「差異」。
-site_of() { sed -n 's/^# 站台：//p' "$1/transcript.log" 2>/dev/null | head -1; }
+# 一輪只能跟「量了同一件事」的另一輪比。什麼叫同一件事，寫在 run.json 裡：
+# 同一個 Moodle 版本、同一組站台，而且**跑完了**。
+#
+# 這三個條件各自對應一次真實的假警報：拿 v45 的結果跟 v52 比（87 行假差異）、
+# 拿被把關中途擋掉的一輪當基準（後面每個命令都像消失了）、以及題材被自己用掉。
+# 先前是從 transcript 的表頭猜站台，那既讀不出版本也讀不出有沒有跑完。
+# 第三個參數 --auto 表示這個基準是腳本自己挑的。自己挑的必須挑得出理由，
+# 所以沒有 run.json 的紀錄不能入選；人明確指名的那一對則放行，
+# 因為那是刻意要讀一份舊紀錄。
+comparable() {
+  python3 "$REPO_DIR/test/e2e/comparable.py" "$1" "$2" ${3:-}
+}
+
+describe() {
+  python3 -c '
+import json, sys
+try:
+    m = json.load(open(sys.argv[1] + "/run.json"))
+except OSError:
+    print("沒有 run.json（這一輪早於這個機制）"); raise SystemExit
+print("Moodle %s，%d 個命令，%s" % (
+    m["moodle_release"], m["commands"],
+    "跑完了" if m["complete"] else "沒跑完"))' "$1"
+}
 
 if [ $# -ge 2 ]; then
   NEW=$(resolve "$1"); OLD=$(resolve "$2")
-  if [ "$(site_of "$NEW")" != "$(site_of "$OLD")" ]; then
-    echo "這兩輪跑的不是同一座站台，比對沒有意義：" >&2
-    echo "  ${NEW##*/}: $(site_of "$NEW")" >&2
-    echo "  ${OLD##*/}: $(site_of "$OLD")" >&2
+  if ! why=$(comparable "$NEW" "$OLD"); then
+    echo "這兩輪不能比：$why" >&2
+    echo "  ${NEW##*/}: $(describe "$NEW")" >&2
+    echo "  ${OLD##*/}: $(describe "$OLD")" >&2
     exit 2
   fi
 else
   mapfile -t runs < <(ls -1d "$LOGS"/*/ 2>/dev/null | sed 's:/$::' | sort)
   [ "${#runs[@]}" -ge 1 ] || { echo "logs/ 裡沒有紀錄" >&2; exit 2; }
   NEW=${runs[-1]}
-  NEWSITE=$(site_of "$NEW")
   OLD=""
   for (( i=${#runs[@]} - 2; i >= 0; i-- )); do
-    [ "$(site_of "${runs[$i]}")" = "$NEWSITE" ] || continue
-    # An aborted run is not a baseline. full-run.sh stops when it finds no
-    # assignment left to submit, so its transcript ends part-way and every
-    # command after that point looks like it disappeared. Comparing against
-    # one reports a regression that is really just a shorter list.
-    grep -q '^共執行' "${runs[$i]}/transcript.log" 2>/dev/null || continue
+    comparable "$NEW" "${runs[$i]}" --auto >/dev/null || continue
     OLD=${runs[$i]}
     break
   done
   if [ -z "$OLD" ]; then
-    # 全新的 volume 跑第一輪就是這樣：沒有可比的基準不是失敗。
-    echo "本次：${NEW##*/}（$NEWSITE）"
-    echo "沒有同一座站台的前一輪可以比對——如果這是第一輪，那是預期的。"
+    # 全新 volume 的第一輪就是這樣：沒有可比的基準不是失敗。
+    echo "本次：${NEW##*/}（$(describe "$NEW")）"
+    echo "沒有可以比對的前一輪——如果這是第一輪，那是預期的。"
     exit 0
   fi
 fi
-for d in "$OLD" "$NEW"; do
-  [ -f "$d/summary.tsv" ] || { echo "$d 裡沒有 summary.tsv" >&2; exit 2; }
-done
+
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-echo "基準：${OLD##*/}"
-echo "本次：${NEW##*/}"
+echo "基準：${OLD##*/}（$(describe "$OLD")）"
+echo "本次：${NEW##*/}（$(describe "$NEW")）"
 
 # 每一輪本來就會不同的東西先抹掉，否則連續兩次一模一樣的跑測也會整片不同：
 # 跑測時間、建置資訊、站台回的時間戳、mktemp 的目錄、一次性的 QR token。

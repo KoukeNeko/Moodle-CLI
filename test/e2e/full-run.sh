@@ -40,6 +40,17 @@ LOGDIR="$REPO_DIR/test/e2e/logs/$STAMP"
 mkdir -p "$LOGDIR"
 TRANSCRIPT="$LOGDIR/transcript.log"
 SUMMARY="$LOGDIR/summary.tsv"
+# run.json is what makes one run comparable to another. Without it the only
+# way to tell two runs apart was the transcript's own header, and nothing
+# recorded whether a run had finished — so a run the guard stopped part way
+# was picked as a baseline, and every command after that point looked like it
+# had vanished.
+MANIFEST="$LOGDIR/run.json"
+
+# The container behind STD_PORT. The control plane asks it things the CLI must
+# not be asked — a tool under test cannot witness its own preconditions.
+STD_CONTAINER=$(docker compose --project-name moodle-cli-e2e \
+  --file "$REPO_DIR/test/e2e/docker-compose.yml" ps -q "v${STD_PORT:1:1}${STD_PORT:2:1}-std" 2>/dev/null || true)
 printf 'exit\tcommand\n' > "$SUMMARY"
 
 WORKDIR=$(mktemp -d)
@@ -222,6 +233,35 @@ if [ -f "$CA" ] && curl -fsS --cacert "$CA" -o /dev/null \
   export SSL_CERT_FILE="$CA"
 fi
 
+
+# moodle_release asks the site what it is. Two releases answer differently
+# enough that comparing their runs reports dozens of differences that are not
+# regressions, so the answer belongs beside the run.
+#
+# It needs a token: the public configuration a site offers before sign-in does
+# not carry the release. A run that has not reached the login section yet
+# records "unknown" and fills it in at the end, when the token exists.
+moodle_release() {
+  # Asked of the site rather than through the CLI. The run signs out before it
+  # summarises, so by then the CLI has no site configured to ask — and a tool
+  # under test is the wrong witness for the metadata that decides whether its
+  # own results may be compared.
+  E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" release 2>/dev/null \
+    | tr -d "\r" | head -1 || echo unknown
+}
+
+# write_manifest is called once with false and again at the end with true, so a
+# run that is killed leaves a manifest saying it never finished rather than
+# leaving no trace of the interruption.
+write_manifest() {
+  MANIFEST_COMPLETE="$1" MANIFEST_COMMANDS="${2:-0}" MANIFEST_PATH="$MANIFEST" \
+  MANIFEST_REVISION="$(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+  MANIFEST_RELEASE="$(moodle_release "$STD_PORT")" \
+  MANIFEST_STD="$STD_PORT" MANIFEST_NOWS="$NOWS_PORT" \
+  MANIFEST_WITH_NOWS="$WITH_NOWS" MANIFEST_TLS="$HAVE_TLS" \
+  python3 "$REPO_DIR/test/e2e/write-manifest.py"
+}
+
 {
   printf '# moodle-cli 全功能逐字紀錄\n'
   printf '# 時間：%s\n' "$(date -Is)"
@@ -234,6 +274,8 @@ fi
   printf '# keychain：%s\n' "$([ $HAVE_KEYRING = 1 ] && echo "有（test docker 的 keyring 容器）" || echo "沒有，憑證改用環境變數")"
   printf '\n'
 } > "$TRANSCRIPT"
+
+write_manifest false
 
 # ─────────────────────────────────────────────────────────────────────────
 say "1. 不需要站台的命令"
@@ -405,6 +447,24 @@ run assignment status 999999
 say "10. 交作業"
 note "先找一份還沒交、而且不需要提交聲明的"
 TARGET=$(pick_submittable)
+
+# The picked assignment is the one precondition this run mutates, so it is the
+# one worth proving independently. pick_submittable asks `assignment status`,
+# which is a tool under test: if that command ever reported a submitted
+# assignment as new, the run would pick one already handed in, fail to submit,
+# and report a regression that is really two faults covering for each other.
+#
+# The control plane reads the database instead. A mismatch stops the run: the
+# world the next section assumes was never established, and a case that cannot
+# arrange its world has no standing to judge the product.
+if [ -n "$TARGET" ] && [ -n "$STD_CONTAINER" ]; then
+  if ! E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+       submittable grad1 2>/dev/null | grep -qx "$TARGET"; then
+    echo "前提沒有成立：CLI 說作業 $TARGET 還沒交，資料庫不同意。" >&2
+    echo "這不是產品回歸，是測試的世界沒有建立起來——先查 assignment status。" >&2
+    exit 3
+  fi
+fi
 if [ -z "$TARGET" ]; then
   # 這一節會把挑中的作業交出去，所以上一次的執行會把它用掉。沒有把關的話，
   # $TARGET 是空的，後面十幾個命令會變成 `assignment submit  <檔名>`——紀錄看起來
@@ -813,6 +873,7 @@ fi
 say "結果"
 {
   printf '共執行 %d 個命令。\n\n' "$total"
+  write_manifest true "$total"
   printf '結束碼分布：\n'
   for code in $(printf '%s\n' "${!exits[@]}" | sort -n); do
     case $code in
@@ -872,6 +933,7 @@ PY
 )"
   printf '\n逐字紀錄：%s\n' "$TRANSCRIPT"
   printf '逐條清單：%s\n' "$SUMMARY"
+  printf '這一輪的來歷：%s\n' "$MANIFEST"
 } | tee -a "$TRANSCRIPT"
 
 # 非零結束碼在這裡多半是預期的（拒絕、找不到、衝突），所以腳本本身不因此失敗。
