@@ -403,6 +403,22 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 	if state.GradingStatus != nil {
 		fmt.Fprintf(w, "Grading:   %s\n", *state.GradingStatus)
 	}
+	if state.GroupSubmission {
+		// Without this, "Handed in: yes" reads as a statement about the person
+		// asking. On a group assignment it is about the group, and the
+		// assignment's own settings are in a different call the status command
+		// never makes — so the reader had nothing to tell them.
+		fmt.Fprintln(w, "Team:      this is a group submission, so the state above "+
+			"is the group's")
+	}
+	if state.MembersStillToSubmit > 0 {
+		phrase := "members still have"
+		if state.MembersStillToSubmit == 1 {
+			phrase = "member still has"
+		}
+		fmt.Fprintf(w, "Waiting:   %d group %s to submit\n",
+			state.MembersStillToSubmit, phrase)
+	}
 	if state.ExtensionDueDate != nil {
 		// The assignment's own cut-off is printed from the assignment, and it
 		// can already have passed while this account may still submit: an

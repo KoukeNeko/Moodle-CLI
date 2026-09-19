@@ -99,6 +99,16 @@ type lastAttemptDTO struct {
 	Locked             bool   `json:"locked"`
 	Graded             bool   `json:"graded"`
 	GradingStatus      string `json:"gradingstatus"`
+	// SubmissionGroup is the group this submission belongs to, 0 when the
+	// assignment is not a group one. On a group assignment "handed in" is
+	// about the group, and a reader has no way to know that from the status
+	// alone: the assignment's own settings live in a different call.
+	SubmissionGroup int64 `json:"submissiongroup"`
+	// MembersWhoNeedToSubmit is populated only when every member has to
+	// submit. An empty list is then "everyone has", which is a different
+	// statement from "this setting is off" — Moodle sends an empty list for
+	// both, so it is the count and not the emptiness that is reported.
+	MembersWhoNeedToSubmit []int64 `json:"submissiongroupmemberswhoneedtosubmit"`
 	// ExtensionDueDate is this account's own extension, granted per person.
 	// It is not on the assignment: two students reading the same assignment
 	// can have different answers, and Moodle folds it into whether a
@@ -403,12 +413,14 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 				"mod/assign:viewownsubmissionsummary")
 	}
 	state := assignment.State{
-		Status:        assignment.StatusNew,
-		CanEdit:       last.CanEdit,
-		CanSubmit:     last.CanSubmit,
-		ExtensionDue:  unixTime(last.ExtensionDueDate),
-		GradingStatus: last.GradingStatus,
-		Provenance:    site.NewProvenance(site.BackendWS),
+		Status:               assignment.StatusNew,
+		CanEdit:              last.CanEdit,
+		CanSubmit:            last.CanSubmit,
+		ExtensionDue:         unixTime(last.ExtensionDueDate),
+		GroupSubmission:      last.SubmissionGroup != 0,
+		MembersStillToSubmit: len(last.MembersWhoNeedToSubmit),
+		GradingStatus:        last.GradingStatus,
+		Provenance:           site.NewProvenance(site.BackendWS),
 	}
 	if !last.SubmissionsEnabled {
 		return state, errs.New(errs.CodeUnavailable,

@@ -1112,3 +1112,51 @@ func TestAReopenedAttemptIsNotCalledADraft(t *testing.T) {
 		t.Errorf("a reopened attempt is not currently handed in:\n%s", jsonOut)
 	}
 }
+
+func TestAGroupSubmissionSaysWhoseStateThatIs(t *testing.T) {
+	// 團體作業上，「Handed in: yes」講的是**這一組**，不是問的人。作業本身的
+	// teamsubmission 設定在另一支呼叫裡，status 這條路從來不會去問，所以讀的人
+	// 沒有任何東西可以判斷。實測 ug1 已交、ug2 沒交，兩個人看到的都是這一組的狀態。
+	a := newAssignmentFixture(t, true, false)
+	state := lastAttempt("submitted", []any{"report.pdf"})
+	attempt, _ := state["lastattempt"].(map[string]any)
+	attempt["submissiongroup"] = 18
+	attempt["submissiongroupmemberswhoneedtosubmit"] = []any{11}
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, state)
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "group submission") {
+		t.Errorf("a group's state was presented as this account's:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "1 group member still has to submit") {
+		t.Errorf("a group that is not finished was not reported as unfinished:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", jsonOut)
+	if !strings.Contains(jsonOut, `"group_submission":true`) ||
+		!strings.Contains(jsonOut, `"members_still_to_submit":1`) {
+		t.Errorf("the contract did not carry the group state:\n%s", jsonOut)
+	}
+}
+
+func TestAnIndividualSubmissionIsNotCalledAGroupOne(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+
+	stdout, _, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "group submission") {
+		t.Errorf("an individual submission was reported as a group's:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "Waiting:") {
+		t.Errorf("an individual submission was said to be waiting on others:\n%s", stdout)
+	}
+}

@@ -133,6 +133,14 @@ type State struct {
 	// off the assignment: the cut-off printed there can be in the past while
 	// this one is still ahead, and Moodle will accept the work.
 	ExtensionDue *time.Time
+	// GroupSubmission reports that this is a group's submission rather than
+	// this account's own. "Handed in: yes" then means the group's work is in,
+	// which is not the same sentence.
+	GroupSubmission bool
+	// MembersStillToSubmit counts the group members Moodle says have yet to
+	// submit. It is meaningful only on an assignment that requires every
+	// member to; zero covers both "none left" and "the setting is off".
+	MembersStillToSubmit int
 	// GradingStatus is Moodle's word for whether it has been marked.
 	GradingStatus string
 	ModifiedAt    *time.Time

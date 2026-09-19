@@ -10,6 +10,8 @@
     "grading_status": "notgraded",
     "modified_at": "2026-09-18T09:34:19Z",
     "extension_due_date": null,
+    "group_submission": false,
+    "members_still_to_submit": 0,
     "file_count": 0,
     "files": []
   },

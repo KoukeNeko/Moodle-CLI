@@ -187,7 +187,14 @@ type SubmissionState struct {
 	// is granted per person: the cut-off published on the assignment can have
 	// passed while this account may still submit.
 	ExtensionDueDate *string `json:"extension_due_date"`
-	FileCount        int     `json:"file_count"`
+	// GroupSubmission is true when this is a group's submission. "handed_in"
+	// then describes the group's work, not this account's.
+	GroupSubmission bool `json:"group_submission"`
+	// MembersStillToSubmit counts group members Moodle says have yet to
+	// submit. Zero covers both "none left" and "the assignment does not
+	// require every member to", so it is not proof the group is finished.
+	MembersStillToSubmit int `json:"members_still_to_submit"`
+	FileCount            int `json:"file_count"`
 	// Files is what Moodle actually holds, so a caller can check that what was
 	// received is what they meant to send.
 	Files []File `json:"files"`
@@ -201,16 +208,18 @@ func AssignmentStatus(assignmentID string, state assignment.State, siteName, acc
 
 func newSubmissionState(assignmentID string, state assignment.State) SubmissionState {
 	return SubmissionState{
-		AssignmentID:     assignmentID,
-		Status:           string(state.Status),
-		HandedIn:         state.Status == assignment.StatusSubmitted,
-		CanEdit:          state.CanEdit,
-		CanSubmit:        state.CanSubmit,
-		GradingStatus:    optional(state.GradingStatus),
-		ModifiedAt:       Timestamp(state.ModifiedAt),
-		ExtensionDueDate: Timestamp(state.ExtensionDue),
-		FileCount:        state.FileCount,
-		Files:            newFiles(state.Files),
+		AssignmentID:         assignmentID,
+		Status:               string(state.Status),
+		HandedIn:             state.Status == assignment.StatusSubmitted,
+		CanEdit:              state.CanEdit,
+		CanSubmit:            state.CanSubmit,
+		GradingStatus:        optional(state.GradingStatus),
+		ModifiedAt:           Timestamp(state.ModifiedAt),
+		ExtensionDueDate:     Timestamp(state.ExtensionDue),
+		GroupSubmission:      state.GroupSubmission,
+		MembersStillToSubmit: state.MembersStillToSubmit,
+		FileCount:            state.FileCount,
+		Files:                newFiles(state.Files),
 	}
 }
 
