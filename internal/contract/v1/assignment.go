@@ -182,7 +182,12 @@ type SubmissionState struct {
 	CanSubmit     bool    `json:"can_submit"`
 	GradingStatus *string `json:"grading_status"`
 	ModifiedAt    *string `json:"modified_at"`
-	FileCount     int     `json:"file_count"`
+	// ExtensionDueDate is this account's own extension, null when there is
+	// none. It belongs here and not beside the assignment's dates because it
+	// is granted per person: the cut-off published on the assignment can have
+	// passed while this account may still submit.
+	ExtensionDueDate *string `json:"extension_due_date"`
+	FileCount        int     `json:"file_count"`
 	// Files is what Moodle actually holds, so a caller can check that what was
 	// received is what they meant to send.
 	Files []File `json:"files"`
@@ -196,15 +201,16 @@ func AssignmentStatus(assignmentID string, state assignment.State, siteName, acc
 
 func newSubmissionState(assignmentID string, state assignment.State) SubmissionState {
 	return SubmissionState{
-		AssignmentID:  assignmentID,
-		Status:        string(state.Status),
-		HandedIn:      state.Status == assignment.StatusSubmitted,
-		CanEdit:       state.CanEdit,
-		CanSubmit:     state.CanSubmit,
-		GradingStatus: optional(state.GradingStatus),
-		ModifiedAt:    Timestamp(state.ModifiedAt),
-		FileCount:     state.FileCount,
-		Files:         newFiles(state.Files),
+		AssignmentID:     assignmentID,
+		Status:           string(state.Status),
+		HandedIn:         state.Status == assignment.StatusSubmitted,
+		CanEdit:          state.CanEdit,
+		CanSubmit:        state.CanSubmit,
+		GradingStatus:    optional(state.GradingStatus),
+		ModifiedAt:       Timestamp(state.ModifiedAt),
+		ExtensionDueDate: Timestamp(state.ExtensionDue),
+		FileCount:        state.FileCount,
+		Files:            newFiles(state.Files),
 	}
 }
 

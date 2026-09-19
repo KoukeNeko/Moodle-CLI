@@ -99,6 +99,11 @@ type lastAttemptDTO struct {
 	Locked             bool   `json:"locked"`
 	Graded             bool   `json:"graded"`
 	GradingStatus      string `json:"gradingstatus"`
+	// ExtensionDueDate is this account's own extension, granted per person.
+	// It is not on the assignment: two students reading the same assignment
+	// can have different answers, and Moodle folds it into whether a
+	// submission is still open rather than into the dates it publishes.
+	ExtensionDueDate int64 `json:"extensionduedate"`
 	// Submission is absent entirely until a submission record exists, which
 	// is different from one that exists and is empty: a record with status
 	// "new" is a real state Moodle reports.
@@ -401,6 +406,7 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 		Status:        assignment.StatusNew,
 		CanEdit:       last.CanEdit,
 		CanSubmit:     last.CanSubmit,
+		ExtensionDue:  unixTime(last.ExtensionDueDate),
 		GradingStatus: last.GradingStatus,
 		Provenance:    site.NewProvenance(site.BackendWS),
 	}

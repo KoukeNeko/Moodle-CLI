@@ -123,6 +123,11 @@ type State struct {
 	// submit, and nothing here gates on it.
 	CanEdit   bool
 	CanSubmit bool
+	// ExtensionDue is when this account in particular may submit until, nil
+	// when no extension was granted. It is per person, so it cannot be read
+	// off the assignment: the cut-off printed there can be in the past while
+	// this one is still ahead, and Moodle will accept the work.
+	ExtensionDue *time.Time
 	// GradingStatus is Moodle's word for whether it has been marked.
 	GradingStatus string
 	ModifiedAt    *time.Time

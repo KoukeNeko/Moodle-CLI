@@ -1,1 +1,53 @@
-{"schema_version":1,"kind":"assignment.list","data":[{"id":"2","course_id":"2","cmid":"2","name":"A1 direct submit","due_date":null,"cut_off_date":null,"needs_hand_in":null,"requires_statement":false,"submission_plugins":[],"max_files":null,"max_bytes":null},{"id":"3","course_id":"2","cmid":"3","name":"A2 submit button","due_date":null,"cut_off_date":null,"needs_hand_in":null,"requires_statement":false,"submission_plugins":[],"max_files":null,"max_bytes":null},{"id":"4","course_id":"2","cmid":"4","name":"A3 statement","due_date":null,"cut_off_date":null,"needs_hand_in":null,"requires_statement":false,"submission_plugins":[],"max_files":null,"max_bytes":null}],"meta":{"site":"nows","account":"env","source":"html","partial":false,"missing":[],"next_cursor":null}}
+{
+  "schema_version": 1,
+  "kind": "assignment.list",
+  "data": [
+    {
+      "id": "2",
+      "course_id": "2",
+      "cmid": "2",
+      "name": "A1 direct submit",
+      "due_date": null,
+      "cut_off_date": null,
+      "needs_hand_in": null,
+      "requires_statement": false,
+      "submission_plugins": [],
+      "max_files": null,
+      "max_bytes": null
+    },
+    {
+      "id": "3",
+      "course_id": "2",
+      "cmid": "3",
+      "name": "A2 submit button",
+      "due_date": null,
+      "cut_off_date": null,
+      "needs_hand_in": null,
+      "requires_statement": false,
+      "submission_plugins": [],
+      "max_files": null,
+      "max_bytes": null
+    },
+    {
+      "id": "4",
+      "course_id": "2",
+      "cmid": "4",
+      "name": "A3 statement",
+      "due_date": null,
+      "cut_off_date": null,
+      "needs_hand_in": null,
+      "requires_statement": false,
+      "submission_plugins": [],
+      "max_files": null,
+      "max_bytes": null
+    }
+  ],
+  "meta": {
+    "site": "nows",
+    "account": "env",
+    "source": "html",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}

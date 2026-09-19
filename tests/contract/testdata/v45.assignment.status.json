@@ -9,6 +9,7 @@
     "can_submit": false,
     "grading_status": "notgraded",
     "modified_at": "2026-09-18T09:34:19Z",
+    "extension_due_date": null,
     "file_count": 0,
     "files": []
   },

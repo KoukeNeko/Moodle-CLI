@@ -28,7 +28,8 @@
         "grading_status",
         "modified_at",
         "file_count",
-        "files"
+        "files",
+        "extension_due_date"
       ],
       "additionalProperties": false,
       "properties": {
@@ -77,6 +78,18 @@
             "$ref": "#/$defs/file"
           },
           "description": "What Moodle actually holds, so a caller can check that what was received is what they meant to send"
+        },
+        "extension_due_date": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "This account's own extension, null when none was granted. Granted per person, so the assignment's cut-off may have passed while this account may still submit."
         }
       }
     },

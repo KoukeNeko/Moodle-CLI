@@ -403,6 +403,15 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 	if state.GradingStatus != nil {
 		fmt.Fprintf(w, "Grading:   %s\n", *state.GradingStatus)
 	}
+	if state.ExtensionDueDate != nil {
+		// The assignment's own cut-off is printed from the assignment, and it
+		// can already have passed while this account may still submit: an
+		// extension is granted per person and Moodle folds it into whether
+		// the submission is open, not into the dates it publishes. Without
+		// this line the reader sees only the date they appear to have missed.
+		fmt.Fprintf(w, "Extension: %s — this account may submit until then\n",
+			(*state.ExtensionDueDate)[:10])
+	}
 	if !state.CanEdit {
 		// Moodle's canedit is one flag over several causes: a submission window
 		// that has not opened, a cut-off that has passed, a lock, a missing

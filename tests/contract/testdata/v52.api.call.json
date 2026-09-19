@@ -13,7 +13,7 @@
       "lang": "en",
       "userid": 4,
       "siteurl": "http:\/\/localhost:8521",
-      "userpictureurl": "http:\/\/localhost:8521\/theme\/image.php\/boost\/core\/1789754669\/u\/f1",
+      "userpictureurl": "http:\/\/localhost:8521\/theme\/image.php\/boost\/core\/1789783793\/u\/f1",
       "functions": [
         {
           "name": "core_badges_get_badge",
@@ -229,10 +229,6 @@
         },
         {
           "name": "core_enrol_search_users",
-          "version": "2026042003"
-        },
-        {
-          "name": "core_enrol_get_users_courses",
           "version": "2026042003"
         },
         {
@@ -1730,6 +1726,10 @@
         {
           "name": "tiny_premium_get_api_key",
           "version": "2026042000"
+        },
+        {
+          "name": "core_enrol_get_users_courses",
+          "version": "2026042003"
         }
       ],
       "downloadfiles": 1,

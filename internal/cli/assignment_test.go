@@ -1032,3 +1032,48 @@ func TestAnAccountThatIsBothStudentAndStaffIsStillAskedAboutItself(t *testing.T)
 		t.Errorf("a participant was told they are staff:\n%s", stderr)
 	}
 }
+
+func TestAGrantedExtensionIsShownBesideTheCutOffItOutlives(t *testing.T) {
+	// 展延是發給個人的，Moodle 把它折進「還能不能交」，不會改作業上公布的日期。
+	// 所以一個拿到展延的學生看到的是一個**已經過去**的截止日，而他其實還能交。
+	// 實測：cutoff 在 2 天前、展延到 5 天後，站台回 canedit=true。
+	a := newAssignmentFixture(t, true, false)
+	state := lastAttempt("new", nil)
+	attempt, _ := state["lastattempt"].(map[string]any)
+	attempt["extensionduedate"] = 1789600000
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, state)
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Extension:") {
+		t.Errorf("an extension this account holds was not shown:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", jsonOut)
+	if !strings.Contains(jsonOut, `"extension_due_date":"`) {
+		t.Errorf("the contract did not carry the extension:\n%s", jsonOut)
+	}
+}
+
+func TestNoExtensionIsNotReportedAsOne(t *testing.T) {
+	// Moodle 對「沒有展延」送的是 0，照讀會變成 1970 年——那是一個看起來很具體
+	// 的錯答案。
+	a := newAssignmentFixture(t, true, false)
+
+	stdout, _, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "Extension:") {
+		t.Errorf("an assignment with no extension reported one:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "1970") {
+		t.Errorf("zero was read as a date:\n%s", stdout)
+	}
+}

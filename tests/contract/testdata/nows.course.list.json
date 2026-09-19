@@ -1,1 +1,23 @@
-{"schema_version":1,"kind":"course.list","data":[{"id":"2","short_name":"CS204","full_name":"Operating Systems","start_date":"2026-09-18T09:27:19Z","end_date":"2027-09-18T09:27:19Z","visible":true,"progress":null}],"meta":{"site":"nows","account":"env","source":"ajax","partial":false,"missing":[],"next_cursor":null}}
+{
+  "schema_version": 1,
+  "kind": "course.list",
+  "data": [
+    {
+      "id": "2",
+      "short_name": "CS204",
+      "full_name": "Operating Systems",
+      "start_date": "2026-09-18T09:27:19Z",
+      "end_date": "2027-09-18T09:27:19Z",
+      "visible": true,
+      "progress": null
+    }
+  ],
+  "meta": {
+    "site": "nows",
+    "account": "env",
+    "source": "ajax",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}
