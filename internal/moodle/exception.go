@@ -49,8 +49,13 @@ var knownErrorCodes = map[string]classification{
 	// request never ran, so re-authenticating is the whole fix.
 	"servicerequireslogin": {errs.CodeAuthentication, errs.ReasonTokenExpired,
 		"sign in again with `moodle auth login`", false},
-	"accessexception": {errs.CodeAuthentication, errs.ReasonTokenExpired,
-		"sign in again with `moodle auth login`", false},
+	// accessexception is not about the credential: Moodle sends it when the
+	// service behind the token does not expose the function asked for, and a
+	// perfectly valid token gets it — measured, while an invalid one gets
+	// invalidtoken instead. Reported as an authentication problem it sent the
+	// reader to sign in again, which can only produce the same refusal.
+	"accessexception": {errs.CodeUnavailable, errs.ReasonCapability,
+		"this site's web service does not offer that function", false},
 	"invalidlogin": {errs.CodeAuthentication, "",
 		"check the username and password", false},
 	"usernotfullysetup": {errs.CodeAuthentication, "",

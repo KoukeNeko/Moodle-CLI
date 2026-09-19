@@ -538,3 +538,50 @@ func TestARouteThatCannotSeeAFlagDoesNotAnswerIt(t *testing.T) {
 		t.Errorf("a flag the site did send was dropped:\n%s", stdout)
 	}
 }
+
+func TestASiteThatCannotSayWhoIsGradedSaysSo(t *testing.T) {
+	// 站台的服務裡沒有那支函式時，我們就真的不知道這份成績單是不是關於這個帳號的。
+	// 教職員在這種站台上會讀到一張全是「-」的表，看起來像「你的作業還沒被改」。
+	f := newFixture(t)
+	f.withGrades(gradeItem(1, "Essay 1", "mod", nil))
+	// 真站台在函式不在服務裡時回的就是這個——實測過，而且**有效的 token 也會拿到**。
+	f.server.FailException(moodle.FunctionGradableUsers,
+		"webservice_access_exception", "accessexception", "Access control exception")
+	f.addSiteAndLogin()
+
+	stdout, stderr, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "may not be about you") {
+		t.Errorf("a gradebook that might not be this account's said nothing:\n%s", stdout)
+	}
+
+	jsonOut, _, code := f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "grade.list", jsonOut)
+	if !strings.Contains(jsonOut, `"gradable_unknown":true`) {
+		t.Errorf("the contract did not carry it:\n%s", jsonOut)
+	}
+}
+
+func TestAStudentIsNotHedgedAtOnEveryCourse(t *testing.T) {
+	// 學生被拒絕那支探針是**常態**——實測四個帳號，每個學生都拿到 nopermissions。
+	// 在那裡加一句「無法判斷」，等於讓每個學生在每一門課都讀到一句關於
+	// 認識論的話，只為了防一個他不在其中的情況。
+	f := newFixture(t)
+	f.withGrades(gradeItem(1, "Essay 1", "mod", nil))
+	f.server.FailException(moodle.FunctionGradableUsers,
+		"required_capability_exception", "nopermissions", "error/nopermissions")
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "may not be about you") {
+		t.Errorf("every student would read this on every course:\n%s", stdout)
+	}
+}

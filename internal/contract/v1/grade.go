@@ -47,14 +47,19 @@ type GradeReport struct {
 	// graded participant on the course. False covers both "it is" and "the
 	// site would not say", so a reader must not treat false as proof.
 	NotGradable bool `json:"not_gradable"`
+	// GradableUnknown is true when the site does not offer the call that says
+	// who is graded on a course, so not_gradable being false means only that
+	// nothing could be established.
+	GradableUnknown bool `json:"gradable_unknown"`
 }
 
 // GradeList converts a course's gradebook into its envelope.
 func GradeList(result grade.CourseResult, siteName, accountName string) Envelope {
 	payload := GradeReport{
-		CourseID:    result.CourseID,
-		Items:       []Grade{},
-		NotGradable: result.NotGradable,
+		CourseID:        result.CourseID,
+		Items:           []Grade{},
+		NotGradable:     result.NotGradable,
+		GradableUnknown: result.GradableUnknown,
 	}
 	for _, item := range result.Items {
 		payload.Items = append(payload.Items, newGrade(item))

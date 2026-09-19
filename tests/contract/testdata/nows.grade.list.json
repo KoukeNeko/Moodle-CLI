@@ -73,7 +73,8 @@
       "hidden": null,
       "locked": null
     },
-    "not_gradable": false
+    "not_gradable": false,
+    "gradable_unknown": false
   },
   "meta": {
     "site": "nows",

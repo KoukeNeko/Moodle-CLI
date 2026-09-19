@@ -87,7 +87,12 @@ type CourseResult struct {
 	// is worth acting on, and guessing from an empty gradebook would call a
 	// student with nothing marked yet a member of staff.
 	NotGradable bool
-	Provenance  site.Provenance
+	// GradableUnknown reports that the site does not offer the call that says
+	// who is graded here, so an empty gradebook cannot be told apart from one
+	// that is not about this account at all. It is false on a site that does
+	// offer it, whatever that call then answered.
+	GradableUnknown bool
+	Provenance      site.Provenance
 }
 
 // CourseGrade is one course's total, as the overview reports it.

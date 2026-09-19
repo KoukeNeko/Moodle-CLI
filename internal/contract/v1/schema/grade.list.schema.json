@@ -23,7 +23,8 @@
         "course_id",
         "items",
         "total",
-        "not_gradable"
+        "not_gradable",
+        "gradable_unknown"
       ],
       "additionalProperties": false,
       "properties": {
@@ -50,6 +51,10 @@
         "not_gradable": {
           "type": "boolean",
           "description": "True only when the site confirmed this account is not a graded participant on the course. False also covers the site not saying, so it is not proof of the opposite."
+        },
+        "gradable_unknown": {
+          "type": "boolean",
+          "description": "The site does not offer the call that says who is graded on a course, so not_gradable being false establishes nothing. False on a site that does offer it, whatever that call answered."
         }
       }
     },

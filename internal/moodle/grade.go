@@ -166,7 +166,7 @@ func (b *GradeBackend) Course(ctx context.Context, courseID string) (grade.Cours
 		result.Items = append(result.Items, item)
 	}
 	if noGradeRecorded(result) {
-		result.NotGradable = b.notAGradedParticipant(ctx, id, user)
+		result.NotGradable, result.GradableUnknown = b.gradedParticipant(ctx, id, user)
 	}
 	return result, nil
 }
@@ -211,19 +211,33 @@ type gradableUsersDTO struct {
 //
 // A refusal is not evidence. A site can grant that capability to anyone, so
 // "the call failed" says nothing about who this is, and the answer stays no.
-func (b *GradeBackend) notAGradedParticipant(ctx context.Context, courseID, user int64) bool {
+func (b *GradeBackend) gradedParticipant(ctx context.Context, courseID, user int64) (notGradable, unknown bool) {
 	var dto gradableUsersDTO
-	if err := b.client.Call(ctx, b.token, FunctionGradableUsers, Params{
+	err := b.client.Call(ctx, b.token, FunctionGradableUsers, Params{
 		"courseid": courseID,
-	}, &dto); err != nil {
-		return false
+	}, &dto)
+	if err != nil {
+		// Two refusals, and the difference decides whether it is worth
+		// telling anyone. Being denied the capability is what every student
+		// gets — measured on four accounts — so saying "cannot determine"
+		// there would put a sentence about epistemics in front of every
+		// student on every course, to guard against a case they are not in.
+		//
+		// A site that does not offer the function at all refuses differently,
+		// and there the gap is real: staff on such a site read their own
+		// empty gradebook with nothing to say it is not about them.
+		//
+		// The test is the reason, not the code: a site that does not offer the
+		// function answers with reason "capability", while a student denied
+		// the capability answers permission_denied — measured on both.
+		return false, errs.From(err).Reason == errs.ReasonCapability
 	}
 	for _, candidate := range dto.Users {
 		if candidate.ID == user {
-			return false
+			return false, false
 		}
 	}
-	return len(dto.Users) > 0
+	return len(dto.Users) > 0, false
 }
 
 func (b *GradeBackend) Overview(ctx context.Context) (grade.OverviewResult, error) {

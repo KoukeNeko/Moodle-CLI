@@ -149,6 +149,14 @@ func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 			fmt.Fprintf(w, "\n%s — feedback:\n  %s\n", item.Name, plainText(*item.Feedback))
 		}
 	}
+	if report.GradableUnknown {
+		// Only on a site that does not offer the call. Every student on an
+		// ordinary site is refused it for a different reason and sees nothing
+		// here, which is the point: a hedge in front of every student, every
+		// course, would be noise guarding against a case they are not in.
+		fmt.Fprintln(w, "\nThis site does not say who is graded on a course, so an "+
+			"empty gradebook here may not be about you.")
+	}
 	if report.NotGradable {
 		// Without this the table above reads as "nothing of yours has been
 		// marked yet" to someone who will never be marked here, because the
