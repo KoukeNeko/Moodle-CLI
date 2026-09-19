@@ -753,7 +753,6 @@ if [ -n "$NOCOURSE_TOKEN" ]; then
   unset MOODLE_WS_TOKEN
 fi
 
-assert_summary | tee -a "$TRANSCRIPT"
 
 # ─────────────────────────────────────────────────────────────────────────
 say "19b. 每個身分組都走一遍"
@@ -788,6 +787,79 @@ for who in nocourse mgr1 cc1 admin; do
   runenv "MOODLE_WS_TOKEN=$TK" assignment status "$FIRST_ASSIGN"
 done
 note "站台管理員不能用 app 的登入流程：Moodle 對 admin 關掉它"
+
+say "19c. 八年之後：同一位教師，同一個課名"
+
+note "seed-faculty 給 prof1 八個年度的 CS1001，課名全部叫 Introduction to Programming，"
+note "六門已封存（站台隱藏），兩門還開著；每一年的學生都不是同一批人。"
+note "這是教師端的重修問題放大版：同名不是重複，封存不是刪除。"
+PROF_TOKEN=$(curl -fsS "http://127.0.0.1:$STD_PORT/login/token.php" \
+  -d username=prof1 -d 'password=Student123!' -d service=moodle_mobile_app \
+  | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))' 2>/dev/null)
+if [ -n "$PROF_TOKEN" ]; then
+  SECRETS+=("$PROF_TOKEN")
+  runenv "MOODLE_WS_TOKEN=$PROF_TOKEN" course list
+  runenv "MOODLE_WS_TOKEN=$PROF_TOKEN" assignment list
+  runenv "MOODLE_WS_TOKEN=$PROF_TOKEN" grade overview
+  runenv "MOODLE_WS_TOKEN=$PROF_TOKEN" calendar upcoming
+  runenv "MOODLE_WS_TOKEN=$PROF_TOKEN" forum list
+
+  # 同名的那幾門必須分得開。分不開的話，八年的課表對使用者就是一坨一樣的字，
+  # 而每一門的學生、作業與成績都不一樣——那是會改錯成績的那種分不開。
+  SAME_NAME=$(env "MOODLE_WS_TOKEN=$PROF_TOKEN" "$BIN" course list --json 2>/dev/null \
+    | python3 -c '
+import json, sys
+courses = json.load(sys.stdin)["data"]
+same = [c for c in courses if c["full_name"] == "Introduction to Programming"]
+ids = {c["id"] for c in same}
+shorts = {c.get("short_name") for c in same}
+print(f"{len(same)} {len(ids)} {len(shorts)}")
+' 2>/dev/null)
+  note "同名課程 / 相異 id / 相異短名：$SAME_NAME"
+  read -r N_SAME N_IDS N_SHORTS <<< "$SAME_NAME"
+  if [ "${N_SAME:-0}" -ge 2 ] && [ "${N_SAME:-0}" = "${N_IDS:-x}" ] \
+     && [ "${N_SAME:-0}" = "${N_SHORTS:-x}" ]; then
+    assert_passed "八年同名課程：每一門都分得開"
+  else
+    assert_failed "八年同名課程：每一門都分得開" \
+      "同名 ${N_SAME:-?} 門，id ${N_IDS:-?} 個，短名 ${N_SHORTS:-?} 個" ""
+  fi
+
+  # 教了三十幾門課的人，拿到的不能是新帳號那一句。gradereport_overview 只回
+  # 「這個帳號被評分的課」，對教師而言那是空的——空的原因不是沒有課。
+  MOODLE_WS_TOKEN="$PROF_TOKEN" assert_not_claiming \
+    "教了整個系的人：不得說沒有課程總分" "No course totals." grade overview
+  MOODLE_WS_TOKEN="$PROF_TOKEN" assert_not_claiming \
+    "教了整個系的人：不得說沒有選課" "not enrolled on any course" course list
+  # 同事的課：prof1 不在裡面，所以是拒絕，不是空。
+  CS3001=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+    courseid CS3001-2026 2>/dev/null | tr -d '\r')
+  if [ -n "$CS3001" ]; then
+    MOODLE_WS_TOKEN="$PROF_TOKEN" assert_case \
+      "同事開的課：拒絕而不是空清單" error - grade list --course "$CS3001"
+  fi
+else
+  note "prof1 拿不到 token"
+fi
+
+note "封存年度的學生：課程被站台隱藏，選課紀錄卻還在。"
+note "core_enrol_get_users_courses 不回隱藏的課，所以清單是空的——但他確實選過課。"
+ARCH_TOKEN=$(curl -fsS "http://127.0.0.1:$STD_PORT/login/token.php" \
+  -d username=s2024-1 -d 'password=Student123!' -d service=moodle_mobile_app \
+  | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))' 2>/dev/null)
+if [ -n "$ARCH_TOKEN" ]; then
+  SECRETS+=("$ARCH_TOKEN")
+  runenv "MOODLE_WS_TOKEN=$ARCH_TOKEN" course list
+  runenv "MOODLE_WS_TOKEN=$ARCH_TOKEN" course list --json
+  runenv "MOODLE_WS_TOKEN=$ARCH_TOKEN" assignment list
+  runenv "MOODLE_WS_TOKEN=$ARCH_TOKEN" grade overview
+  MOODLE_WS_TOKEN="$ARCH_TOKEN" assert_not_claiming \
+    "封存班的學生：不得說他沒有選過課" "not enrolled on any course" course list
+else
+  note "s2024-1 拿不到 token（先跑 test/e2e/seed-faculty.sh）"
+fi
+
+assert_summary | tee -a "$TRANSCRIPT"
 
 say "20. 憑證出問題時"
 note "過期或亂填的 token"
