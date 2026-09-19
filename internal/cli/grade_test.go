@@ -283,8 +283,20 @@ func TestAnEmptyGradebookSaysSoAndIsNotEmptyOnlyByAccident(t *testing.T) {
 	validate(t, "grade.list", stdout)
 
 	human, _, _ := f.run("grade", "list", "--course", "2")
-	if !strings.Contains(human, "Nothing in this gradebook") {
-		t.Errorf("an unmarked gradebook should say so:\n%s", human)
+	if human == "" {
+		t.Fatal("an empty report printed nothing at all")
+	}
+	// 「這本成績簿裡沒有東西」是對成績簿的宣稱，而這份報表不是成績簿。
+	// 實測：把一門課的每個項目設成 hidden，報表就空了，而 92、78.5 與
+	// 總分 170.50 都還在。所以名詞要收到報表，並點出隱藏項目不在裡面。
+	if strings.Contains(human, "Nothing in this gradebook") {
+		t.Errorf("an empty report was reported as an empty gradebook:\n%s", human)
+	}
+	if !strings.Contains(human, "grade report") {
+		t.Errorf("the answer does not name the report it is about:\n%s", human)
+	}
+	if !strings.Contains(human, "Hidden items") {
+		t.Errorf("the answer does not say hidden items are left out:\n%s", human)
 	}
 }
 
@@ -602,9 +614,14 @@ func TestATeacherIsNotToldThereAreNoTotals(t *testing.T) {
 	if !strings.Contains(stdout, "where you are graded") {
 		t.Errorf("the answer does not say which question it answered:\n%s", stdout)
 	}
-	// 同一個空清單有兩個原因，而說出其中一個的句子會讓另一種人讀成「你沒有成績」。
-	// 實測：封存班的 s2024-1 在一門被站台隱藏的課裡有 135 分的總分，清單一樣是空的。
-	if !strings.Contains(stdout, "hidden") {
-		t.Errorf("an archived course is the other reason this list is empty:\n%s", stdout)
+	// 同一個空清單至少有三個原因，而只說出其中一個的句子會讓另外兩種人讀成
+	// 「你沒有成績」。實測：封存班的 s2024-1 在一門被站台隱藏的課裡有 135 分；
+	// 把每一門課的 showgrades 關掉之後，一個有 20 筆課程總分的學生也拿到空清單。
+	// 所以這句話要點出的是集合，不是其中一個成因。
+	if !strings.Contains(stdout, "show grades") {
+		t.Errorf("a course with its grades switched off is not accounted for:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "open to you") {
+		t.Errorf("an archived course is not accounted for:\n%s", stdout)
 	}
 }

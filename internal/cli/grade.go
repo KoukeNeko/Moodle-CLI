@@ -114,7 +114,13 @@ func newGradeOverviewCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 	if len(report.Items) == 0 && report.Total == nil {
-		_, err := fmt.Fprintln(w, "Nothing in this gradebook.")
+		// "Nothing in this gradebook" is a claim about the gradebook, and the
+		// report is not the gradebook. Measured: hide every item in a course
+		// and this report comes back empty while two marks of 92 and 78.5 and
+		// a total of 170.50 are still there. Say what the report showed.
+		_, err := fmt.Fprintln(w,
+			"Nothing in this account's grade report for this course.\n"+
+				"Hidden items, and a total that depends on them, are left out of it.")
 		return err
 	}
 	if len(report.Items) == 0 {
@@ -195,15 +201,16 @@ func outOf(item v1.Grade) string {
 func writeOverviewTable(w io.Writer, totals []v1.CourseTotal) error {
 	if len(totals) == 0 {
 		// gradereport_overview answers with the courses this account is graded
-		// on and can still see, which is a shorter list than it sounds —
-		// measured: a teacher of 31 courses gets an empty list, and so does a
-		// student holding a course total of 135 in a course the site archived.
-		// Both get the same list a brand-new account gets, so the sentence has
-		// to name why rather than let each of them read it as "you have none".
+		// on, that show grades, and that it can still see — a shorter list
+		// than it sounds. Measured, three ways to empty it with the grades
+		// still in the database: a teacher of 31 courses, a student holding a
+		// course total of 135 in a course the site archived, and a student of
+		// 20 graded courses after each course turned its grades off. All three
+		// get the list a brand-new account gets, so the sentence has to name
+		// the set rather than let any of them read it as "you have none".
 		_, err := fmt.Fprintln(w, "No course totals came back for this account.\n"+
-			"This report covers courses where you are graded and that are still "+
-			"open to you, so teaching a course, or a course the site has hidden, "+
-			"is not here.")
+			"This report covers courses where you are graded, that show grades, "+
+			"and that are still open to you.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
