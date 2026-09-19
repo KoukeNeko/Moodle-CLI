@@ -272,6 +272,15 @@ func (c *Client) send(request *http.Request, function string) ([]byte, error) {
 	}
 	defer response.Body.Close()
 
+	// The Go client follows redirects, so a hop is only visible afterwards.
+	// A web service endpoint never redirects: Moodle answers it in place. One
+	// that did means something else took the request — most often an SSO
+	// gateway — and the page that came back is that gateway's, not Moodle's.
+	redirectedTo := ""
+	if final := response.Request.URL; final != nil && final.String() != request.URL.String() {
+		redirectedTo = RedactURL(final)
+	}
+
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
 		// The request was sent and may have been executed; the caller has to
@@ -286,6 +295,17 @@ func (c *Client) send(request *http.Request, function string) ([]byte, error) {
 			fmt.Sprintf("the response to %s exceeds %d bytes", function, maxResponseBytes))
 	}
 	c.traceResponse(response, body)
+
+	if redirectedTo != "" && isHTML(body) {
+		// Said before the status check on purpose: such a gateway usually
+		// answers 200 with its own sign-in page, so the status line looks
+		// perfectly healthy and only the hop gives it away.
+		return nil, errs.New(errs.CodeAuthentication,
+			fmt.Sprintf("the request for %s was redirected away from the web service", function)).
+			WithReason(errs.ReasonTokenExpired).
+			WithHint("it ended at " + redirectedTo + ", which answered with a page; " +
+				"a site behind single sign-on cannot be reached with a token alone")
+	}
 
 	if response.StatusCode != http.StatusOK {
 		c.noteBackoff(response)
@@ -352,21 +372,50 @@ func protocolDrift(function string, body []byte, cause error) error {
 		WithHint(fmt.Sprintf("the site answered with %s", describeBody(body)))
 }
 
+// isHTML reports that a body is a page rather than the JSON a web service
+// call answers with.
+func isHTML(body []byte) bool {
+	trimmed := strings.ToLower(strings.TrimSpace(string(body)))
+	return strings.HasPrefix(trimmed, "<!doctype html") || strings.HasPrefix(trimmed, "<html")
+}
+
 func describeBody(body []byte) string {
 	trimmed := strings.TrimSpace(string(body))
 	if trimmed == "" {
 		return "an empty body"
 	}
-	if strings.HasPrefix(strings.ToLower(trimmed), "<!doctype html") ||
-		strings.HasPrefix(strings.ToLower(trimmed), "<html") {
+	if isHTML(body) {
 		// Very common: a login page or an error page where JSON was expected.
 		return "an HTML page rather than JSON, which usually means the URL is not a Moodle web service endpoint"
+	}
+	if notice := phpNotice(trimmed); notice != "" {
+		// A site with display_errors on prepends PHP's own warning to the
+		// body, so valid JSON arrives unparseable. Quoting the whole thing
+		// gives the reader a wall of markup; naming it tells an administrator
+		// exactly what to turn off.
+		return "JSON preceded by a PHP " + notice + ", which a site should not " +
+			"display; an administrator has debugging output switched on"
 	}
 	const limit = 120
 	if len(trimmed) > limit {
 		trimmed = trimmed[:limit] + "…"
 	}
 	return fmt.Sprintf("%q", trimmed)
+}
+
+// phpNotice names the kind of PHP diagnostic a body starts with, empty when
+// it does not start with one.
+func phpNotice(trimmed string) string {
+	// PHP writes these as "<br />\n<b>Notice</b>:  ..." when html_errors is on
+	// and as "Notice: ..." when it is not.
+	plain := strings.TrimSpace(strings.TrimPrefix(trimmed, "<br />"))
+	plain = strings.TrimSpace(strings.TrimPrefix(plain, "<b>"))
+	for _, kind := range []string{"Notice", "Warning", "Deprecated", "Fatal error", "Parse error"} {
+		if strings.HasPrefix(plain, kind+"</b>:") || strings.HasPrefix(plain, kind+":") {
+			return strings.ToLower(kind)
+		}
+	}
+	return ""
 }
 
 func httpStatusError(response *http.Response, body []byte, function string) error {
@@ -378,6 +427,16 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 	case response.StatusCode == http.StatusUnauthorized, response.StatusCode == http.StatusForbidden:
 		code = errs.CodeAuthentication
 		hint = "sign in again with `moodle auth login`"
+		if isHTML(body) {
+			// Moodle refuses a web service call with HTTP 200 and a JSON
+			// exception, never with a bare 401/403 page. Something in front of
+			// it did this — a WAF, a proxy, an SSO gateway — and telling the
+			// reader to sign in again sends them to fix a credential that was
+			// never looked at. Measured against a WAF-shaped block page.
+			code = errs.CodeUpstream
+			hint = "Moodle refuses a web service call with JSON, not a page, so " +
+				"something in front of the site blocked this request"
+		}
 	case response.StatusCode == http.StatusNotFound:
 		code = errs.CodeNotFound
 		hint = "check the site URL points at a Moodle installation"

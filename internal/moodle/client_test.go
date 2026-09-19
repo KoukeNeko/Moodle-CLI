@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -453,5 +454,103 @@ func TestAFunctionTheSiteDoesNotOfferIsNotWorthRetrying(t *testing.T) {
 	}
 	if e.Retryable {
 		t.Error("a site that will never offer this was reported as worth retrying")
+	}
+}
+
+// driftSite serves one hand-written response, for the shapes a real Moodle
+// never sends but a network between here and there does.
+func driftSite(t *testing.T, handler http.HandlerFunc) *moodle.Client {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	base, err := site.ParseBaseURL(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return moodle.NewClient(site.Site{BaseURL: base}, moodle.WithHTTPClient(server.Client()))
+}
+
+func TestABlockingIntermediaryIsNotACredentialProblem(t *testing.T) {
+	// Moodle refuses a web service call with HTTP 200 and a JSON exception,
+	// never with a bare 403 page. A 403 carrying markup came from something in
+	// front of it — a WAF, a proxy — and "sign in again" sends the reader to
+	// fix a credential nothing ever looked at.
+	client := driftSite(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("<html><head><title>Access Denied</title></head>" +
+			"<body>Request blocked. Reference #12.34</body></html>"))
+	})
+
+	var out map[string]any
+	err := client.Call(context.Background(), "tok", "core_webservice_get_site_info", nil, &out)
+	e := errs.From(err)
+	if e == nil {
+		t.Fatal("a blocked request was treated as an answer")
+	}
+	if e.Code == errs.CodeAuthentication {
+		t.Error("a block by an intermediary was reported as a credential problem")
+	}
+	if !strings.Contains(e.Hint, "in front of the site") {
+		t.Errorf("the hint does not say where the refusal came from: %q", e.Hint)
+	}
+}
+
+func TestARedirectAwayFromTheEndpointIsNamed(t *testing.T) {
+	// A web service endpoint never redirects; Moodle answers it in place. A
+	// site behind single sign-on hands the request to a gateway, which
+	// answers 200 with its own page — so the status line looks healthy and
+	// only the hop gives it away. Reported as "not a Moodle endpoint", the
+	// reader would go and check a URL that was right all along.
+	client := driftSite(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/sso" {
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte("<!DOCTYPE html><html><body>Sign in</body></html>"))
+			return
+		}
+		http.Redirect(w, r, "/sso", http.StatusFound)
+	})
+
+	var out map[string]any
+	err := client.Call(context.Background(), "tok", "core_webservice_get_site_info", nil, &out)
+	e := errs.From(err)
+	if e == nil {
+		t.Fatal("a sign-in page was accepted as an answer")
+	}
+	if e.Code != errs.CodeAuthentication {
+		t.Errorf("code = %q, want authentication", e.Code)
+	}
+	if !strings.Contains(e.Hint, "single sign-on") {
+		t.Errorf("the hint does not name what happened: %q", e.Hint)
+	}
+	if strings.Contains(e.Hint, "not a Moodle web service endpoint") {
+		t.Error("a correct URL was blamed")
+	}
+}
+
+func TestDebuggingOutputBeforeJsonIsNamedNotQuoted(t *testing.T) {
+	// A site with display_errors on prepends PHP's own warning, so valid JSON
+	// arrives unparseable. Quoting the whole body hands the reader a wall of
+	// markup; naming it tells an administrator what to switch off.
+	client := driftSite(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("<br />\n<b>Notice</b>:  Undefined index: q in " +
+			"<b>/var/www/html/lib/x.php</b> on line <b>42</b><br />\n{\"sitename\":\"X\"}"))
+	})
+
+	var out map[string]any
+	err := client.Call(context.Background(), "tok", "core_webservice_get_site_info", nil, &out)
+	e := errs.From(err)
+	if e == nil {
+		t.Fatal("a body with a PHP notice in front of it was decoded")
+	}
+	if e.Reason != errs.ReasonProtocolDrift {
+		t.Errorf("reason = %q, want protocol_drift", e.Reason)
+	}
+	if !strings.Contains(e.Hint, "debugging output") {
+		t.Errorf("the hint does not name the cause: %q", e.Hint)
+	}
+	if strings.Contains(e.Hint, "Undefined index") {
+		t.Error("the whole body was quoted instead of being named")
 	}
 }
