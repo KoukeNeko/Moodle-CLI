@@ -10,6 +10,7 @@
  * 用法（容器內）：
  *   php /fixture-truth.php submittable <username>   還沒交的作業 id，一行一個
  *   php /fixture-truth.php courseid <shortname>   課程 id
+ *   php /fixture-truth.php calendar <username> [天數]  站台自己算的到期筆數
  *   php /fixture-truth.php forums <courseid>        該課程的論壇數（不套權限）
  *   php /fixture-truth.php readable <username> <courseid>  1／0
  */
@@ -58,6 +59,25 @@ switch ($what) {
         echo $DB->get_field('course', 'id', ['shortname' => $argv[2]], MUST_EXIST) . "\n";
         break;
 
+    case 'calendar':
+        // Moodle's own upcoming view, run as that user — not a reimplementation
+        // of it. calendar_get_view() is what core_calendar_get_calendar_upcoming_view
+        // calls, so the count here is the site's answer to the same question
+        // the command claims to answer, arrived at without the CLI.
+        require_once($CFG->dirroot . '/calendar/lib.php');
+        $user = user_by_name($argv[2]);
+        \core\session\manager::set_user($user);
+        $PAGE->set_url('/calendar/');
+        $calendar = \calendar_information::create(time(), SITEID, null);
+        // The lookahead is passed explicitly so the control plane asks the
+        // same question the command does. Left to the site it answers for
+        // calendar_lookahead days, which is a different window and would make
+        // an honest command look wrong.
+        $days = isset($argv[3]) ? (int) $argv[3] : 30;
+        [$data] = calendar_get_view($calendar, 'upcoming', true, false, $days);
+        echo count($data->events) . "\n";
+        break;
+
     case 'forums':
         echo forum_count((int)$argv[2]) . "\n";
         break;
@@ -77,6 +97,6 @@ switch ($what) {
         break;
 
     default:
-        fwrite(STDERR, "usage: fixture-truth.php submittable|courseid|forums|readable|release\n");
+        fwrite(STDERR, "usage: fixture-truth.php submittable|courseid|calendar|forums|readable|release\n");
         exit(2);
 }

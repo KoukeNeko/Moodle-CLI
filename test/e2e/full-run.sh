@@ -753,6 +753,19 @@ if [ -n "$NOCOURSE_TOKEN" ]; then
   unset MOODLE_WS_TOKEN
 fi
 
+# 學生這一側也要量，而且量的是數字不是句子：行事曆以前只回「有動作的」那幾筆，
+# 對 grad1 是四分之一。少講不會觸發任何一條「不得宣稱」的斷言。
+GRAD_CAL=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+  calendar grad1 30 2>/dev/null | tr -d '\r')
+GRAD_CLI=$("$BIN" calendar upcoming --json 2>/dev/null \
+  | python3 -c 'import json,sys;print(len(json.load(sys.stdin)["data"]))' 2>/dev/null)
+if [ -n "$GRAD_CAL" ] && [ "$GRAD_CAL" = "$GRAD_CLI" ]; then
+  assert_passed "學生的行事曆：筆數與站台自己算的一致（$GRAD_CAL）"
+else
+  assert_failed "學生的行事曆：筆數與站台自己算的一致" \
+    "站台說 ${GRAD_CAL:-?} 筆，CLI 說 ${GRAD_CLI:-?} 筆" ""
+fi
+
 
 # ─────────────────────────────────────────────────────────────────────────
 say "19b. 每個身分組都走一遍"
@@ -829,6 +842,18 @@ print(f"{len(same)} {len(ids)} {len(shorts)}")
   # 「這個帳號被評分的課」，對教師而言那是空的——空的原因不是沒有課。
   MOODLE_WS_TOKEN="$PROF_TOKEN" assert_not_claiming \
     "教了整個系的人：不得說沒有課程總分" "No course totals." grade overview
+  # 行事曆的判準不是「不要說錯」而是「數字要對」：站台自己用同一個天數算一次，
+  # 兩邊必須一樣。這比「不得說沒有」強，因為少講三分之二也是錯的。
+  PROF_CAL=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+    calendar prof1 30 2>/dev/null | tr -d '\r')
+  PROF_CLI=$(env "MOODLE_WS_TOKEN=$PROF_TOKEN" "$BIN" calendar upcoming --json 2>/dev/null \
+    | python3 -c 'import json,sys;print(len(json.load(sys.stdin)["data"]))' 2>/dev/null)
+  if [ -n "$PROF_CAL" ] && [ "$PROF_CAL" = "$PROF_CLI" ]; then
+    assert_passed "教師的行事曆：筆數與站台自己算的一致（$PROF_CAL）"
+  else
+    assert_failed "教師的行事曆：筆數與站台自己算的一致" \
+      "站台說 ${PROF_CAL:-?} 筆，CLI 說 ${PROF_CLI:-?} 筆" ""
+  fi
   MOODLE_WS_TOKEN="$PROF_TOKEN" assert_not_claiming \
     "教了整個系的人：不得說沒有選課" "not enrolled on any course" course list
   # 同事的課：prof1 不在裡面，所以是拒絕，不是空。
