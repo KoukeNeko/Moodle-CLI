@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -57,24 +58,62 @@ type TokenCallback struct {
 	PrivateToken string
 }
 
+// maxCallbackBytes bounds the callback. Moodle's payload is a hash, a token
+// and sometimes a second token — a few hundred bytes. Anything far larger did
+// not come from Moodle, and the point of a bound is to stop reading before
+// finding out what it is instead.
+const maxCallbackBytes = 8 << 10
+
+// callbackScheme is Moodle's own rule for what it will redirect to, copied
+// from launch.php. A scheme outside it cannot have come from Moodle.
+var callbackScheme = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9\-+.]*$`)
+
+// siteHashPattern is what md5 produces. Moodle computes the hash itself, so a
+// value of another shape did not come from the exchange this is part of.
+var siteHashPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
 // ParseTokenCallback reads a "<scheme>://token=<base64>" callback.
 //
-// Any scheme is accepted: the site may force its own, and rejecting an
-// unexpected one would only stop a user who did everything right.
+// It is deliberately strict about shape while staying quiet about which
+// scheme: a site may force its own, so rejecting an unexpected name would
+// stop a user who did everything right. Everything else is checked, because
+// this is the door a registered URL handler opens — and a registered handler
+// is a door any local process, or any web page, can knock on. What passes
+// here still has to match a live transaction; this only refuses to carry
+// something shaped wrong that far.
 func ParseTokenCallback(raw string) (TokenCallback, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return TokenCallback{}, errs.New(errs.CodeUsage, "the callback URL is empty")
 	}
+	if len(trimmed) > maxCallbackBytes {
+		return TokenCallback{}, errs.New(errs.CodeValidation,
+			"the callback URL is far longer than Moodle ever sends")
+	}
 
-	// The payload is everything after "token=", whatever the scheme.
-	_, encoded, found := strings.Cut(trimmed, "token=")
-	if !found {
+	// Not url.Parse: for "scheme://token=x" Go puts "token=x" in Host and
+	// leaves Query empty, so reading it as a query parameter finds nothing.
+	// The wire format is fixed, so it is matched as written.
+	scheme, rest, found := strings.Cut(trimmed, "://")
+	if !found || !callbackScheme.MatchString(scheme) {
+		return TokenCallback{}, errs.New(errs.CodeUsage,
+			"that does not look like a Moodle login callback").
+			WithHint(`it should look like "moodlemobile://token=..."`)
+	}
+	encoded, ok := strings.CutPrefix(rest, "token=")
+	if !ok {
 		return TokenCallback{}, errs.New(errs.CodeUsage,
 			"that does not look like a Moodle login callback").
 			WithHint(`it should look like "moodlemobile://token=..."`)
 	}
 	encoded = strings.TrimSpace(encoded)
+	// Moodle appends nothing after the payload. A path, query or fragment
+	// means something rewrote this on the way.
+	if strings.ContainsAny(encoded, "/?#") {
+		return TokenCallback{}, errs.New(errs.CodeValidation,
+			"the callback carries more than Moodle sends").
+			WithReason(errs.ReasonProtocolDrift)
+	}
 
 	decoded, err := decodeBase64(encoded)
 	if err != nil {
@@ -83,11 +122,18 @@ func ParseTokenCallback(raw string) (TokenCallback, error) {
 			WithHint("copy the whole URL, including everything after token=")
 	}
 
-	// siteid:::token[:::privatetoken]
+	// siteid:::token[:::privatetoken], and never anything else: Moodle builds
+	// this string itself, so a fourth field is not a newer Moodle, it is
+	// something that is not Moodle.
 	parts := strings.Split(string(decoded), ":::")
-	if len(parts) < 2 {
+	if len(parts) < 2 || len(parts) > 3 {
 		return TokenCallback{}, errs.New(errs.CodeUsage,
 			"the callback payload is not in the expected form").
+			WithReason(errs.ReasonProtocolDrift)
+	}
+	if !siteHashPattern.MatchString(parts[0]) {
+		return TokenCallback{}, errs.New(errs.CodeValidation,
+			"the callback does not identify a site the way Moodle does").
 			WithReason(errs.ReasonProtocolDrift)
 	}
 	callback := TokenCallback{SiteHash: parts[0], Token: parts[1]}

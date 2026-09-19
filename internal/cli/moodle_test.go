@@ -492,8 +492,11 @@ func TestLoginWithPastedCallback(t *testing.T) {
 	if _, _, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
 		t.Fatal("site add failed")
 	}
+	// A real md5, because that is the only shape Moodle sends: it builds the
+	// hash itself. The parser refuses anything else now that a registered URL
+	// handler can be invoked by any local process.
 	callback := "moodlemobile://token=" + base64.StdEncoding.EncodeToString(
-		[]byte("anyhash:::good-token"))
+		[]byte("0123456789abcdef0123456789abcdef:::good-token"))
 
 	stdout, stderr, code := f.run("auth", "login", "--method", "manual", "--callback", callback)
 	if code != v1.ExitOK {

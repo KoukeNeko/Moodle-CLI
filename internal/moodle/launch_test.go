@@ -166,3 +166,66 @@ func TestParseQRLoginRejectsASiteOnlyCode(t *testing.T) {
 		t.Errorf("hint should explain the difference, got %q", hint)
 	}
 }
+
+func TestACallbackIsParsedStrictlyBecauseAnyoneCanSendOne(t *testing.T) {
+	// A registered URL handler is a door any local process — or any web page
+	// — can knock on. What passes here still has to match a live transaction,
+	// but nothing shaped wrong should get that far.
+	good := "0123456789abcdef0123456789abcdef:::the-token"
+	encoded := base64.StdEncoding.EncodeToString([]byte(good))
+
+	for _, tc := range []struct {
+		name string
+		raw  string
+	}{
+		{"no scheme at all", "token=" + encoded},
+		{"the word appears inside a web address",
+			"https://elsewhere.example/page?x=token=" + encoded},
+		{"a scheme Moodle could never redirect to", "not a scheme://token=" + encoded},
+		{"something after the payload", "moodlemobile://token=" + encoded + "?x=1"},
+		{"a path after the payload", "moodlemobile://token=" + encoded + "/etc"},
+		{"a site identifier of another shape",
+			"moodlemobile://token=" + base64.StdEncoding.EncodeToString(
+				[]byte("anyhash:::the-token"))},
+		{"a fourth field Moodle does not send",
+			// Three fields is the real maximum — the third is the private
+			// token — so a fourth is what has to be refused.
+			"moodlemobile://token=" + base64.StdEncoding.EncodeToString(
+				[]byte(good+":::private:::extra"))},
+		{"far more than Moodle ever sends",
+			"moodlemobile://token=" + strings.Repeat("A", 9000)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := moodle.ParseTokenCallback(tc.raw); err == nil {
+				t.Errorf("accepted %q", tc.raw)
+			}
+		})
+	}
+}
+
+func TestTheCallbackMoodleActuallySendsStillParses(t *testing.T) {
+	// Strictness is only worth having if it lets the real thing through. Both
+	// the two-field and three-field forms are real: the private token is
+	// added only over https and only for an account that is not an admin.
+	for _, payload := range []string{
+		"0123456789abcdef0123456789abcdef:::the-token",
+		"0123456789abcdef0123456789abcdef:::the-token:::private",
+	} {
+		callback, err := moodle.ParseTokenCallback(
+			"moodlemobile://token=" + base64.StdEncoding.EncodeToString([]byte(payload)))
+		if err != nil {
+			t.Fatalf("%q: %v", payload, err)
+		}
+		if callback.Token != "the-token" {
+			t.Errorf("token = %q", callback.Token)
+		}
+	}
+	// And a forced scheme, which a site may set and the client cannot see in
+	// advance: refusing an unexpected name would stop a user who did
+	// everything right.
+	if _, err := moodle.ParseTokenCallback("some.site+scheme://token=" +
+		base64.StdEncoding.EncodeToString(
+			[]byte("0123456789abcdef0123456789abcdef:::t"))); err != nil {
+		t.Errorf("a site's own scheme was refused: %v", err)
+	}
+}
