@@ -39,6 +39,11 @@ var forbidden = map[string][]string{
 	// The presentation layer must not build HTTP requests itself.
 	"internal/cli": {"internal/moodle...", "internal/webread", "net/http"},
 
+	// Reading a browser's storage is an adapter to someone else's file
+	// format, and nothing above it should know that format exists.
+	"internal/browser": {"internal/cli", "internal/mcp", "internal/contract...",
+		"internal/moodle...", "net/http"},
+
 	// The login transaction store is state, not transport and not
 	// presentation. It decides whether a callback answers a login this
 	// process started, and that decision must not depend on how the callback
