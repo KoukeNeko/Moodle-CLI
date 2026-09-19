@@ -355,3 +355,53 @@ func TestDaysReachesTheUseCaseAsADeadline(t *testing.T) {
 		t.Errorf("the horizon is %v, want about 14 days", got)
 	}
 }
+
+// rejectingCourses stands in for a site that no longer accepts the credential
+// this process started with.
+type rejectingCourses struct{ fakeCourses }
+
+func (rejectingCourses) List(context.Context, course.ListQuery) (course.ListResult, error) {
+	return course.ListResult{}, errs.New(errs.CodeAuthentication,
+		"the site rejected the stored credential").
+		WithReason(errs.ReasonTokenExpired).
+		WithHint("sign in again with `moodle auth login`")
+}
+
+func TestAnAgentIsNotToldToDoWhatItCannotDo(t *testing.T) {
+	// "Sign in again with `moodle auth login`" is written for a person at a
+	// terminal. An agent has neither a terminal nor a way to authenticate, so
+	// as advice it is worse than useless: it reads as something to try.
+	deps := mcp.Deps{
+		Capabilities: site.NewCapabilities(),
+		SiteName:     "school",
+		AccountName:  "student1",
+		Courses:      course.NewService(rejectingCourses{}),
+		Assignments: assignment.NewService(&fakeAssignments{},
+			safety.Mode{ReadOnly: true}, &fakeAssignments{}),
+		Grades:   grade.NewService(fakeGrades{}),
+		Calendar: calendar.NewService(&fakeCalendar{}),
+		Forums:   forum.NewService(fakeForums{}),
+	}
+
+	result := callTool(t, mcp.Register(deps, false), "course_list", nil)
+	if result["isError"] != true {
+		t.Fatal("a rejected credential was reported as a success")
+	}
+	failure := data(t, result)["error"].(map[string]any)
+	hint, _ := failure["hint"].(string)
+
+	if strings.Contains(hint, "sign in again with") {
+		t.Errorf("the agent was handed advice meant for a person:\n%s", hint)
+	}
+	// Three separate facts, because they are three different things the agent
+	// has to know: it cannot fix this, a person can, and afterwards this
+	// process picks the new credential up without being restarted.
+	for _, want := range []string{"cannot be fixed from here", "by a person", "restarting"} {
+		if !strings.Contains(hint, want) {
+			t.Errorf("the hint does not say %q:\n%s", want, hint)
+		}
+	}
+	if !strings.Contains(hint, "--site school") {
+		t.Errorf("the hint does not name the site to sign in to:\n%s", hint)
+	}
+}

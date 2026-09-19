@@ -130,10 +130,12 @@ type Registry struct {
 	// false the writing tools are not registered at all: a tool an agent
 	// cannot see is one it cannot decide to try.
 	allowWrite bool
+	// siteName names the site in the one message an agent cannot act on.
+	siteName string
 }
 
-func newRegistry(allowWrite bool) *Registry {
-	return &Registry{allowWrite: allowWrite}
+func newRegistry(allowWrite bool, siteName string) *Registry {
+	return &Registry{allowWrite: allowWrite, siteName: siteName}
 }
 
 // add registers a tool, dropping a writing one when this session is read-only.
@@ -198,7 +200,7 @@ func (r *Registry) call(ctx context.Context, name string, args Arguments) callTo
 		}
 		envelope, err := item.Handler(ctx, args)
 		if err != nil {
-			return errorResult(err)
+			return errorResult(r.humanReadable(err))
 		}
 		return successResult(envelope)
 	}
@@ -227,6 +229,31 @@ func successResult(envelope v1.Envelope) callToolResult {
 		Content:           textContent(string(encoded)),
 		StructuredContent: envelope,
 	}
+}
+
+// humanReadable rewrites the one hint an agent cannot act on.
+//
+// "Sign in again with `moodle auth login`" is written for a person at a
+// terminal. An agent has no terminal and no way to authenticate, so as advice
+// it is worse than nothing: it reads as something the agent could try.
+//
+// The replacement says three things separately, because they are three
+// different facts: this cannot be fixed from here, a person can fix it, and
+// afterwards this process picks the new credential up on its own. The last one
+// is only true because the session re-reads its credential when Moodle rejects
+// the one it has — without that, a restart really would be required.
+func (r *Registry) humanReadable(err error) error {
+	e := errs.From(err)
+	if e.Code != errs.CodeAuthentication {
+		return err
+	}
+	where := "in a terminal"
+	if r.siteName != "" {
+		where = "in a terminal: `moodle auth login --site " + r.siteName + "`"
+	}
+	return e.WithHint("this cannot be fixed from here — the credential has to be " +
+		"renewed by a person " + where + ". Once it is, retry: this server reads " +
+		"the new credential itself and does not need restarting.")
 }
 
 // errorResult reports a failed tool.

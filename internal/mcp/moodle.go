@@ -45,7 +45,7 @@ const noArguments = `{"type":"object","properties":{},"additionalProperties":fal
 // registered when the session was started with writing allowed, so an agent
 // never sees a tool it would be refused.
 func Register(deps Deps, allowWrite bool) *Registry {
-	r := newRegistry(allowWrite)
+	r := newRegistry(allowWrite, deps.SiteName)
 
 	r.add(definition{
 		Name:        "course_list",
