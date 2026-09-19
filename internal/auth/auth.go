@@ -177,6 +177,21 @@ func (s *Session) Cookie() moodle.SessionCookie {
 	return s.cookie
 }
 
+// KeepCredentialFresh lets a session recover from a credential replaced while
+// it is running.
+//
+// Only a long-lived process needs it, and only a long-lived process should ask
+// for it: re-reading the keychain on a command that lasts half a second buys
+// nothing, and every keychain read is a prompt on some platforms.
+//
+// It reads through the manager, so what reaches the transport is a way to ask
+// rather than a copy of the answer.
+func (m *Manager) KeepCredentialFresh(s *Session, siteID, accountID site.ID) {
+	s.client.SetCredentialSource(func() (string, error) {
+		return m.Token(siteID, accountID)
+	})
+}
+
 // RestrictToWebService confines this session to the web service route. The
 // fallbacks read pages meant for a person, which a site may have every reason
 // to treat differently from an API call, so a caller is allowed to say no.

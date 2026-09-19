@@ -45,6 +45,32 @@ type Client struct {
 	// limiter paces requests so this client is not a burden on a site it does
 	// not own. It is shared by every call through this client.
 	limiter *limiter
+	// credentials re-reads the stored token. It exists for one case: a
+	// process that outlives the credential it started with. A short command
+	// leaves it nil, because nothing can change underneath a run that lasts
+	// half a second.
+	//
+	// It lives here rather than in each backend because every backend already
+	// shares this client, and because none of them should have to know where
+	// a credential comes from or when it is worth re-reading.
+	credentials func() (string, error)
+}
+
+// WithCredentialSource lets a long-lived process recover from a credential
+// that was replaced while it was running.
+//
+// Without it an MCP server reads the token once at startup and holds a dead
+// one for ever: the agent is told, correctly, that authentication failed, and
+// there is nothing it can do about it — it cannot sign in, and the human who
+// can has no way to hand the result over short of a restart.
+func WithCredentialSource(source func() (string, error)) Option {
+	return func(c *Client) { c.credentials = source }
+}
+
+// SetCredentialSource attaches the source after construction, for a session
+// that learns which account it is only once the caller has resolved it.
+func (c *Client) SetCredentialSource(source func() (string, error)) {
+	c.credentials = source
 }
 
 // Option configures a Client.
@@ -129,6 +155,18 @@ func (c *Client) Site() site.Site { return c.site }
 // A Moodle exception arrives with HTTP 200, so the status line is never
 // enough: the body is inspected before it is handed to the caller.
 func (c *Client) Call(ctx context.Context, token, function string, params Params, out any) error {
+	err := c.call(ctx, token, function, params, out)
+	fresh, ok := c.reauthenticate(token, err)
+	if !ok {
+		return err
+	}
+	// Exactly once, and only for a credential that has actually changed.
+	// Retrying is safe here and nowhere else: Moodle rejects an unknown token
+	// during authentication, before the function asked for runs at all.
+	return c.call(ctx, fresh, function, params, out)
+}
+
+func (c *Client) call(ctx context.Context, token, function string, params Params, out any) error {
 	values, err := Encode(params)
 	if err != nil {
 		return err
@@ -142,6 +180,31 @@ func (c *Client) Call(ctx context.Context, token, function string, params Params
 		return err
 	}
 	return decode(body, function, out)
+}
+
+// reauthenticate reports whether the call is worth one more attempt, and with
+// what.
+//
+// Only a credential Moodle does not recognise qualifies. An access failure is
+// deliberately left alone: Moodle answers accessexception for an IP the site
+// will not accept, for a service that is switched off and for a function the
+// token's service does not carry, and "sign in again" is the wrong advice for
+// every one of them.
+func (c *Client) reauthenticate(used string, err error) (string, bool) {
+	if err == nil || c.credentials == nil {
+		return "", false
+	}
+	if errs.From(err).Reason != errs.ReasonTokenExpired {
+		return "", false
+	}
+	fresh, readErr := c.credentials()
+	if readErr != nil || fresh == "" || fresh == used {
+		// Nothing newer is stored, so the answer stands. Saying so is the
+		// point: a caller that cannot sign in needs to know that waiting will
+		// not help and a person has to act.
+		return "", false
+	}
+	return fresh, true
 }
 
 // CallNoLogin invokes a function that does not require a token, through the

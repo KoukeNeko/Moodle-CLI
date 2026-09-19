@@ -564,3 +564,126 @@ func TestDebuggingOutputBeforeJsonIsNamedNotQuoted(t *testing.T) {
 		t.Error("the whole body was quoted instead of being named")
 	}
 }
+
+// tokenGate answers only for the token it is currently willing to accept, so a
+// test can replace the credential underneath a running client the way a
+// student signing in again in another terminal does.
+func tokenGate(t *testing.T, accept *string, calls *[]string) *moodle.Client {
+	t.Helper()
+	return driftSite(t, func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		sent := r.Form.Get("wstoken")
+		*calls = append(*calls, sent)
+		w.Header().Set("Content-Type", "application/json")
+		if sent != *accept {
+			// Moodle's own answer for a token it does not recognise: HTTP 200
+			// with an exception in the body.
+			_, _ = w.Write([]byte(`{"exception":"moodle_exception",` +
+				`"errorcode":"invalidtoken","message":"Invalid token"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"sitename":"Test Moodle","username":"student1"}`))
+	})
+}
+
+func TestACredentialReplacedWhileRunningIsPickedUp(t *testing.T) {
+	// The MCP server reads its credential once and then runs for hours. A
+	// student who signs in again elsewhere used to leave it holding a dead
+	// token for ever: the agent was told, correctly, that authentication
+	// failed, and could do nothing — it cannot sign in, and the person who
+	// can had no way to hand the result over short of a restart.
+	accept := "new-token"
+	var calls []string
+	client := tokenGate(t, &accept, &calls)
+	client.SetCredentialSource(func() (string, error) { return "new-token", nil })
+
+	var info siteInfo
+	err := client.Call(context.Background(), "stale-token",
+		"core_webservice_get_site_info", nil, &info)
+	if err != nil {
+		t.Fatalf("a replaced credential was not picked up: %v", err)
+	}
+	if info.Username != "student1" {
+		t.Errorf("decoded %+v", info)
+	}
+	if len(calls) != 2 || calls[0] != "stale-token" || calls[1] != "new-token" {
+		t.Errorf("calls = %v; want the stale one, then exactly one retry", calls)
+	}
+}
+
+func TestAnUnchangedCredentialIsNotRetried(t *testing.T) {
+	// Nothing newer is stored, so the answer stands. Retrying the same token
+	// could only fail the same way, and doing it twice would turn a clear
+	// refusal into a doubled load on someone else's site.
+	accept := "the-only-good-one"
+	var calls []string
+	client := tokenGate(t, &accept, &calls)
+	client.SetCredentialSource(func() (string, error) { return "stale-token", nil })
+
+	var info siteInfo
+	err := client.Call(context.Background(), "stale-token",
+		"core_webservice_get_site_info", nil, &info)
+	if err == nil {
+		t.Fatal("a dead credential was reported as working")
+	}
+	if code := errs.From(err).Code; code != errs.CodeAuthentication {
+		t.Errorf("code = %q, want authentication", code)
+	}
+	if len(calls) != 1 {
+		t.Errorf("calls = %v; want one, since there was nothing newer to try", calls)
+	}
+}
+
+func TestAnAccessFailureIsNotTreatedAsAStaleCredential(t *testing.T) {
+	// accessexception covers an IP the site will not accept, a service that is
+	// switched off, and a function the token's service does not carry. Reading
+	// any of those as "the credential is old" would re-read the keychain and
+	// then give advice that cannot help — measured earlier: a perfectly valid
+	// token gets accessexception when the service omits the function.
+	var calls []string
+	reads := 0
+	client := driftSite(t, func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		calls = append(calls, r.Form.Get("wstoken"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"exception":"webservice_access_exception",` +
+			`"errorcode":"accessexception","message":"Access control exception"}`))
+	})
+	client.SetCredentialSource(func() (string, error) {
+		reads++
+		return "another-token", nil
+	})
+
+	var info siteInfo
+	err := client.Call(context.Background(), "tok",
+		"core_webservice_get_site_info", nil, &info)
+	if err == nil {
+		t.Fatal("an access failure was reported as success")
+	}
+	if reads != 0 {
+		t.Errorf("the credential was re-read %d time(s) for a failure that is not about it", reads)
+	}
+	if len(calls) != 1 {
+		t.Errorf("calls = %v; want one", calls)
+	}
+}
+
+func TestWithoutASourceNothingIsReRead(t *testing.T) {
+	// A command that lasts half a second has nothing to gain: the credential
+	// cannot change underneath it, and every keychain read is a prompt on some
+	// platforms.
+	accept := "new-token"
+	var calls []string
+	client := tokenGate(t, &accept, &calls)
+
+	var info siteInfo
+	if err := client.Call(context.Background(), "stale-token",
+		"core_webservice_get_site_info", nil, &info); err == nil {
+		t.Fatal("a dead credential was reported as working")
+	}
+	if len(calls) != 1 {
+		t.Errorf("calls = %v; want one", calls)
+	}
+}

@@ -53,6 +53,15 @@ func newMCPServeCommand(deps Deps, mode *safety.Mode) *cobra.Command {
 				return err
 			}
 			session := openSessionFor(deps, resolved, token)
+			// This process outlives the credential it starts with. Without
+			// this, a student who signs in again in another terminal leaves
+			// the server holding a dead token for ever: the agent is told
+			// correctly that authentication failed and can do nothing about
+			// it, because it cannot sign in and the human who can has no way
+			// to hand the result over short of a restart.
+			if resolved.Site != nil && resolved.Account != nil {
+				deps.Auth.KeepCredentialFresh(session, resolved.Site.ID, resolved.Account.ID)
+			}
 			// The handshake happens before any tool call, so a site that
 			// cannot be reached is reported now rather than inside a tool.
 			capabilities, err := session.Capabilities(cmd.Context())
