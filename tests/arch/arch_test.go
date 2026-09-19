@@ -39,6 +39,13 @@ var forbidden = map[string][]string{
 	// The presentation layer must not build HTTP requests itself.
 	"internal/cli": {"internal/moodle...", "internal/webread", "net/http"},
 
+	// The login transaction store is state, not transport and not
+	// presentation. It decides whether a callback answers a login this
+	// process started, and that decision must not depend on how the callback
+	// arrived or on what will be printed afterwards.
+	"internal/callback": {"internal/moodle...", "internal/cli", "internal/mcp",
+		"internal/contract...", "net/http", "github.com/spf13/cobra"},
+
 	// Core vocabulary stays free of transport, presentation and platform.
 	"internal/site":   {"net/http", "github.com/spf13/cobra", "internal/cli", "internal/moodle..."},
 	"internal/safety": {"net/http", "github.com/spf13/cobra", "internal/cli", "internal/moodle..."},
