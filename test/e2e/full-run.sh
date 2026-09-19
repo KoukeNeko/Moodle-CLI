@@ -882,6 +882,27 @@ print(f"{len(same)} {len(ids)} {len(shorts)}")
     MOODLE_WS_TOKEN="$PROF_TOKEN" assert_case \
       "同事開的課：拒絕而不是空清單" error - grade list --course "$CS3001"
   fi
+fi
+
+# 沒選課但讀得到的課程不在搜尋範圍裡。mgr1 掛在類別上，讀得到 CS1001-2026，
+# 那門課有作業——而不指定課程時的清單是空的。先由控制面證明讀得到且有作業。
+MGR_COURSE=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+  courseid CS1001-2026 2>/dev/null | tr -d '\r')
+MGR_TOKEN=$(curl -fsS "http://127.0.0.1:$STD_PORT/login/token.php" \
+  -d username=mgr1 -d 'password=Student123!' -d service=moodle_mobile_app \
+  | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))' 2>/dev/null)
+if [ -n "$MGR_COURSE" ] && [ -n "$MGR_TOKEN" ]; then
+  SECRETS+=("$MGR_TOKEN")
+  MGR_READS=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+    readable mgr1 "$MGR_COURSE" 2>/dev/null | tr -d '\r')
+  note "前提（問資料庫，不是問 CLI）：mgr1 讀得到課程 $MGR_COURSE＝$MGR_READS"
+  if [ "$MGR_READS" = "1" ]; then
+    MOODLE_WS_TOKEN="$MGR_TOKEN" assert_not_claiming \
+      "沒選課的管理者 → 不得斷言沒有作業" "No assignments." assignment list
+    MOODLE_WS_TOKEN="$MGR_TOKEN" assert_not_claiming \
+      "沒選課的管理者 → 不得說這個帳號看不到論壇" \
+      "No forums are visible to this account." forum list
+  fi
 else
   note "prof1 拿不到 token"
 fi
