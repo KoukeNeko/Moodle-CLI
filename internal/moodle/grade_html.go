@@ -5,11 +5,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/internal/webread"
 )
+
+// PathOverviewGrades is the report listing one row per course. It is the only
+// route to every course's total for an account without a web service token.
+const PathOverviewGrades = "/grade/report/overview/index.php"
 
 // PathUserGrades is the per-course grade report.
 const PathUserGrades = "/grade/report/user/index.php"
@@ -97,17 +100,45 @@ func (b *GradeHTMLBackend) Course(ctx context.Context, courseID string) (grade.C
 	return result, nil
 }
 
-// Overview is not available from this route.
+// Overview reads the report Moodle shows a student for every course at once.
 //
-// Moodle's overview report lists every course's total on one page, but a
-// student's own view of it is not reachable without the grade report's own
-// navigation, and guessing at a URL that may not exist would report a missing
-// page as a missing grade.
-func (b *GradeHTMLBackend) Overview(context.Context) (grade.OverviewResult, error) {
-	return grade.OverviewResult{}, errs.New(errs.CodeUnavailable,
-		"reading pages cannot list every course's total").
-		WithReason(errs.ReasonCapability).
-		WithHint("ask for one course at a time with `moodle grade list --course`")
+// This used to refuse, saying reading pages could not list every course's
+// total. That was wrong: grade/report/overview/index.php is exactly that list,
+// and it answered on 4.5, 5.1 and 5.2 for the same browser session the command
+// already held. A route that exists and a sentence saying it does not are the
+// same kind of mistake as an empty list read as an absence.
+//
+// It is narrower than the web service route in one way worth stating: the
+// report prints what a person should see, so the number is Moodle's own
+// rendering and is carried through unchanged rather than parsed into a
+// quantity this route cannot check.
+func (b *GradeHTMLBackend) Overview(ctx context.Context) (grade.OverviewResult, error) {
+	page, err := b.pages.Get(ctx, PathOverviewGrades, nil)
+	if err != nil {
+		return grade.OverviewResult{}, err
+	}
+	rows, err := webread.ParseOverview(page)
+	if err != nil {
+		return grade.OverviewResult{}, err
+	}
+
+	result := grade.OverviewResult{
+		Courses:    []grade.CourseGrade{},
+		Provenance: site.NewProvenance(site.BackendHTML),
+	}
+	for _, row := range rows {
+		course := grade.CourseGrade{
+			CourseID: row.CourseID,
+			Display:  row.Grade,
+		}
+		// Only when the display really is a number. A letter or a scale's
+		// word read as a quantity is a wrong answer that looks right.
+		if value, err := strconv.ParseFloat(strings.TrimSpace(row.Grade), 64); err == nil {
+			course.Grade = &value
+		}
+		result.Courses = append(result.Courses, course)
+	}
+	return result, nil
 }
 
 // parseRange reads "0–100" as Moodle prints it.

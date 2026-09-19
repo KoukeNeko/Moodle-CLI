@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+
+<html  dir="ltr" lang="en" xml:lang="en">
+<head>
+    <title>Grades - Sam Student | moodle</title>
+    <link rel="shortcut icon" href="http://192.168.50.169:8522/theme/image.php/boost/theme/1789796687/favicon" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="keywords" content="moodle, Grades - Sam Student | moodle" />
+<link rel="stylesheet" type="text/css" href="http://192.168.50.169:8522/theme/yui_combo.php?rollup/3.18.1/yui-moodlesimple-min.css" /><script id="firstthemesheet" type="text/css">/** Required in order to fix style inclusion problems in IE with YUI **/</script><link rel="stylesheet" type="text/css" href="http://192.168.50.169:8522/theme/styles.php/boost/1789796687_1789723632/all" />
+<script>
+//<![CDATA[
+var M = {}; M.yui = {};
+M.pageloadstarttime = new Date();
+M.cfg = {"wwwroot":"http:\/\/192.168.50.169:8522","apibase":"http:\/\/192.168.50.169:8522\/api","homeurl":{},"sesskey":"2p4YScatPp","sessiontimeout":"28800","sessiontimeoutwarning":"1200","themerev":"1789796687","slasharguments":1,"theme":"boost","iconsystemmodule":"core\/icon_system_fontawesome","jsrev":"1789796687","admin":"admin","svgicons":true,"usertimezone":"Europe\/London","language":"en","courseId":1,"courseContextId":2,"contextid":14,"contextInstanceId":4,"langrev":1789796687,"templaterev":"1789796687","siteId":1,"userId":4,"deprecationignorelist":[],"traceId":null};var yui1ConfigFn = function(me) {if(/-skin|reset|fonts|grids|base/.test(me.name)){me.type='css';me.path=me.path.replace(/\.js/,'.css');me.path=me.path.replace(/\/yui2-skin/,'/assets/skins/sam/yui2-skin')}};
+var yui2ConfigFn = function(me) {var parts=me.name.replace(/^moodle-/,'').split('-'),component=parts.shift(),module=parts[0],min='-min';if(/-(skin|core)$/.test(me.name)){parts.pop();me.type='css';min=''}
+if(module){var filename=parts.join('-');me.path=component+'/'+module+'/'+filename+min+'.'+me.type}else{me.path=component+'/'+component+'.'+me.type}};
+YUI_config = {"debug":false,"base":"http:\/\/192.168.50.169:8522\/lib\/yuilib\/3.18.1\/","comboBase":"http:\/\/192.168.50.169:8522\/theme\/yui_combo.php?","combine":true,"filter":null,"insertBefore":"firstthemesheet","groups":{"yui2":{"base":"http:\/\/192.168.50.169:8522\/lib\/yuilib\/2in3\/2.9.0\/build\/","comboBase":"http:\/\/192.168.50.169:8522\/theme\/yui_combo.php?","combine":true,"ext":false,"root":"2in3\/2.9.0\/build\/","patterns":{"yui2-":{"group":"yui2","configFn":yui1ConfigFn}}},"moodle":{"name":"moodle","base":"http:\/\/192.168.50.169:8522\/theme\/yui_combo.php?m\/1789796687\/","combine":true,"comboBase":"http:\/\/192.168.50.169:8522\/theme\/yui_combo.php?","ext":false,"root":"m\/1789796687\/","patterns":{"moodle-":{"group":"moodle","configFn":yui2ConfigFn}},"filter":null,"modules":{"moodle-core-maintenancemodetimer":{"requires":["base","node"]},"moodle-core-notification":{"requires":["moodle-core-notification-dialogue","moodle-core-notification-alert","moodle-core-notification-exception","moodle-core-notification-ajaxexception"]},"moodle-core-notification-dialogue":{"requires":["base","node","panel","escape","event-key","dd-plugin","moodle-core-widget-focusafterclose","moodle-core-lockscroll"]},"moodle-core-notification-alert":{"requires":["moodle-core-notification-dialogue"]},"moodle-core-notification-exception":{"requires":["moodle-core-notification-dialogue"]},"moodle-core-notification-ajaxexception":{"requires":["moodle-core-notification-dialogue"]},"moodle-core-dragdrop":{"requires":["base","node","io","dom","dd","event-key","event-focus","moodle-core-notification"]},"moodle-core-event":{"requires":["event-custom"]},"moodle-core-lockscroll":{"requires":["plugin","base-build"]},"moodle-core-blocks":{"requires":["base","node","io","dom","dd","dd-scroll","moodle-core-dragdrop","moodle-core-notification"]},"moodle-core-handlebars":{"condition":{"trigger":"handlebars","when":"after"}},"moodle-core-actionmenu":{"requires":["base","event","node-event-simulate"]},"moodle-core-chooserdialogue":{"requires":["base","panel","moodle-core-notification"]},"moodle-core_availability-form":{"requires":["base","node","event","event-delegate","panel","moodle-core-notification-dialogue","json"]},"moodle-course-dragdrop":{"requires":["base","node","io","dom","dd","dd-scroll","moodle-core-dragdrop","moodle-core-notification","moodle-course-coursebase","moodle-course-util"]},"moodle-course-categoryexpander":{"requires":["node","event-key"]},"moodle-course-management":{"requires":["base","node","io-base","moodle-core-notification-exception","json-parse","dd-constrain","dd-proxy","dd-drop","dd-delegate","node-event-delegate"]},"moodle-course-util":{"requires":["node"],"use":["moodle-course-util-base"],"submodules":{"moodle-course-util-base":{},"moodle-course-util-section":{"requires":["node","moodle-course-util-base"]},"moodle-course-util-cm":{"requires":["node","moodle-course-util-base"]}}},"moodle-form-dateselector":{"requires":["base","node","overlay","calendar"]},"moodle-form-shortforms":{"requires":["node","base","selector-css3"]},"moodle-question-searchform":{"requires":["base","node"]},"moodle-availability_completion-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_date-form":{"requires":["base","node","event","io","moodle-core_availability-form"]},"moodle-availability_grade-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_group-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_grouping-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-availability_profile-form":{"requires":["base","node","event","moodle-core_availability-form"]},"moodle-mod_assign-history":{"requires":["node","transition"]},"moodle-mod_quiz-dragdrop":{"requires":["base","node","io","dom","dd","dd-scroll","moodle-core-dragdrop","moodle-core-notification","moodle-mod_quiz-quizbase","moodle-mod_quiz-util-base","moodle-mod_quiz-util-page","moodle-mod_quiz-util-slot","moodle-course-util"]},"moodle-mod_quiz-autosave":{"requires":["base","node","event","event-valuechange","node-event-delegate","io-form","datatype-date-format"]},"moodle-mod_quiz-quizbase":{"requires":["base","node"]},"moodle-mod_quiz-modform":{"requires":["base","node","event"]},"moodle-mod_quiz-questionchooser":{"requires":["moodle-core-chooserdialogue","moodle-mod_quiz-util","querystring-parse"]},"moodle-mod_quiz-toolboxes":{"requires":["base","node","event","event-key","io","moodle-mod_quiz-quizbase","moodle-mod_quiz-util-slot","moodle-core-notification-ajaxexception"]},"moodle-mod_quiz-util":{"requires":["node","moodle-core-actionmenu"],"use":["moodle-mod_quiz-util-base"],"submodules":{"moodle-mod_quiz-util-base":{},"moodle-mod_quiz-util-slot":{"requires":["node","moodle-mod_quiz-util-base"]},"moodle-mod_quiz-util-page":{"requires":["node","moodle-mod_quiz-util-base"]}}},"moodle-message_airnotifier-toolboxes":{"requires":["base","node","io"]},"moodle-report_eventlist-eventfilter":{"requires":["base","event","node","node-event-delegate","datatable","autocomplete","autocomplete-filters"]},"moodle-report_loglive-fetchlogs":{"requires":["base","event","node","io","node-event-delegate"]},"moodle-gradereport_history-userselector":{"requires":["escape","event-delegate","event-key","handlebars","io-base","json-parse","moodle-core-notification-dialogue"]},"moodle-qbank_editquestion-chooser":{"requires":["moodle-core-chooserdialogue"]},"moodle-tool_lp-dragdrop-reorder":{"requires":["moodle-core-dragdrop"]},"moodle-assignfeedback_editpdf-editor":{"requires":["base","event","node","io","graphics","json","event-move","event-resize","transition","querystring-stringify-simple","moodle-core-notification-dialog","moodle-core-notification-alert","moodle-core-notification-warning","moodle-core-notification-exception","moodle-core-notification-ajaxexception"]}}},"gallery":{"name":"gallery","base":"http:\/\/192.168.50.169:8522\/lib\/yuilib\/gallery\/","combine":true,"comboBase":"http:\/\/192.168.50.169:8522\/theme\/yui_combo.php?","ext":false,"root":"gallery\/1789796687\/","patterns":{"gallery-":{"group":"gallery"}}}},"modules":{"core_filepicker":{"name":"core_filepicker","fullpath":"http:\/\/192.168.50.169:8522\/lib\/javascript.php\/1789796687\/repository\/filepicker.js","requires":["base","node","node-event-simulate","json","async-queue","io-base","io-upload-iframe","io-form","yui2-treeview","panel","cookie","datatable","datatable-sort","resize-plugin","dd-plugin","escape","moodle-core_filepicker","moodle-core-notification-dialogue"]},"core_comment":{"name":"core_comment","fullpath":"http:\/\/192.168.50.169:8522\/lib\/javascript.php\/1789796687\/comment\/comment.js","requires":["base","io-base","node","json","yui2-animation","overlay","escape"]}},"logInclude":[],"logExclude":[],"logLevel":null};
+M.yui.loader = {modules: {}};
+
+//]]>
+</script>
+<script type="importmap">{
+    "imports": {
+        "@moodle/lms/": "http://192.168.50.169:8522/core/esm/1789796687/@moodle/lms/",
+        "@moodlehq/design-system": "http://192.168.50.169:8522/core/esm/1789796687/@moodlehq/design-system",
+        "react": "http://192.168.50.169:8522/core/esm/1789796687/react",
+        "react/": "http://192.168.50.169:8522/core/esm/1789796687/react/",
+        "react-dom": "http://192.168.50.169:8522/core/esm/1789796687/react-dom",
+        "react-dom/": "http://192.168.50.169:8522/core/esm/1789796687/react-dom/"
+    }
+}</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body  id="page-grade-report-overview-index" class="format-site  path-grade path-grade-report path-grade-report-overview dir-ltr lang-en yui-skin-sam yui3-skin-sam 192-168-50-169--8522 pagelayout-standard course-1 context-14 theme uses-drawers drawer-open-index">
+<div class="toast-wrapper mx-auto py-0 fixed-top" role="status" aria-live="polite"></div>
+<div id="page-wrapper" class="d-print-block">
+
+    <div>
+    <a class="visually-hidden-focusable" href="#maincontent">Skip to main content</a>
+</div><script src="http://192.168.50.169:8522/lib/javascript.php/1789796687/lib/polyfills/polyfill.js"></script>
+<script src="http://192.168.50.169:8522/theme/yui_combo.php?rollup/3.18.1/yui-moodlesimple-min.js"></script><script src="http://192.168.50.169:8522/lib/javascript.php/1789796687/lib/javascript-static.js"></script>
+<script type="module">import "@moodle/lms/core/react_autoinit";</script><script>
+//<![CDATA[
+document.body.className += ' jsenabled';
+//]]>
+</script>
+
+
+
+    <nav class="navbar fixed-top bg-body navbar-expand" aria-label="Site navigation">
+        <div class="container-fluid">
+            <button class="navbar-toggler aabtn d-block d-md-none px-1 my-1 border-0" data-toggler="drawers" data-action="toggle" data-target="theme_boost-drawers-primary">
+                <span class="navbar-toggler-icon"></span>
+                <span class="visually-hidden">Side panel</span>
+            </button>
+    
+            <a href="http://192.168.50.169:8522/my/" class="navbar-brand d-none d-md-flex align-items-center m-0 me-4 p-0 aabtn">
+    
+                    moodle
+            </a>
+                <div class="primary-navigation">
+                    <nav class="moremenu navigation">
+                        <ul id="moremenu-6aae25272d908-navbar-nav" role="menubar" class="nav more-nav navbar-nav">
+                                    <li data-key="myhome" class="nav-item" role="none" data-forceintomoremenu="false">
+                                                <a role="menuitem" class="nav-link  "
+                                                    href="http://192.168.50.169:8522/my/"
+                                                    
+                                                    
+                                                    data-disableactive="true"
+                                                    tabindex="-1"
+                                                >
+                                                    Dashboard
+                                                </a>
+                                    </li>
+                            <li role="none" class="nav-item dropdown dropdownmoremenu d-none" data-region="morebutton">
+                                <a class="dropdown-toggle nav-link " href="#" id="moremenu-dropdown-6aae25272d908" role="menuitem" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" tabindex="-1">
+                                    More
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-start" data-region="moredropdown" aria-labelledby="moremenu-dropdown-6aae25272d908" role="menu">
+                                </ul>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+    
+    
+            <div id="usernavigation" class="navbar-nav ms-auto h-100">
+                
+                <div class="popover-region collapsed popover-region-notifications"
+    id="nav-notification-popover-container" data-userid="4"
+    data-region="popover-region">
+    <div class="popover-region-toggle nav-link icon-no-margin"
+        data-region="popover-region-toggle"
+        aria-controls="popover-region-container-6aae25272e5466aae25272dbfd2"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-label="  Show notification window with 8 new notifications  "
+        title="  Show notification window with 8 new notifications  "
+        tabindex="0"
+        role="button">
+                <i class="icon fa fa-bell fa-fw " aria-hidden="true" ></i>
+        <div
+            class="count-container "
+            data-region="count-container"
+            aria-hidden=true
+        >
+            8
+        </div>
+
+    </div>
+    <div         aria-modal="true"
+        tabindex="-1"
+
+        id="popover-region-container-6aae25272e5466aae25272dbfd2"
+        class="popover-region-container"
+        data-region="popover-region-container"
+        aria-hidden="true"
+        aria-label="Notification window"
+        role="dialog">
+        <div class="popover-region-header-container">
+            <h3 class="popover-region-header-text" data-region="popover-region-header-text">Notifications</h3>
+            <div class="popover-region-header-actions" data-region="popover-region-header-actions">        <a class="mark-all-read-button btn btn-sm btn-link m-0 py-0 icon-no-margin"
+           href="#"
+           title="Mark all as read"
+           data-action="mark-all-read"
+           role="button"
+           aria-label="Mark all as read">
+            <span class="normal-icon"><i class="icon fa fa-check fa-fw " aria-hidden="true" ></i></span>
+            <span class="loading-icon icon-no-margin ">
+                <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+            </span>
+            <span aria-live="polite" class="visually-hidden" data-region="notification-read-feedback"></span>
+        </a>
+            <a href="http://192.168.50.169:8522/message/notificationpreferences.php"
+               title="Notification preferences"
+               aria-label="Notification preferences"
+               class="btn btn-sm btn-link m-0 py-0 icon-no-margin" >
+                <i class="icon fa fa-gear fa-fw " aria-hidden="true" ></i></a>
+        <button type="button" class="btn btn-sm btn-link m-0 py-0 icon-no-margin" aria-label="Close" title="Close" data-action="close-notification-popover">
+            <i class="icon fa fa-xmark fa-fw " aria-hidden="true" ></i>
+        </button>
+</div>
+        </div>
+        <div class="popover-region-content-container" data-region="popover-region-content-container">
+            <div class="popover-region-content" data-region="popover-region-content">
+                        <div class="all-notifications"
+            data-region="all-notifications"
+            role="log"
+            aria-busy="false"
+            aria-atomic="false"
+            aria-relevant="additions"></div>
+        <div class="empty-message" tabindex="0" data-region="empty-message">You have no notifications</div>
+
+            </div>
+            <span class="loading-icon icon-no-margin ">
+                <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+            </span>
+        </div>
+                <a class="see-all-link"
+                    href="http://192.168.50.169:8522/message/output/popup/notifications.php">
+                    <div class="popover-region-footer-container">
+                        <div class="popover-region-seeall-text">See all</div>
+                    </div>
+                </a>
+    </div>
+</div><div class="popover-region collapsed" data-region="popover-region-messages">
+    <a
+        id="message-drawer-toggle-6aae25272e9d96aae25272dbfd3"
+        class="nav-link popover-region-toggle position-relative icon-no-margin"
+        href="#"
+        aria-label="Toggle messaging drawer"
+        title="Toggle messaging drawer"
+        role="button"
+        aria-expanded="false"
+        aria-describedby="unread-messages-count-6aae25272e9d96aae25272dbfd3"
+    >
+        <i class="icon fa fa-message fa-fw " aria-hidden="true" ></i>
+        <div
+            class="count-container hidden"
+            data-region="count-container"
+        >
+            <span aria-hidden="true">0</span>
+            <span class="visually-hidden" id="unread-messages-count-6aae25272e9d96aae25272dbfd3">There are 0 unread conversations</span>
+        </div>
+    </a>
+    <span class="visually-hidden-focusable" data-region="jumpto" tabindex="-1"></span>
+</div>
+                    <div class="divider border-start h-75 align-self-center mx-1"></div>
+                    <div class="d-flex align-items-stretch usermenu-container" data-region="usermenu">
+                        <div class="usermenu">
+                                <div class="dropdown show">
+                                    <a href="#" role="button" id="user-menu-toggle" data-bs-toggle="dropdown" aria-label="User menu"
+                                       aria-haspopup="true" aria-controls="user-action-menu" class="btn dropdown-toggle">
+                                        <span class="userbutton">
+                                            <span class="avatars">
+                                                    <span class="avatar current">
+                                                        <span class="userinitials size-35" title="Sam Student" aria-label="Sam Student" role="img">SS</span>
+                                                    </span>
+                                            </span>
+                                        </span>
+                                    </a>
+                                    <div id="user-action-menu" class="dropdown-menu dropdown-menu-end">
+                                        <div id="usermenu-carousel" class="carousel slide" data-touch="false" data-interval="false" data-keyboard="false">
+                                            <div class="carousel-inner">
+                                                <div id="carousel-item-main" class="carousel-item active" role="menu" tabindex="-1" aria-label="User">
+                                                            <a href="http://192.168.50.169:8522/user/profile.php" class="dropdown-item" role="menuitem" tabindex="-1">
+                                                                    
+                                                                Profile
+                                                            </a>
+                                                        
+                                                            <a href="http://192.168.50.169:8522/grade/report/overview/index.php" class="dropdown-item" role="menuitem" tabindex="-1">
+                                                                    
+                                                                Grades
+                                                            </a>
+                                                        
+                                                            <a href="http://192.168.50.169:8522/calendar/view.php?view=month" class="dropdown-item" role="menuitem" tabindex="-1">
+                                                                    
+                                                                Calendar
+                                                            </a>
+                                                        
+                                                            <a href="http://192.168.50.169:8522/user/files.php" class="dropdown-item" role="menuitem" tabindex="-1">
+                                                                    
+                                                                Private files
+                                                            </a>
+                                                        
+                                                            <a href="http://192.168.50.169:8522/reportbuilder/index.php" class="dropdown-item" role="menuitem" tabindex="-1">
+                                                                    
+                                                                Reports
+                                                            </a>
+                                                        
+                                                        <div class="dropdown-divider"></div>
+                                                            <a href="http://192.168.50.169:8522/user/preferences.php" class="dropdown-item" role="menuitem" tabindex="-1">
+                                                                    
+                                                                Preferences
+                                                            </a>
+                                                        <div class="dropdown-divider"></div>
+                                                            <a href="http://192.168.50.169:8522/login/logout.php?sesskey=2p4YScatPp" class="dropdown-item" role="menuitem" tabindex="-1">
+                                                                    
+                                                                Log out
+                                                            </a>
+                                                        
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+    </nav>
+    
+
+<div  class="drawer drawer-left drawer-primary d-print-none not-initialized" data-region="fixed-drawer" id="theme_boost-drawers-primary" data-preference="" data-state="show-drawer-primary" data-forceopen="0" data-close-on-resize="1">
+    <div class="drawerheader">
+        <div class="drawerheading">
+                    <a
+            href="http://192.168.50.169:8522/my/"
+            title="moodle"
+            data-region="site-home-link"
+            class="aabtn text-reset d-flex align-items-center h-100"
+        >
+                <span class="sitename" title="moodle">moodle</span>
+        </a>
+
+        </div>
+        <div class="draweractions">
+            <div class="drawerheadercontent">
+                
+            </div>
+            <button
+                class="btn btn-icon icon-size-3 drawertoggle"
+                data-toggler="drawers"
+                data-action="closedrawer"
+                data-target="theme_boost-drawers-primary"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                title="Close drawer"
+                aria-label="Close drawer"
+            >
+                    <i class="icon fa fa-xmark fa-fw " aria-hidden="true" ></i>
+            </button>
+        </div>
+    </div>
+    <div class="drawercontent drag-container" data-usertour="scroller">
+                <div class="list-group">
+                <a href="http://192.168.50.169:8522/my/" class="list-group-item list-group-item-action  " >
+                    Dashboard
+                </a>
+        </div>
+
+    </div>
+</div>
+    <div id="page" data-region="mainpage" data-usertour="scroller" class="drawers   drag-container">
+        <div id="topofscroll" class="main-inner">
+            <div class="drawer-toggles d-flex">
+            </div>
+            <header id="page-header" class="header-maxwidth d-print-none" data-for="page-heading">
+    <div class="w-100">
+        <div class="d-flex flex-wrap">
+            <div id="page-navbar">
+                
+            </div>
+            <div class="ms-auto d-flex">
+                
+            </div>
+            <div id="course-header">
+                
+            </div>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="me-auto d-flex flex-column">
+                <div>
+                    <div class="page-context-header d-flex flex-wrap align-items-center mb-2">
+    <div class="page-header-image">
+        <a href="http://192.168.50.169:8522/user/profile.php?id=4" class="d-inline-block aabtn"><span class="userinitials size-100" title="Sam Student" aria-label="Sam Student" role="img">SS</span></a>
+    </div>
+    <div class="page-header-headings">
+        <h1 class="h2 mb-0">Sam Student</h1>
+    </div>
+    <div class="btn-group header-button-group d-block mx-sm-3">
+            <a href="http://192.168.50.169:8522/message/index.php?id=4"  id="message-user-button"  role="button"  data-conversationid="0"  data-userid="4"  class="btn" >
+                    <i class="icon fa fa-message fa-fw " aria-hidden="true" ></i>
+                    <span class="header-button-title">Message</span>
+            </a>
+    </div>
+</div>
+                </div>
+                <div>
+                </div>
+            </div>
+            <div class="header-actions-container ms-auto" data-region="header-actions-container">
+            </div>
+        </div>
+        <div class="header-extras-container ms-auto" data-region="header-extras-container">
+        </div>
+    </div>
+</header>
+            <div id="page-content" class="pb-3 d-print-block">
+                <div id="region-main-box">
+                    <div id="region-main">
+
+                        <span class="notifications" id="user-notifications"></span>
+                        <div role="main"><span id="maincontent" tabindex="-1"></span><div class="table-responsive"><table cellspacing="0" id="overview-grade" class="flexible table table-striped table-hover table generaltable"><thead><tr><th class="header c0" scope="col">Course name<div class="commands"></div></th><th class="header c1" scope="col">Grade<div class="commands"></div></th></tr></thead><tbody><tr class="" id="grade-report-overview-4_r0"><td class="cell c0" id="grade-report-overview-4_r0_c0"><a href="http://192.168.50.169:8522/course/user.php?mode=grade&amp;id=2&amp;user=4">Operating Systems</a></td><td class="cell c1" id="grade-report-overview-4_r0_c1">85.00</td></tr><h2>Courses I am taking</h2><br /><tr class="emptyrow" id="grade-report-overview-4_r1"><td class="cell c0" id="grade-report-overview-4_r1_c0"></td><td class="cell c1" id="grade-report-overview-4_r1_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r2"><td class="cell c0" id="grade-report-overview-4_r2_c0"></td><td class="cell c1" id="grade-report-overview-4_r2_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r3"><td class="cell c0" id="grade-report-overview-4_r3_c0"></td><td class="cell c1" id="grade-report-overview-4_r3_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r4"><td class="cell c0" id="grade-report-overview-4_r4_c0"></td><td class="cell c1" id="grade-report-overview-4_r4_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r5"><td class="cell c0" id="grade-report-overview-4_r5_c0"></td><td class="cell c1" id="grade-report-overview-4_r5_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r6"><td class="cell c0" id="grade-report-overview-4_r6_c0"></td><td class="cell c1" id="grade-report-overview-4_r6_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r7"><td class="cell c0" id="grade-report-overview-4_r7_c0"></td><td class="cell c1" id="grade-report-overview-4_r7_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r8"><td class="cell c0" id="grade-report-overview-4_r8_c0"></td><td class="cell c1" id="grade-report-overview-4_r8_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r9"><td class="cell c0" id="grade-report-overview-4_r9_c0"></td><td class="cell c1" id="grade-report-overview-4_r9_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r10"><td class="cell c0" id="grade-report-overview-4_r10_c0"></td><td class="cell c1" id="grade-report-overview-4_r10_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r11"><td class="cell c0" id="grade-report-overview-4_r11_c0"></td><td class="cell c1" id="grade-report-overview-4_r11_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r12"><td class="cell c0" id="grade-report-overview-4_r12_c0"></td><td class="cell c1" id="grade-report-overview-4_r12_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r13"><td class="cell c0" id="grade-report-overview-4_r13_c0"></td><td class="cell c1" id="grade-report-overview-4_r13_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r14"><td class="cell c0" id="grade-report-overview-4_r14_c0"></td><td class="cell c1" id="grade-report-overview-4_r14_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r15"><td class="cell c0" id="grade-report-overview-4_r15_c0"></td><td class="cell c1" id="grade-report-overview-4_r15_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r16"><td class="cell c0" id="grade-report-overview-4_r16_c0"></td><td class="cell c1" id="grade-report-overview-4_r16_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r17"><td class="cell c0" id="grade-report-overview-4_r17_c0"></td><td class="cell c1" id="grade-report-overview-4_r17_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r18"><td class="cell c0" id="grade-report-overview-4_r18_c0"></td><td class="cell c1" id="grade-report-overview-4_r18_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r19"><td class="cell c0" id="grade-report-overview-4_r19_c0"></td><td class="cell c1" id="grade-report-overview-4_r19_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r20"><td class="cell c0" id="grade-report-overview-4_r20_c0"></td><td class="cell c1" id="grade-report-overview-4_r20_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r21"><td class="cell c0" id="grade-report-overview-4_r21_c0"></td><td class="cell c1" id="grade-report-overview-4_r21_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r22"><td class="cell c0" id="grade-report-overview-4_r22_c0"></td><td class="cell c1" id="grade-report-overview-4_r22_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r23"><td class="cell c0" id="grade-report-overview-4_r23_c0"></td><td class="cell c1" id="grade-report-overview-4_r23_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r24"><td class="cell c0" id="grade-report-overview-4_r24_c0"></td><td class="cell c1" id="grade-report-overview-4_r24_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r25"><td class="cell c0" id="grade-report-overview-4_r25_c0"></td><td class="cell c1" id="grade-report-overview-4_r25_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r26"><td class="cell c0" id="grade-report-overview-4_r26_c0"></td><td class="cell c1" id="grade-report-overview-4_r26_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r27"><td class="cell c0" id="grade-report-overview-4_r27_c0"></td><td class="cell c1" id="grade-report-overview-4_r27_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r28"><td class="cell c0" id="grade-report-overview-4_r28_c0"></td><td class="cell c1" id="grade-report-overview-4_r28_c1"></td></tr><tr class="emptyrow" id="grade-report-overview-4_r29"><td class="cell c0" id="grade-report-overview-4_r29_c0"></td><td class="cell c1" id="grade-report-overview-4_r29_c1"></td></tr></tbody></table></div></div>
+                        
+                        
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer id="page-footer" class="footer-popover bg-white">
+            <div data-region="footer-container-popover">
+                <button class="btn btn-icon rounded-circle bg-secondary btn-footer-popover" data-action="footer-popover" aria-label="Show footer">
+                    <i class="icon fa fa-question fa-fw " aria-hidden="true" ></i>
+                </button>
+            </div>
+            <div class="footer-content-popover container" data-region="footer-content-popover">
+                    <div class="footer-section p-3 border-bottom">
+        
+        
+                            <div class="footer-support-link"><a href="http://192.168.50.169:8522/user/contactsitesupport.php"><i class="icon fa-regular fa-envelope fa-fw " aria-hidden="true" ></i>Contact site support</a></div>
+                    </div>
+                <div class="footer-section p-3 border-bottom">
+                    <div class="logininfo">
+                        <div class="logininfo">You are logged in as <a href="http://192.168.50.169:8522/user/profile.php?id=4">Sam Student</a> (<a href="http://192.168.50.169:8522/login/logout.php?sesskey=2p4YScatPp">Log out</a>)</div>
+                    </div>
+                    <div class="tool_usertours-resettourcontainer">
+                    </div>
+                    <div class="tool_dataprivacy"><a href="http://192.168.50.169:8522/admin/tool/dataprivacy/summary.php">Data retention summary</a></div>
+                    <script>
+//<![CDATA[
+var require = {
+    baseUrl : 'http://192.168.50.169:8522/lib/requirejs.php/1789796687/',
+    // We only support AMD modules with an explicit define() statement.
+    enforceDefine: true,
+    skipDataMain: true,
+    waitSeconds : 0,
+
+    paths: {
+        jquery: 'http://192.168.50.169:8522/lib/javascript.php/1789796687/lib/jquery/jquery-3.7.1.min',
+        jqueryui: 'http://192.168.50.169:8522/lib/javascript.php/1789796687/lib/jquery/ui-1.14.1/jquery-ui.min',
+        jqueryprivate: 'http://192.168.50.169:8522/lib/javascript.php/1789796687/lib/requirejs/jquery-private'
+    },
+
+    // Custom jquery config map.
+    map: {
+      // '*' means all modules will get 'jqueryprivate'
+      // for their 'jquery' dependency.
+      '*': { jquery: 'jqueryprivate' },
+
+      // 'jquery-private' wants the real jQuery module
+      // though. If this line was not here, there would
+      // be an unresolvable cyclic dependency.
+      jqueryprivate: { jquery: 'jquery' }
+    }
+};
+
+//]]>
+</script>
+<script src="http://192.168.50.169:8522/lib/javascript.php/1789796687/lib/requirejs/require.min.js"></script>
+<script>
+//<![CDATA[
+M.util.js_pending("core/first");
+require(['core/first'], function() {
+require(['core/prefetch'])
+;
+M.util.js_pending('filter_mathjaxloader/loader'); require(['filter_mathjaxloader/loader'], function(amd) {amd.configure({"mathjaxurl":"https:\/\/cdn.jsdelivr.net\/npm\/mathjax@4.0.0\/tex-mml-chtml.js","mathjaxconfig":"","lang":"en"}); M.util.js_complete('filter_mathjaxloader/loader');});;
+require(["media_videojs/loader"], function(loader) {
+    loader.setUp('en');
+});;
+
+    require(['core/moremenu'], function(moremenu) {
+        moremenu(document.querySelector('#moremenu-6aae25272d908-navbar-nav'));
+    });
+;
+
+require(['jquery', 'message_popup/notification_popover_controller'], function($, Controller) {
+    var container = $('#nav-notification-popover-container');
+    var controller = new Controller(container);
+    controller.registerEventListeners();
+    controller.registerListNavigationEventListeners();
+});
+;
+
+require(
+[
+    'jquery',
+    'core_message/message_popover'
+],
+function(
+    $,
+    Popover
+) {
+    var toggle = $('#message-drawer-toggle-6aae25272e9d96aae25272dbfd3');
+    Popover.init(toggle);
+});
+;
+
+    require(['core/usermenu'], function(UserMenu) {
+        UserMenu.init();
+    });
+;
+
+M.util.js_pending('theme_boost/drawers:load');
+require(['theme_boost/drawers'], function() {
+    M.util.js_complete('theme_boost/drawers:load');
+});
+;
+M.util.js_pending('core_message/message_user_button'); require(['core_message/message_user_button'], function(amd) {amd.send("#message-user-button"); M.util.js_complete('core_message/message_user_button');});;
+
+require([
+    'theme_boost/footer-popover',
+    'core/copy_to_clipboard',
+], function(FooterPopover) {
+    FooterPopover.init();
+});
+;
+
+require(['jquery', 'core_message/message_drawer'], function($, MessageDrawer) {
+    var root = $('#message-drawer-6aae25272f4556aae25272dbfd4');
+    MessageDrawer.init(root, '6aae25272f4556aae25272dbfd4', false);
+});
+;
+
+M.util.js_pending('theme_boost/loader');
+require(['theme_boost/loader', 'theme_boost/drawer'], function(Loader, Drawer) {
+    Drawer.init();
+    M.util.js_complete('theme_boost/loader');
+});
+;
+M.util.js_pending('core/notification'); require(['core/notification'], function(amd) {amd.init(14, []); M.util.js_complete('core/notification');});;
+M.util.js_pending('core/log'); require(['core/log'], function(amd) {amd.setConfig({"level":"warn"}); M.util.js_complete('core/log');});;
+M.util.js_pending('core/page_global'); require(['core/page_global'], function(amd) {amd.init(); M.util.js_complete('core/page_global');});;
+M.util.js_pending('core/utility'); require(['core/utility'], function(amd) {M.util.js_complete('core/utility');});;
+M.util.js_pending('core/storage_validation'); require(['core/storage_validation'], function(amd) {amd.init(1789797671); M.util.js_complete('core/storage_validation');});
+    M.util.js_complete("core/first");
+});
+//]]>
+</script>
+<script>
+//<![CDATA[
+M.str = {"moodle":{"lastmodified":"Last modified","name":"Name","error":"Error","info":"Information","yes":"Yes","no":"No","cancel":"Cancel","changesmadereallygoaway":"You have made changes. Are you sure you want to navigate away and lose your changes?","confirm":"Confirm","areyousure":"Are you sure?","closebuttontitle":"Close","unknownerror":"Unknown error","file":"File","url":"URL","collapseall":"Collapse all","expandall":"Expand all"},"repository":{"type":"Type","size":"Size","invalidjson":"Invalid JSON string","nofilesattached":"No files attached","filepicker":"File picker","logout":"Logout","nofilesavailable":"No files available","norepositoriesavailable":"Sorry, none of your current repositories can return files in the required format.","fileexistsdialogheader":"File exists","fileexistsdialog_editor":"A file with that name has already been attached to the text you are editing.","fileexistsdialog_filemanager":"A file with that name has already been attached","renameto":"Rename to \"{$a}\"","referencesexist":"There are {$a} links to this file","select":"Select","invalidfiletypetitle":"File type not accepted"},"admin":{"confirmdeletecomments":"Are you sure you want to delete the selected comment(s)?","confirmation":"Confirmation"},"debug":{"debuginfo":"Debug info","line":"Line","stacktrace":"Stack trace"},"langconfig":{"labelsep":": "}};
+//]]>
+</script>
+<script>
+//<![CDATA[
+(function() {M.util.help_popups.setup(Y);
+ M.util.js_pending('random6aae25272dbfd5'); Y.on('domready', function() { M.util.js_complete("init");  M.util.js_complete('random6aae25272dbfd5'); });
+})();
+//]]>
+</script>
+
+                </div>
+                <div class="footer-section p-3">
+                    <div>Powered by <a href="https://moodle.com">Moodle</a></div>
+                </div>
+            </div>
+        
+            <div class="footer-content-debugging footer-dark bg-dark text-light">
+                <div class="container-fluid footer-dark-inner">
+                    
+                </div>
+            </div>
+        </footer>
+    </div>
+    <div
+    id="drawer-6aae25272f4556aae25272dbfd4"
+    class=" drawer bg-white hidden"
+    aria-hidden="true"
+    data-region="right-hand-drawer"
+    role="dialog"
+    tabindex="-1"
+            aria-modal="true"
+        aria-labelledby="message-drawer-header-6aae25272f4556aae25272dbfd4"
+
+>
+            <div id="message-drawer-6aae25272f4556aae25272dbfd4" class="message-app" data-region="message-drawer" role="region" tabindex="0">
+            <h2 class="visually-hidden" id="message-drawer-header-6aae25272f4556aae25272dbfd4">Messaging</h2>
+            <div class="closewidget text-end pe-2">
+                <a class="text-dark btn-link" data-action="closedrawer" href="#"
+                   title="Close" aria-label="Close"
+                >
+                    <i class="icon fa fa-xmark fa-fw " aria-hidden="true" ></i>
+                </a>
+            </div>
+            <div class="header-container position-relative" data-region="header-container">
+                <div class="hidden border-bottom p-1 px-sm-2" aria-hidden="true" data-region="view-contacts">
+                    <div class="d-flex align-items-center">
+                        <div class="align-self-stretch">
+                            <a class="h-100 d-flex align-items-center me-2" href="#" data-route-back role="button">
+                                <div class="icon-back-in-drawer">
+                                    <span class="dir-rtl-hide"><i class="icon fa fa-chevron-left fa-fw " aria-hidden="true" ></i></span>
+                                    <span class="dir-ltr-hide"><i class="icon fa fa-chevron-right fa-fw " aria-hidden="true" ></i></span>
+                                </div>
+                                <div class="icon-back-in-app">
+                                    <span class="dir-rtl-hide"><i class="icon fa fa-xmark fa-fw " aria-hidden="true" ></i></span>
+                                </div>                            </a>
+                        </div>
+                        <div>
+                            Contacts
+                        </div>
+                        <div class="ms-auto">
+                            <a href="#" data-route="view-search" role="button" aria-label="Search">
+                                <i class="icon fa fa-magnifying-glass fa-fw " aria-hidden="true" ></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>                
+                <div
+                    class="hidden bg-white position-relative border-bottom p-1 px-sm-2"
+                    aria-hidden="true"
+                    data-region="view-conversation"
+                >
+                    <div class="hidden" data-region="header-content"></div>
+                    <div class="hidden" data-region="header-edit-mode">
+                        
+                        <div class="d-flex p-2 align-items-center">
+                            Messages selected:
+                            <span class="ms-1" data-region="message-selected-court">1</span>
+                            <button type="button" class="ms-auto btn-close" aria-label="Cancel message selection"
+                                data-action="cancel-edit-mode">
+                            </button>
+                        </div>
+                    </div>
+                    <div data-region="header-placeholder">
+                        <div class="d-flex">
+                            <div
+                                class="ms-2 rounded-circle bg-pulse-grey align-self-center"
+                                style="height: 38px; width: 38px"
+                            >
+                            </div>
+                            <div class="ms-2 " style="flex: 1">
+                                <div
+                                    class="mt-1 bg-pulse-grey w-75"
+                                    style="height: 16px;"
+                                >
+                                </div>
+                            </div>
+                            <div
+                                class="ms-2 bg-pulse-grey align-self-center"
+                                style="height: 16px; width: 20px"
+                            >
+                            </div>
+                        </div>
+                    </div>
+                    <div
+                        class="hidden position-absolute z-index-1"
+                        data-region="confirm-dialogue-container"
+                        style="top: 0; bottom: -1px; right: 0; left: 0; background: rgba(0,0,0,0.3);"
+                    ></div>
+                </div>                <div class="border-bottom p-1 px-sm-2" aria-hidden="false"  data-region="view-overview">
+                    <div class="d-flex align-items-center">
+                        <div class="input-group simplesearchform" role="group" aria-labelledby="messageoverviewgrouplabel">
+                            <span class="visually-hidden" id="messageoverviewgrouplabel">Search people and messages</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="Search"
+                                aria-label="Search"
+                                data-region="view-overview-search-input"
+                            >
+                            <span class="icon-no-margin btn btn-submit">
+                                <i class="icon fa fa-magnifying-glass fa-fw " aria-hidden="true" ></i>
+                            </span>
+                        </div>
+                        <div class="ms-2">
+                            <a
+                                href="#"
+                                data-route="view-settings"
+                                data-route-param="4"
+                                aria-label="Settings"
+                                role="button"
+                            >
+                                <i class="icon fa fa-gear fa-fw " aria-hidden="true" ></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="text-end mt-sm-3">
+                        <a href="#" data-route="view-contacts" role="button">
+                            <i class="icon fa fa-user fa-fw " aria-hidden="true" ></i>
+                            Contacts
+                            <span
+                                class="badge bg-primary text-white ms-2 hidden"
+                                data-region="contact-request-count"
+                            >
+                                <span aria-hidden="true">0</span>
+                                <span class="visually-hidden">There are 0 pending contact requests</span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="hidden border-bottom p-1 px-sm-2 view-search"  aria-hidden="true" data-region="view-search">
+                    <div class="d-flex align-items-center">
+                        <a
+                            class="me-2 align-self-stretch d-flex align-items-center"
+                            href="#"
+                            data-route-back
+                            data-action="cancel-search"
+                            role="button"
+                        >
+                            <div class="icon-back-in-drawer">
+                                <span class="dir-rtl-hide"><i class="icon fa fa-chevron-left fa-fw " aria-hidden="true" ></i></span>
+                                <span class="dir-ltr-hide"><i class="icon fa fa-chevron-right fa-fw " aria-hidden="true" ></i></span>
+                            </div>
+                            <div class="icon-back-in-app">
+                                <span class="dir-rtl-hide"><i class="icon fa fa-xmark fa-fw " aria-hidden="true" ></i></span>
+                            </div>                        </a>
+                        <div class="input-group simplesearchform" role="group" aria-labelledby="messagesearchgrouplabel">
+                            <span class="visually-hidden" id="messagesearchgrouplabel">Search people and messages</span>
+                            <input
+                                type="text"
+                                class="form-control"
+                                placeholder="Search"
+                                aria-label="Search"
+                                data-region="search-input"
+                            >
+                            <button
+                                class="btn btn-submit icon-no-margin"
+                                type="button"
+                                data-action="search"
+                                aria-label="Perform search"
+                                title="Perform search"
+                            >
+                                <span data-region="search-icon-container">
+                                    <i class="icon fa fa-magnifying-glass fa-fw " aria-hidden="true" ></i>
+                                </span>
+                                <span class="hidden" data-region="loading-icon-container">
+                                    <span class="loading-icon icon-no-margin ">
+                                        <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="hidden border-bottom p-1 px-sm-2 pb-sm-3" aria-hidden="true" data-region="view-settings">
+                    <div class="d-flex align-items-center">
+                        <div class="align-self-stretch" >
+                            <a class="h-100 d-flex me-2 align-items-center" href="#" data-route-back role="button">
+                                <div class="icon-back-in-drawer">
+                                    <span class="dir-rtl-hide"><i class="icon fa fa-chevron-left fa-fw " aria-hidden="true" ></i></span>
+                                    <span class="dir-ltr-hide"><i class="icon fa fa-chevron-right fa-fw " aria-hidden="true" ></i></span>
+                                </div>
+                                <div class="icon-back-in-app">
+                                    <span class="dir-rtl-hide"><i class="icon fa fa-xmark fa-fw " aria-hidden="true" ></i></span>
+                                </div>                            </a>
+                        </div>
+                        <div>
+                            Settings
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="body-container position-relative" data-region="body-container">
+                
+                <div
+                    class="hidden"
+                    data-region="view-contact"
+                    aria-hidden="true"
+                >
+                    <div class="p-2 pt-3" data-region="content-container"></div>
+                </div>                <div class="hidden h-100" data-region="view-contacts" aria-hidden="true" data-user-id="4">
+                    <div class="d-flex flex-column h-100">
+                        <div class="p-3 border-bottom">
+                            <ul class="nav nav-pills nav-fill" role="tablist">
+                                <li class="nav-item">
+                                    <a
+                                        id="contacts-tab-6aae25272f4556aae25272dbfd4"
+                                        class="nav-link active"
+                                        href="#contacts-tab-panel-6aae25272f4556aae25272dbfd4"
+                                        data-bs-toggle="tab"
+                                        data-action="show-contacts-section"
+                                        role="tab"
+                                        aria-controls="contacts-tab-panel-6aae25272f4556aae25272dbfd4"
+                                        aria-selected="true"
+                                    >
+                                        Contacts
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a
+                                        id="requests-tab-6aae25272f4556aae25272dbfd4"
+                                        class="nav-link"
+                                        href="#requests-tab-panel-6aae25272f4556aae25272dbfd4"
+                                        data-bs-toggle="tab"
+                                        data-action="show-requests-section"
+                                        role="tab"
+                                        aria-controls="requests-tab-panel-6aae25272f4556aae25272dbfd4"
+                                        aria-selected="false"
+                                    >
+                                        Requests
+                                        <span class="badge bg-primary text-white ms-2 hidden"
+                                            data-region="contact-request-count"
+                                        >
+                                            <span aria-hidden="true">0</span>
+                                            <span class="visually-hidden">There are 0 pending contact requests</span>
+                                        </span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="tab-content d-flex flex-column h-100">
+                                            <div
+                    class="tab-pane fade show active h-100 lazy-load-list"
+                    aria-live="polite"
+                    data-region="lazy-load-list"
+                    data-user-id="4"
+                                        id="contacts-tab-panel-6aae25272f4556aae25272dbfd4"
+                    data-section="contacts"
+                    role="tabpanel"
+                    aria-labelledby="contacts-tab-6aae25272f4556aae25272dbfd4"
+
+                >
+                    
+                    <div class="hidden text-center p-2" data-region="empty-message-container">
+                        No contacts
+                    </div>
+                    <div class="hidden list-group" data-region="content-container">
+                        
+                    </div>
+                    <div class="list-group" data-region="placeholder-container">
+                        
+                    </div>
+                    <div class="w-100 text-center p-3 hidden" data-region="loading-icon-container" >
+                        <span class="loading-icon icon-no-margin ">
+                            <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                                            <div
+                    class="tab-pane fade h-100 lazy-load-list"
+                    aria-live="polite"
+                    data-region="lazy-load-list"
+                    data-user-id="4"
+                                        id="requests-tab-panel-6aae25272f4556aae25272dbfd4"
+                    data-section="requests"
+                    role="tabpanel"
+                    aria-labelledby="requests-tab-6aae25272f4556aae25272dbfd4"
+
+                >
+                    
+                    <div class="hidden text-center p-2" data-region="empty-message-container">
+                        No contact requests
+                    </div>
+                    <div class="hidden list-group" data-region="content-container">
+                        
+                    </div>
+                    <div class="list-group" data-region="placeholder-container">
+                        
+                    </div>
+                    <div class="w-100 text-center p-3 hidden" data-region="loading-icon-container" >
+                        <span class="loading-icon icon-no-margin ">
+                            <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                        </span>
+                    </div>
+                </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div
+                    class="view-conversation hidden h-100"
+                    aria-hidden="true"
+                    data-region="view-conversation"
+                    data-user-id="4"
+                    data-midnight="1789772400"
+                    data-message-poll-min="10"
+                    data-message-poll-max="120"
+                    data-message-poll-after-max="300"
+                    style="overflow-y: auto; overflow-x: hidden"
+                >
+                    <div class="position-relative h-100" data-region="content-container" style="overflow-y: auto; overflow-x: hidden">
+                        <div class="content-message-container hidden h-100 px-2 pt-0" data-region="content-message-container" role="log" style="overflow-y: auto; overflow-x: hidden">
+                            <div class="py-3 border-bottom text-center hidden" data-region="contact-request-sent-message-container">
+                                <p class="m-0">Contact request sent</p>
+                                <p class="fst-italic fw-light" data-region="text"></p>
+                            </div>
+                            <div class="p-3 text-center hidden" data-region="self-conversation-message-container">
+                                <p class="m-0">Personal space</p>
+                                <p class="fst-italic fw-light" data-region="text">Save draft messages, links, notes etc. to access later.</p>
+                            </div>
+                            <div class="p-3 text-center hidden" data-region="unable-to-send-container">
+                                <p class="m-0">Cannot send messages</p>
+                                <p class="fst-italic fw-light" data-region="text">You do not have permission to send messages in this conversation</p>
+                            </div>
+                            <div class="hidden text-center p-3" data-region="more-messages-loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</div>
+                        </div>
+                        <div class="p-4 w-100 h-100 hidden position-absolute z-index-1" data-region="confirm-dialogue-container" style="top: 0; background: rgba(0,0,0,0.3);">
+                            
+                            <div class="p-3 bg-white" data-region="confirm-dialogue" role="alert">
+                                <p class="text-muted" data-region="dialogue-text"></p>
+                                <div class="mb-2 form-check hidden" data-region="delete-messages-for-all-users-toggle-container">
+                                    <input type="checkbox" class="form-check-input" id="delete-messages-for-all-users" data-region="delete-messages-for-all-users-toggle">
+                                    <label class="form-check-label text-muted" for="delete-messages-for-all-users">
+                                        Delete for me and for everyone else
+                                    </label>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-primary hidden" data-action="confirm-block">
+                                        <span data-region="dialogue-button-text">Block</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary hidden" data-action="confirm-unblock">
+                                        <span data-region="dialogue-button-text">Unblock</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary hidden" data-action="confirm-remove-contact">
+                                        <span data-region="dialogue-button-text">Remove</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary hidden" data-action="confirm-add-contact">
+                                        <span data-region="dialogue-button-text">Add</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary hidden" data-action="confirm-delete-selected-messages">
+                                        <span data-region="dialogue-button-text">Delete</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary hidden" data-action="confirm-delete-conversation">
+                                        <span data-region="dialogue-button-text">Delete</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary hidden" data-action="request-add-contact">
+                                        <span data-region="dialogue-button-text">Send contact request</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary hidden" data-action="accept-contact-request">
+                                        <span data-region="dialogue-button-text">Accept and add to contacts</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-secondary hidden" data-action="decline-contact-request">
+                                        <span data-region="dialogue-button-text">Decline</span>
+                                        <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary" data-action="okay-confirm">OK</button>
+                                    <button type="button" class="btn btn-secondary" data-action="cancel-confirm">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-2 pb-2 pt-0" data-region="content-placeholder">
+                            <div class="h-100 d-flex flex-column">
+                                <div
+                                    class="px-2 pb-2 pt-0 bg-light h-100"
+                                    style="overflow-y: auto"
+                                >
+                                    <div class="mt-4">
+                                        <div class="mb-4">
+                                            <div class="mx-auto bg-white" style="height: 25px; width: 100px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                    </div>                                    <div class="mt-4">
+                                        <div class="mb-4">
+                                            <div class="mx-auto bg-white" style="height: 25px; width: 100px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                    </div>                                    <div class="mt-4">
+                                        <div class="mb-4">
+                                            <div class="mx-auto bg-white" style="height: 25px; width: 100px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                    </div>                                    <div class="mt-4">
+                                        <div class="mb-4">
+                                            <div class="mx-auto bg-white" style="height: 25px; width: 100px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                    </div>                                    <div class="mt-4">
+                                        <div class="mb-4">
+                                            <div class="mx-auto bg-white" style="height: 25px; width: 100px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                        <div class="d-flex flex-column p-2 bg-white rounded mb-2">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="me-2">
+                                                    <div class="rounded-circle bg-pulse-grey" style="height: 35px; width: 35px"></div>
+                                                </div>
+                                                <div class="me-4 w-75 bg-pulse-grey" style="height: 16px"></div>
+                                                <div class="ms-auto bg-pulse-grey" style="width: 35px; height: 16px"></div>
+                                            </div>
+                                            <div class="bg-pulse-grey w-100" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-100 mt-2" style="height: 16px"></div>
+                                            <div class="bg-pulse-grey w-75 mt-2" style="height: 16px"></div>
+                                        </div>
+                                    </div>                                </div>
+                            </div>                        </div>
+                    </div>
+                </div>
+                
+                <div
+                    class="hidden"
+                    aria-hidden="true"
+                    data-region="view-group-info"
+                >
+                    <div
+                        class="pt-3 h-100 d-flex flex-column"
+                        data-region="group-info-content-container"
+                        style="overflow-y: auto"
+                    ></div>
+                </div>                <div class="h-100 view-overview-body" aria-hidden="false" data-region="view-overview"  data-user-id="4">
+                    <div id="message-drawer-view-overview-container-6aae25272f4556aae25272dbfd4" class="d-flex flex-column h-100" style="overflow-y: auto">
+                            
+                            
+                            <div
+                                class="section border-0 card rounded-0"
+                                data-region="view-overview-favourites"
+                            >
+                                <div id="view-overview-favourites-toggle" class="card-header rounded-0" data-region="toggle">
+                                    <button
+                                        class="btn btn-link w-100 text-start p-1 p-sm-2 d-flex rounded-0 align-items-center overview-section-toggle collapsed"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#view-overview-favourites-target-6aae25272f4556aae25272dbfd4"
+                                        aria-expanded="false"
+                                        aria-controls="view-overview-favourites-target-6aae25272f4556aae25272dbfd4"
+                                    >
+                                        <span class="collapsed-icon-container">
+                                            <span class="dir-rtl-hide"><i class="icon fa fa-chevron-right fa-fw " aria-hidden="true" ></i></span>
+                                            <span class="dir-ltr-hide"><i class="icon fa fa-chevron-left fa-fw " aria-hidden="true" ></i></span>
+                                        </span>
+                                        <span class="expanded-icon-container">
+                                            <i class="icon fa fa-chevron-down fa-fw " aria-hidden="true" ></i>
+                                        </span>
+                                        <span class="fw-bold ms-1">Starred</span>
+                                        <small
+                                            class="hidden ms-1"
+                                            data-region="section-total-count-container" aria-labelledby="view-overview-favourites-total-count-label"
+                                        >
+                                            (<span aria-hidden="true" data-region="section-total-count"></span>)
+                                            <span class="visually-hidden" id="view-overview-favourites-total-count-label">
+                                                 total conversations
+                                            </span>
+                                        </small>
+                                        <span class="hidden ms-2" data-region="loading-icon-container">
+                                            <span class="loading-icon icon-no-margin ">
+                                                <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                                            </span>
+                                        </span>
+                                        <span
+                                            class="hidden badge rounded-pill bg-primary text-white ms-auto"
+                                            data-region="section-unread-count-container" aria-labelledby="view-overview-favourites-unread-count-label"
+                                        >
+                                            <span aria-hidden="true" data-region="section-unread-count"></span>
+                                            <span class="visually-hidden" id="view-overview-favourites-unread-count-label">
+                                                There are  unread conversations
+                                            </span>
+                                        </span>
+                                    </button>
+                                </div>
+                                                            <div
+                                class="collapse border-bottom  lazy-load-list"
+                                aria-live="polite"
+                                data-region="lazy-load-list"
+                                data-user-id="4"
+                                            id="view-overview-favourites-target-6aae25272f4556aae25272dbfd4"
+            aria-labelledby="view-overview-favourites-toggle"
+            data-bs-parent="#message-drawer-view-overview-container-6aae25272f4556aae25272dbfd4"
+
+                            >
+                                
+                                <div class="hidden text-center p-2" data-region="empty-message-container">
+                                            <p class="text-muted mt-2">No starred conversations</p>
+
+                                </div>
+                                <div class="hidden list-group" data-region="content-container">
+                                    
+                                </div>
+                                <div class="list-group" data-region="placeholder-container">
+                                            <div class="text-center py-2"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</div>
+
+                                </div>
+                                <div class="w-100 text-center p-3 hidden" data-region="loading-icon-container" >
+                                    <span class="loading-icon icon-no-margin ">
+                                        <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            </div>
+                            
+                            
+                            <div
+                                class="section border-0 card rounded-0"
+                                data-region="view-overview-group-messages"
+                            >
+                                <div id="view-overview-group-messages-toggle" class="card-header rounded-0" data-region="toggle">
+                                    <button
+                                        class="btn btn-link w-100 text-start p-1 p-sm-2 d-flex rounded-0 align-items-center overview-section-toggle collapsed"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#view-overview-group-messages-target-6aae25272f4556aae25272dbfd4"
+                                        aria-expanded="false"
+                                        aria-controls="view-overview-group-messages-target-6aae25272f4556aae25272dbfd4"
+                                    >
+                                        <span class="collapsed-icon-container">
+                                            <span class="dir-rtl-hide"><i class="icon fa fa-chevron-right fa-fw " aria-hidden="true" ></i></span>
+                                            <span class="dir-ltr-hide"><i class="icon fa fa-chevron-left fa-fw " aria-hidden="true" ></i></span>
+                                        </span>
+                                        <span class="expanded-icon-container">
+                                            <i class="icon fa fa-chevron-down fa-fw " aria-hidden="true" ></i>
+                                        </span>
+                                        <span class="fw-bold ms-1">Group</span>
+                                        <small
+                                            class="hidden ms-1"
+                                            data-region="section-total-count-container" aria-labelledby="view-overview-group-messages-total-count-label"
+                                        >
+                                            (<span aria-hidden="true" data-region="section-total-count"></span>)
+                                            <span class="visually-hidden" id="view-overview-group-messages-total-count-label">
+                                                 total conversations
+                                            </span>
+                                        </small>
+                                        <span class="hidden ms-2" data-region="loading-icon-container">
+                                            <span class="loading-icon icon-no-margin ">
+                                                <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                                            </span>
+                                        </span>
+                                        <span
+                                            class="hidden badge rounded-pill bg-primary text-white ms-auto"
+                                            data-region="section-unread-count-container" aria-labelledby="view-overview-group-messages-unread-count-label"
+                                        >
+                                            <span aria-hidden="true" data-region="section-unread-count"></span>
+                                            <span class="visually-hidden" id="view-overview-group-messages-unread-count-label">
+                                                There are  unread conversations
+                                            </span>
+                                        </span>
+                                    </button>
+                                </div>
+                                                            <div
+                                class="collapse border-bottom  lazy-load-list"
+                                aria-live="polite"
+                                data-region="lazy-load-list"
+                                data-user-id="4"
+                                            id="view-overview-group-messages-target-6aae25272f4556aae25272dbfd4"
+            aria-labelledby="view-overview-group-messages-toggle"
+            data-bs-parent="#message-drawer-view-overview-container-6aae25272f4556aae25272dbfd4"
+
+                            >
+                                
+                                <div class="hidden text-center p-2" data-region="empty-message-container">
+                                            <p class="text-muted mt-2">No group conversations</p>
+
+                                </div>
+                                <div class="hidden list-group" data-region="content-container">
+                                    
+                                </div>
+                                <div class="list-group" data-region="placeholder-container">
+                                            <div class="text-center py-2"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</div>
+
+                                </div>
+                                <div class="w-100 text-center p-3 hidden" data-region="loading-icon-container" >
+                                    <span class="loading-icon icon-no-margin ">
+                                        <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            </div>
+                            
+                            
+                            <div
+                                class="section border-0 card rounded-0"
+                                data-region="view-overview-messages"
+                            >
+                                <div id="view-overview-messages-toggle" class="card-header rounded-0" data-region="toggle">
+                                    <button
+                                        class="btn btn-link w-100 text-start p-1 p-sm-2 d-flex rounded-0 align-items-center overview-section-toggle collapsed"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#view-overview-messages-target-6aae25272f4556aae25272dbfd4"
+                                        aria-expanded="false"
+                                        aria-controls="view-overview-messages-target-6aae25272f4556aae25272dbfd4"
+                                    >
+                                        <span class="collapsed-icon-container">
+                                            <span class="dir-rtl-hide"><i class="icon fa fa-chevron-right fa-fw " aria-hidden="true" ></i></span>
+                                            <span class="dir-ltr-hide"><i class="icon fa fa-chevron-left fa-fw " aria-hidden="true" ></i></span>
+                                        </span>
+                                        <span class="expanded-icon-container">
+                                            <i class="icon fa fa-chevron-down fa-fw " aria-hidden="true" ></i>
+                                        </span>
+                                        <span class="fw-bold ms-1">Private</span>
+                                        <small
+                                            class="hidden ms-1"
+                                            data-region="section-total-count-container" aria-labelledby="view-overview-messages-total-count-label"
+                                        >
+                                            (<span aria-hidden="true" data-region="section-total-count"></span>)
+                                            <span class="visually-hidden" id="view-overview-messages-total-count-label">
+                                                 total conversations
+                                            </span>
+                                        </small>
+                                        <span class="hidden ms-2" data-region="loading-icon-container">
+                                            <span class="loading-icon icon-no-margin ">
+                                                <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                                            </span>
+                                        </span>
+                                        <span
+                                            class="hidden badge rounded-pill bg-primary text-white ms-auto"
+                                            data-region="section-unread-count-container" aria-labelledby="view-overview-messages-unread-count-label"
+                                        >
+                                            <span aria-hidden="true" data-region="section-unread-count"></span>
+                                            <span class="visually-hidden" id="view-overview-messages-unread-count-label">
+                                                There are  unread conversations
+                                            </span>
+                                        </span>
+                                    </button>
+                                </div>
+                                                            <div
+                                class="collapse border-bottom  lazy-load-list"
+                                aria-live="polite"
+                                data-region="lazy-load-list"
+                                data-user-id="4"
+                                            id="view-overview-messages-target-6aae25272f4556aae25272dbfd4"
+            aria-labelledby="view-overview-messages-toggle"
+            data-bs-parent="#message-drawer-view-overview-container-6aae25272f4556aae25272dbfd4"
+
+                            >
+                                
+                                <div class="hidden text-center p-2" data-region="empty-message-container">
+                                            <p class="text-muted mt-2">No private conversations</p>
+
+                                </div>
+                                <div class="hidden list-group" data-region="content-container">
+                                    
+                                </div>
+                                <div class="list-group" data-region="placeholder-container">
+                                            <div class="text-center py-2"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</div>
+
+                                </div>
+                                <div class="w-100 text-center p-3 hidden" data-region="loading-icon-container" >
+                                    <span class="loading-icon icon-no-margin ">
+                                        <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            </div>
+                    </div>
+                </div>
+                
+                <div
+                    data-region="view-search"
+                    aria-hidden="true"
+                    class="h-100 hidden"
+                    data-user-id="4"
+                    data-users-offset="0"
+                    data-messages-offset="0"
+                    style="overflow-y: auto"
+                    
+                >
+                    <div class="hidden" data-region="search-results-container" style="overflow-y: auto">
+                        
+                        <div class="d-flex flex-column">
+                            <div class="mb-3 bg-white" data-region="all-contacts-container">
+                                <div data-region="contacts-container"  class="pt-2">
+                                    <h3 class="h6 px-2">Contacts</h3>
+                                    <div class="list-group" data-region="list"></div>
+                                </div>
+                                <div data-region="non-contacts-container" class="pt-2 border-top">
+                                    <h3 class="h6 px-2">Non-contacts</h3>
+                                    <div class="list-group" data-region="list"></div>
+                                </div>
+                                <div class="text-end">
+                                    <button class="btn btn-link text-primary" data-action="load-more-users">
+                                        <span data-region="button-text">Load more</span>
+                                        <span data-region="loading-icon-container" class="hidden"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="bg-white" data-region="messages-container">
+                                <h3 class="h6 px-2 pt-2">Messages</h3>
+                                <div class="list-group" data-region="list"></div>
+                                <div class="text-end">
+                                    <button class="btn btn-link text-primary" data-action="load-more-messages">
+                                        <span data-region="button-text">Load more</span>
+                                        <span data-region="loading-icon-container" class="hidden"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="hidden p-3 text-center" data-region="no-results-container">No results</p>
+                        </div>                    </div>
+                    <div class="hidden" data-region="loading-placeholder">
+                        <div class="text-center pt-3 icon-size-4"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</div>
+                    </div>
+                    <div class="p-3 text-center" data-region="empty-message-container">
+                        <p>Search people and messages</p>
+                    </div>
+                </div>                
+                <div class="h-100 hidden bg-white" aria-hidden="true" data-region="view-settings">
+                    <div class="hidden" data-region="content-container">
+                        
+                        <div data-region="settings" class="p-3">
+                            <h3 class="h6 fw-bold">Privacy</h3>
+                            <p>You can restrict who can message you</p>
+                            <div data-preference="blocknoncontacts" class="mb-3">
+                                <fieldset>
+                                    <legend class="visually-hidden">Accept messages from:</legend>
+                                        <div class="form-check mb-2">
+                                            <input
+                                                type="radio"
+                                                name="message_blocknoncontacts"
+                                                class="form-check-input"
+                                                id="block-noncontacts-6aae25272f4556aae25272dbfd4-1"
+                                                value="1"
+                                            >
+                                            <label class="form-check-label ms-2" for="block-noncontacts-6aae25272f4556aae25272dbfd4-1">
+                                                My contacts only
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input
+                                                type="radio"
+                                                name="message_blocknoncontacts"
+                                                class="form-check-input"
+                                                id="block-noncontacts-6aae25272f4556aae25272dbfd4-0"
+                                                value="0"
+                                            >
+                                            <label class="form-check-label ms-2" for="block-noncontacts-6aae25272f4556aae25272dbfd4-0">
+                                                My contacts and anyone in my courses
+                                            </label>
+                                        </div>
+                                </fieldset>
+                            </div>
+                        
+                            <div class="hidden" data-region="notification-preference-container" role="group" aria-labelledby="notification-preferences-header-6aae25272f4556aae25272dbfd4">
+                                <h3 class="mb-2 mt-4 h6 fw-bold" id="notification-preferences-header-6aae25272f4556aae25272dbfd4">Notification preferences</h3>
+                            </div>
+                        
+                            <h3 class="mb-2 mt-4 h6 fw-bold">General</h3>
+                            <div data-preference="entertosend">
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" class="form-check-input" id="enter-to-send-6aae25272f4556aae25272dbfd4" checked>
+                                    <label class="form-check-label" for="enter-to-send-6aae25272f4556aae25272dbfd4">
+                                        Use enter to send
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-region="placeholder-container">
+                        
+                        <div class="d-flex flex-column p-3">
+                            <div class="w-25 bg-pulse-grey h6" style="height: 18px"></div>
+                            <div class="w-75 bg-pulse-grey mb-4" style="height: 18px"></div>
+                            <div class="mb-3">
+                                <div class="w-100 d-flex mb-3">
+                                    <div class="bg-pulse-grey rounded-circle" style="width: 18px; height: 18px"></div>
+                                    <div class="bg-pulse-grey w-50 ms-2" style="height: 18px"></div>
+                                </div>
+                                <div class="w-100 d-flex mb-3">
+                                    <div class="bg-pulse-grey rounded-circle" style="width: 18px; height: 18px"></div>
+                                    <div class="bg-pulse-grey w-50 ms-2" style="height: 18px"></div>
+                                </div>
+                                <div class="w-100 d-flex mb-3">
+                                    <div class="bg-pulse-grey rounded-circle" style="width: 18px; height: 18px"></div>
+                                    <div class="bg-pulse-grey w-50 ms-2" style="height: 18px"></div>
+                                </div>
+                            </div>
+                            <div class="w-50 bg-pulse-grey h6 mb-3 mt-2" style="height: 18px"></div>
+                            <div class="mb-4">
+                                <div class="w-100 d-flex mb-2 align-items-center">
+                                    <div class="bg-pulse-grey w-25" style="width: 18px; height: 27px"></div>
+                                    <div class="bg-pulse-grey w-25 ms-2" style="height: 18px"></div>
+                                </div>
+                                <div class="w-100 d-flex mb-2 align-items-center">
+                                    <div class="bg-pulse-grey w-25" style="width: 18px; height: 27px"></div>
+                                    <div class="bg-pulse-grey w-25 ms-2" style="height: 18px"></div>
+                                </div>
+                            </div>
+                            <div class="w-25 bg-pulse-grey h6 mb-3 mt-2" style="height: 18px"></div>
+                            <div class="mb-3">
+                                <div class="w-100 d-flex mb-2 align-items-center">
+                                    <div class="bg-pulse-grey w-25" style="width: 18px; height: 27px"></div>
+                                    <div class="bg-pulse-grey w-50 ms-2" style="height: 18px"></div>
+                                </div>
+                            </div>
+                        </div>                    </div>
+                </div>            </div>
+            <div class="footer-container position-relative" data-region="footer-container">
+                
+                <div
+                    class="hidden border-top bg-white position-relative"
+                    aria-hidden="true"
+                    data-region="view-conversation"
+                    data-enter-to-send="1"
+                >
+                    <div class="hidden p-sm-2" data-region="content-messages-footer-container">
+                        
+                            <div
+                                class="emoji-auto-complete-container w-100 hidden"
+                                data-region="emoji-auto-complete-container"
+                                aria-live="polite"
+                                aria-hidden="true"
+                            >
+                            </div>
+                        <div class="d-flex mt-sm-1">
+                            <textarea
+                                dir="auto"
+                                data-region="send-message-txt"
+                                class="form-control bg-light"
+                                rows="3"
+                                data-auto-rows
+                                data-min-rows="3"
+                                data-max-rows="5"
+                                aria-label="Write a message..."
+                                placeholder="Write a message..."
+                                style="resize: none"
+                                maxlength="4096"
+                            ></textarea>
+                        
+                            <div class="position-relative d-flex flex-column">
+                                    <div
+                                        data-region="emoji-picker-container"
+                                        class="emoji-picker-container hidden"
+                                        aria-hidden="true"
+                                    >
+                                        
+                                        <div
+                                            data-region="emoji-picker"
+                                            class="card shadow emoji-picker"
+                                        >
+                                            <div class="card-header px-1 pt-1 pb-0 d-flex justify-content-between flex-shrink-0">
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0 selected"
+                                                    data-action="show-category"
+                                                    data-category="Recent"
+                                                    title="Recent"
+                                                >
+                                                    <i class="icon fa-regular fa-clock fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Smileys & Emotion"
+                                                    title="Smileys & emotion"
+                                                >
+                                                    <i class="icon fa-regular fa-face-smile fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="People & Body"
+                                                    title="People & body"
+                                                >
+                                                    <i class="icon fa fa-person fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Animals & Nature"
+                                                    title="Animals & nature"
+                                                >
+                                                    <i class="icon fa fa-leaf fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Food & Drink"
+                                                    title="Food & drink"
+                                                >
+                                                    <i class="icon fa fa-pizza-slice fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Travel & Places"
+                                                    title="Travel & places"
+                                                >
+                                                    <i class="icon fa fa-plane fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Activities"
+                                                    title="Activities"
+                                                >
+                                                    <i class="icon fa fa-futbol fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Objects"
+                                                    title="Objects"
+                                                >
+                                                    <i class="icon fa fa-hammer fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Symbols"
+                                                    title="Symbols"
+                                                >
+                                                    <i class="icon fa fa-peace fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-outline-secondary icon-no-margin category-button rounded-0"
+                                                    data-action="show-category"
+                                                    data-category="Flags"
+                                                    title="Flags"
+                                                >
+                                                    <i class="icon fa fa-flag fa-fw " aria-hidden="true" ></i>
+                                                </button>
+                                            </div>
+                                            <div class="card-body p-2 d-flex flex-column overflow-hidden">
+                                                <div class="input-group mb-1 flex-shrink-0">
+                                                    <span class="input-group-text pe-0 bg-white text-muted">
+                                                        <i class="icon fa fa-magnifying-glass fa-fw " aria-hidden="true" ></i>
+                                                    </span>
+                                                    <input
+                                                        type="text"
+                                                        class="form-control border-start-0"
+                                                        placeholder="Search"
+                                                        aria-label="Search"
+                                                        data-region="search-input"
+                                                    >
+                                                </div>
+                                                <div class="flex-grow-1 overflow-auto emojis-container h-100" data-region="emojis-container">
+                                                    <div class="position-relative" data-region="row-container"></div>
+                                                </div>
+                                                <div class="flex-grow-1 overflow-auto search-results-container h-100 hidden" data-region="search-results-container">
+                                                    <div class="position-relative" data-region="row-container"></div>
+                                                </div>
+                                            </div>
+                                            <div
+                                                class="card-footer d-flex flex-shrink-0"
+                                                data-region="footer"
+                                            >
+                                                <div class="emoji-preview" data-region="emoji-preview"></div>
+                                                <div data-region="emoji-short-name" class="emoji-short-name text-muted text-wrap ms-2"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        class="btn btn-icon ms-1"
+                                        aria-label="Toggle emoji picker"
+                                        data-action="toggle-emoji-picker"
+                                    >
+                                        <i class="icon fa-regular fa-face-smile fa-fw " aria-hidden="true" ></i>
+                                    </button>
+                                <button
+                                    class="btn btn-icon ms-1 mt-auto"
+                                    aria-label="Send message"
+                                    data-action="send-message"
+                                >
+                                    <span data-region="send-icon-container"><i class="icon fa-regular fa-paper-plane fa-fw " aria-hidden="true" ></i></span>
+                                    <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden p-sm-2" data-region="content-messages-footer-edit-mode-container">
+                        
+                        <div class="d-flex p-3 justify-content-end">
+                            <button
+                                class="btn btn-icon my-1 icon-size-4"
+                                data-action="delete-selected-messages"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Delete selected messages"
+                            >
+                                <span data-region="icon-container"><i class="icon fa fa-trash-can fa-fw " aria-hidden="true" ></i></span>
+                                <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                                <span class="visually-hidden">Delete selected messages</span>
+                            </button>
+                        </div>                    </div>
+                    <div class="hidden bg-secondary p-sm-3" data-region="content-messages-footer-require-contact-container">
+                        
+                        <div class="p-3 bg-white">
+                            <p data-region="title"></p>
+                            <p class="text-muted" data-region="text"></p>
+                            <button type="button" class="btn btn-primary w-100" data-action="request-add-contact">
+                                <span data-region="dialogue-button-text">Send contact request</span>
+                                <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="hidden bg-secondary p-sm-3" data-region="content-messages-footer-require-unblock-container">
+                        
+                        <div class="p-3 bg-white">
+                            <p class="text-muted" data-region="text">You have blocked this user.</p>
+                            <button type="button" class="btn btn-primary w-100" data-action="request-unblock">
+                                <span data-region="dialogue-button-text">Unblock user</span>
+                                <span class="hidden" data-region="loading-icon-container"><span class="loading-icon icon-no-margin ">
+    <i class="icon fa fa-spinner fa-spin fa-fw "  title="Loading" role="img" aria-label="Loading"></i>
+</span>
+</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-sm-2" data-region="placeholder-container">
+                        <div class="d-flex">
+                            <div class="bg-pulse-grey w-100" style="height: 80px"></div>
+                            <div class="mx-2 mb-2 align-self-end bg-pulse-grey" style="height: 20px; width: 20px"></div>
+                        </div>                    </div>
+                    <div
+                        class="hidden position-absolute z-index-1"
+                        data-region="confirm-dialogue-container"
+                        style="top: -1px; bottom: 0; right: 0; left: 0; background: rgba(0,0,0,0.3);"
+                    ></div>
+                </div>                    <div data-region="view-overview" class="text-center">
+                        <a href="http://192.168.50.169:8522/message/index.php">
+                            See all
+                        </a>
+                    </div>
+            </div>
+        </div>
+
+</div>
+</div>
+
+
+</body></html>

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "kind": "forum.list",
+  "data": [
+    {
+      "id": "1",
+      "cmid": "1",
+      "kind": "",
+      "name": "Announcements",
+      "description": "",
+      "course_id": "2",
+      "discussions": null
+    },
+    {
+      "id": "5",
+      "cmid": "5",
+      "kind": "",
+      "name": "Q&A \u8a0e\u8ad6\u5340",
+      "description": "",
+      "course_id": "2",
+      "discussions": null
+    }
+  ],
+  "meta": {
+    "site": "nows",
+    "account": "env",
+    "source": "html",
+    "partial": false,
+    "missing": [],
+    "next_cursor": null
+  }
+}
