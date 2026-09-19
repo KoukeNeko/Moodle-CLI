@@ -1064,7 +1064,7 @@ if [ $WITH_NOWS = 1 ]; then
     runenv "$NOWSENV" course list --site nows
     runenv "$NOWSENV" course list --site nows --json
     runenv "$NOWSENV" calendar upcoming --site nows
-    note "作業與成績在那個端點上不存在，只能讀頁面"
+    note "作業、成績與論壇清單在那個端點上不存在（實測 servicenotavailable），只能讀頁面"
     runenv "$NOWSENV" assignment list --site nows
     runenv "$NOWSENV" assignment list --site nows --json
     NOWS_ASSIGN=$(env $NOWSENV "$BIN" assignment list --site nows --json 2>/dev/null \
@@ -1073,14 +1073,16 @@ if [ $WITH_NOWS = 1 ]; then
       | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];print(d[0]["id"] if d else "")' 2>/dev/null)
     [ -n "$NOWS_ASSIGN" ] && runenv "$NOWSENV" assignment status "$NOWS_ASSIGN" --site nows
     [ -n "$NOWS_COURSE" ] && runenv "$NOWSENV" grade list --course "$NOWS_COURSE" --site nows
+    runenv "$NOWSENV" forum list --site nows
     NOWS_FORUM=$(env $NOWSENV "$BIN" forum list --site nows --json 2>/dev/null \
       | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];print(d[0]["id"] if d else "")' 2>/dev/null)
     [ -n "$NOWS_FORUM" ] && runenv "$NOWSENV" forum read "$NOWS_FORUM" --site nows
+    note "每門課的總分也讀得到：grade/report/overview 那一頁就是做這件事的"
+    runenv "$NOWSENV" grade overview --site nows
     note "讀頁面看不到「存檔是否等於交出去」，所以交作業直接拒絕而不是猜"
     [ -n "$NOWS_ASSIGN" ] && runenv "$NOWSENV" assignment submit "$NOWS_ASSIGN" "$WORK" --yes --site nows
-    note "有些東西連頁面都沒有"
-    runenv "$NOWSENV" forum list --site nows
-    runenv "$NOWSENV" grade overview --site nows
+    note "還是有連頁面都讀不到的：討論串清單沒有 fixture，所以拒絕而不是回空的"
+    [ -n "$NOWS_FORUM" ] && runenv "$NOWSENV" forum discussions "$NOWS_FORUM" --site nows
     note "壞掉的 session"
     runenv "MOODLE_SESSION=MoodleSession=deadbeef" course list --site nows
   else
