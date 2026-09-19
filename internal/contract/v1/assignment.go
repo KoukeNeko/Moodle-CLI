@@ -194,10 +194,38 @@ type SubmissionState struct {
 	// submit. Zero covers both "none left" and "the assignment does not
 	// require every member to", so it is not proof the group is finished.
 	MembersStillToSubmit int `json:"members_still_to_submit"`
-	FileCount            int `json:"file_count"`
+	// EarlierAttempts is what this account handed in before a grader reopened
+	// the assignment, oldest first. It is never null — an empty list means the
+	// assignment was never reopened.
+	EarlierAttempts []Attempt `json:"earlier_attempts"`
+	FileCount       int       `json:"file_count"`
 	// Files is what Moodle actually holds, so a caller can check that what was
 	// received is what they meant to send.
 	Files []File `json:"files"`
+}
+
+// newAttempts keeps the list non-null: an empty array says "never reopened",
+// where null would say "this route could not tell".
+func newAttempts(earlier []assignment.Attempt) []Attempt {
+	out := make([]Attempt, 0, len(earlier))
+	for _, item := range earlier {
+		out = append(out, Attempt{
+			Number:    item.Number,
+			Status:    string(item.Status),
+			FileCount: item.FileCount,
+			SavedAt:   Timestamp(item.SavedAt),
+		})
+	}
+	return out
+}
+
+// Attempt is one finished submission on the wire.
+type Attempt struct {
+	// Number is Moodle's own attempt number, counting from zero.
+	Number    int     `json:"number"`
+	Status    string  `json:"status"`
+	FileCount int     `json:"file_count"`
+	SavedAt   *string `json:"saved_at"`
 }
 
 // AssignmentStatus converts a submission state into its envelope.
@@ -218,6 +246,7 @@ func newSubmissionState(assignmentID string, state assignment.State) SubmissionS
 		ExtensionDueDate:     Timestamp(state.ExtensionDue),
 		GroupSubmission:      state.GroupSubmission,
 		MembersStillToSubmit: state.MembersStillToSubmit,
+		EarlierAttempts:      newAttempts(state.Earlier),
 		FileCount:            state.FileCount,
 		Files:                newFiles(state.Files),
 	}

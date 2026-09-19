@@ -31,7 +31,8 @@
         "files",
         "extension_due_date",
         "group_submission",
-        "members_still_to_submit"
+        "members_still_to_submit",
+        "earlier_attempts"
       ],
       "additionalProperties": false,
       "properties": {
@@ -101,6 +102,43 @@
         "members_still_to_submit": {
           "type": "integer",
           "description": "Group members the site says have yet to submit. Zero also covers an assignment that does not require every member to, so it is not proof the group has finished."
+        },
+        "earlier_attempts": {
+          "type": "array",
+          "description": "What this account handed in before a grader reopened the assignment, oldest first. Never null; empty means the assignment was never reopened.",
+          "items": {
+            "type": "object",
+            "required": [
+              "number",
+              "status",
+              "file_count",
+              "saved_at"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "number": {
+                "type": "integer",
+                "description": "Moodle's own attempt number, counting from zero."
+              },
+              "status": {
+                "type": "string"
+              },
+              "file_count": {
+                "type": "integer"
+              },
+              "saved_at": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
         }
       }
     },

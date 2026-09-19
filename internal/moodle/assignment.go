@@ -90,6 +90,14 @@ type submissionStatusDTO struct {
 	// into "submissionsenabled: false" — "this assignment is closed" — which
 	// is a different statement and a wrong one.
 	LastAttempt *lastAttemptDTO `json:"lastattempt"`
+	// PreviousAttempts is what the account handed in before a grader reopened
+	// the assignment. Moodle sends it to the student themselves, not only to a
+	// grader — measured — so an earlier attempt is knowable without the
+	// grading call this tool cannot make.
+	PreviousAttempts []struct {
+		AttemptNumber int            `json:"attemptnumber"`
+		Submission    *submissionDTO `json:"submission"`
+	} `json:"previousattempts"`
 }
 
 type lastAttemptDTO struct {
@@ -117,24 +125,31 @@ type lastAttemptDTO struct {
 	// Submission is absent entirely until a submission record exists, which
 	// is different from one that exists and is empty: a record with status
 	// "new" is a real state Moodle reports.
-	Submission *struct {
-		ID           int64  `json:"id"`
-		Status       string `json:"status"`
-		TimeModified int64  `json:"timemodified"`
-		Plugins      []struct {
-			Type      string `json:"type"`
-			FileAreas []struct {
-				Area  string    `json:"area"`
-				Files []fileDTO `json:"files"`
-			} `json:"fileareas"`
-			// EditorFields carry what the student has already typed.
-			EditorFields []struct {
-				Name   string `json:"name"`
-				Text   string `json:"text"`
-				Format int    `json:"format"`
-			} `json:"editorfields"`
-		} `json:"plugins"`
-	} `json:"submission"`
+	Submission *submissionDTO `json:"submission"`
+}
+
+// submissionDTO is one attempt. The current one and every earlier one have
+// the same shape, so they share this rather than drifting apart.
+type submissionDTO struct {
+	ID           int64  `json:"id"`
+	Status       string `json:"status"`
+	TimeModified int64  `json:"timemodified"`
+	// TimeStarted is when a timed attempt's clock began, null when it has not
+	// or the assignment has no time limit.
+	TimeStarted *int64 `json:"timestarted"`
+	Plugins     []struct {
+		Type      string `json:"type"`
+		FileAreas []struct {
+			Area  string    `json:"area"`
+			Files []fileDTO `json:"files"`
+		} `json:"fileareas"`
+		// EditorFields carry what the student has already typed.
+		EditorFields []struct {
+			Name   string `json:"name"`
+			Text   string `json:"text"`
+			Format int    `json:"format"`
+		} `json:"editorfields"`
+	} `json:"plugins"`
 }
 
 // fileDTO is how Moodle describes a file it is holding. The same shape comes
@@ -375,6 +390,31 @@ func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
 	return out
 }
 
+// earlierAttempts maps what the account handed in before it was reopened.
+//
+// Moodle counts attempts from zero and sends them oldest first; both are kept
+// as they arrive rather than renumbered, so what is printed matches what the
+// site and its own pages say.
+func earlierAttempts(dto submissionStatusDTO) []assignment.Attempt {
+	var out []assignment.Attempt
+	for _, previous := range dto.PreviousAttempts {
+		attempt := assignment.Attempt{Number: previous.AttemptNumber}
+		if previous.Submission != nil {
+			attempt.Status = translateStatus(previous.Submission.Status)
+			attempt.SavedAt = unixTime(previous.Submission.TimeModified)
+			for _, plugin := range previous.Submission.Plugins {
+				for _, area := range plugin.FileAreas {
+					if area.Area == "submission_files" {
+						attempt.FileCount += len(area.Files)
+					}
+				}
+			}
+		}
+		out = append(out, attempt)
+	}
+	return out
+}
+
 func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (assignment.State, error) {
 	id, err := strconv.ParseInt(assignmentID, 10, 64)
 	if err != nil {
@@ -420,6 +460,7 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 		GroupSubmission:      last.SubmissionGroup != 0,
 		MembersStillToSubmit: len(last.MembersWhoNeedToSubmit),
 		GradingStatus:        last.GradingStatus,
+		Earlier:              earlierAttempts(dto),
 		Provenance:           site.NewProvenance(site.BackendWS),
 	}
 	if !last.SubmissionsEnabled {

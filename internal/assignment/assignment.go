@@ -117,6 +117,17 @@ type Detail struct {
 	Attachments []file.Ref
 }
 
+// Attempt is one earlier submission, kept apart from the current one because
+// it is finished: nothing about it can change, and its status is a record of
+// what happened rather than a description of what to do next.
+type Attempt struct {
+	// Number is Moodle's own attempt number, counting from zero.
+	Number    int
+	Status    Status
+	FileCount int
+	SavedAt   *time.Time
+}
+
 // State is the caller's current submission for an assignment.
 type State struct {
 	Status Status
@@ -141,6 +152,12 @@ type State struct {
 	// submit. It is meaningful only on an assignment that requires every
 	// member to; zero covers both "none left" and "the setting is off".
 	MembersStillToSubmit int
+	// Earlier is what this account handed in before a grader reopened the
+	// assignment, oldest first. It is empty on an assignment that was never
+	// reopened, and the site sends it to the student themselves rather than
+	// only to a grader — so a reopened submission need not look like a first
+	// one that was never handed in.
+	Earlier []Attempt
 	// GradingStatus is Moodle's word for whether it has been marked.
 	GradingStatus string
 	ModifiedAt    *time.Time

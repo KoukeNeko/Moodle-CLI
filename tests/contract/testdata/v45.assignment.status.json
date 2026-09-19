@@ -8,10 +8,11 @@
     "can_edit": true,
     "can_submit": false,
     "grading_status": "notgraded",
-    "modified_at": "2026-09-18T09:34:19Z",
+    "modified_at": "2026-09-19T03:07:15Z",
     "extension_due_date": null,
     "group_submission": false,
     "members_still_to_submit": 0,
+    "earlier_attempts": [],
     "file_count": 0,
     "files": []
   },

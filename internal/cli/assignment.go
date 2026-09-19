@@ -403,6 +403,24 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 	if state.GradingStatus != nil {
 		fmt.Fprintf(w, "Grading:   %s\n", *state.GradingStatus)
 	}
+	for _, earlier := range state.EarlierAttempts {
+		// Without this a reopened assignment reads as a first attempt that was
+		// never handed in: the current one really is empty, and the work the
+		// student did submit is in a record this listing never mentioned.
+		// Moodle counts from zero, so attempt 0 is the first one.
+		line := fmt.Sprintf("Earlier:   attempt %d was %s", earlier.Number+1, earlier.Status)
+		if earlier.FileCount > 0 {
+			file := "files"
+			if earlier.FileCount == 1 {
+				file = "file"
+			}
+			line += fmt.Sprintf(" with %d %s", earlier.FileCount, file)
+		}
+		if earlier.SavedAt != nil {
+			line += " on " + (*earlier.SavedAt)[:10]
+		}
+		fmt.Fprintln(w, line)
+	}
 	if state.GroupSubmission {
 		// Without this, "Handed in: yes" reads as a statement about the person
 		// asking. On a group assignment it is about the group, and the

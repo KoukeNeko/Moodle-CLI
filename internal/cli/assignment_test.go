@@ -1160,3 +1160,72 @@ func TestAnIndividualSubmissionIsNotCalledAGroupOne(t *testing.T) {
 		t.Errorf("an individual submission was said to be waiting on others:\n%s", stdout)
 	}
 }
+
+func TestAnEarlierAttemptIsNotLostWhenTheAssignmentIsReopened(t *testing.T) {
+	// 評分者重開之後，當前那一次真的是空的——所以「Files: 0 / Handed in: no」
+	// 每一行都是真的，合起來卻讀成「你從來沒交過」。學生交過的東西在
+	// previousattempts 裡，而那是**學生本人也收得到**的（實測，不需要評分權限）。
+	a := newAssignmentFixture(t, true, false)
+	state := lastAttempt("reopened", nil)
+	state["previousattempts"] = []any{map[string]any{
+		"attemptnumber": 0,
+		"submission": map[string]any{
+			"id": 32, "status": "submitted", "timemodified": 1789000000,
+			"plugins": []any{map[string]any{
+				"type": "file",
+				"fileareas": []any{map[string]any{
+					"area": "submission_files",
+					"files": []any{map[string]any{
+						"filename": "report.pdf", "filepath": "/", "filesize": 20,
+						"fileurl":      "https://moodle.example.edu/webservice/pluginfile.php/1/a/b/report.pdf",
+						"timemodified": 1789000000, "mimetype": "application/pdf",
+						"isexternalfile": false,
+					}},
+				}},
+			}},
+		},
+	}}
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, state)
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Earlier:") {
+		t.Errorf("work the student handed in went unmentioned:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "1 file") {
+		t.Errorf("the earlier attempt's files were not counted:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", jsonOut)
+	if !strings.Contains(jsonOut, `"earlier_attempts":[{"number":0`) {
+		t.Errorf("the contract did not carry the earlier attempt:\n%s", jsonOut)
+	}
+}
+
+func TestAFirstAttemptHasNoHistoryRatherThanNull(t *testing.T) {
+	// 從來沒有被重開的作業，歷史是**空陣列**而不是 null：空陣列說「沒有更早的
+	// 一次」，null 會被讀成「這條路線查不到」。
+	a := newAssignmentFixture(t, true, false)
+
+	stdout, _, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.Contains(stdout, "Earlier:") {
+		t.Errorf("an assignment that was never reopened reported a history:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(jsonOut, `"earlier_attempts":[]`) {
+		t.Errorf("an absent history must be the empty array, not null:\n%s", jsonOut)
+	}
+}
