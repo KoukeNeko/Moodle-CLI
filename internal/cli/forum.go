@@ -156,7 +156,13 @@ func writeForumTable(w io.Writer, forums []v1.Forum) error {
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(table, "ID\tNAME\tTYPE\tTHREADS")
+	// Every course carries a forum called Announcements, so without this
+	// column a listing across courses is rows of one repeated word —
+	// measured on a teacher of 31 courses: six leading rows reading
+	// "Announcements news 0", separable only by id. The course id is what
+	// mod_forum_get_forums_by_courses returns; it does not send a name, and
+	// it is also what --course takes.
+	fmt.Fprintln(table, "ID\tCOURSE\tNAME\tTYPE\tTHREADS")
 	for _, item := range forums {
 		// Moodle leaves the count out rather than sending zero, and a column
 		// reading 0 says the forum is empty. A dash says the site did not say.
@@ -164,7 +170,8 @@ func writeForumTable(w io.Writer, forums []v1.Forum) error {
 		if item.Discussions != nil {
 			threads = strconv.Itoa(*item.Discussions)
 		}
-		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", item.ID, item.Name, item.Kind, threads)
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n",
+			item.ID, item.CourseID, item.Name, item.Kind, threads)
 	}
 	return table.Flush()
 }
