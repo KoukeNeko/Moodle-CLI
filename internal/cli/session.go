@@ -24,6 +24,13 @@ import (
 type Deps struct {
 	ConfigPath string
 	Auth       *auth.Manager
+	// Backend overrides the site's own setting for this run: "" leaves the
+	// site's choice alone, "ws-only" rules out the page and AJAX routes.
+	//
+	// It is a pointer because the flag is parsed after every command has been
+	// built with its copy of these dependencies — the same reason the safety
+	// mode is shared rather than copied.
+	Backend *string
 	// Login decides which sign-in method to use. The order lives in the
 	// coordinator, not in the methods.
 	Login *auth.Coordinator

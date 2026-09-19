@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
@@ -58,6 +59,10 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 	var asJSON bool
 	var pretty bool
 	var readOnly bool
+	// Shared rather than copied: the flag is parsed after the commands below
+	// have been built with their own copy of deps.
+	backend := new(string)
+	deps.Backend = backend
 
 	root := &cobra.Command{
 		Use:           "moodle",
@@ -73,6 +78,13 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 			renderer.Pretty = pretty
 			if readOnly {
 				mode.ReadOnly = true
+			}
+			switch *backend {
+			case "", config.BackendAuto, config.BackendWSOnly:
+			default:
+				return errs.New(errs.CodeUsage,
+					fmt.Sprintf("unknown backend %q", *backend)).
+					WithHint("use " + config.BackendAuto + " or " + config.BackendWSOnly)
 			}
 			return nil
 		},
@@ -99,6 +111,12 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		"indent JSON output")
 	root.PersistentFlags().BoolVar(&readOnly, "read-only", false,
 		"refuse every call that can change anything on the site")
+	// The fallbacks read pages meant for a person. A site may have every
+	// reason to treat that differently from an API call, so saying "web
+	// service or nothing" has to be possible for one run as well as for good.
+	root.PersistentFlags().StringVar(backend, "backend", "",
+		"which routes may answer: "+config.BackendAuto+" or "+config.BackendWSOnly+
+			" (default: the site's own setting)")
 
 	siteCmd := newSiteCommand(renderer, deps)
 	siteCmd.AddCommand(newSiteInspectCommand(renderer, deps))

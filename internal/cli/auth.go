@@ -437,12 +437,30 @@ func openSessionFor(deps Deps, resolved config.Resolved, token string) *auth.Ses
 		// and a nil session would panic further away from the cause.
 		return deps.Auth.OpenWithToken(site.Site{}, resolved.Account.ID, token)
 	}
+	var session *auth.Session
 	if token == "" {
 		if cookie := envSession(); cookie != "" {
-			return deps.Auth.OpenWithSession(target, resolved.Account.ID, cookie)
+			session = deps.Auth.OpenWithSession(target, resolved.Account.ID, cookie)
 		}
 	}
-	return deps.Auth.OpenWithToken(target, resolved.Account.ID, token)
+	if session == nil {
+		session = deps.Auth.OpenWithToken(target, resolved.Account.ID, token)
+	}
+	// The flag speaks for this run, the site's setting for every run. Either
+	// way the restriction is applied here rather than in each feature, because
+	// every feature would otherwise have to remember to ask.
+	if wantsWebServiceOnly(deps, resolved) {
+		session.RestrictToWebService()
+	}
+	return session
+}
+
+// wantsWebServiceOnly reports whether the fallbacks are ruled out.
+func wantsWebServiceOnly(deps Deps, resolved config.Resolved) bool {
+	if deps.Backend != nil && *deps.Backend != "" {
+		return *deps.Backend == config.BackendWSOnly
+	}
+	return resolved.Site != nil && resolved.Site.Backend == config.BackendWSOnly
 }
 
 func setString(target **string, value string) {

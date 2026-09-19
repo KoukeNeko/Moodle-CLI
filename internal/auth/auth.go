@@ -89,6 +89,10 @@ type Session struct {
 	cached    *site.Capabilities
 	// cookie is a browser session, used on sites that issue no token.
 	cookie moodle.SessionCookie
+	// wsOnly records that the caller asked for the web service route and
+	// nothing else. It is held here because every feature builds its own
+	// backends and each would otherwise have to be told separately.
+	wsOnly bool
 }
 
 // Open builds a session from a stored credential.
@@ -162,7 +166,24 @@ func (s *Session) Client() *moodle.Client { return s.client }
 func (s *Session) Token() string { return s.token }
 
 // Cookie returns the browser session, empty when there is none.
-func (s *Session) Cookie() moodle.SessionCookie { return s.cookie }
+//
+// It reports none while the session is restricted to the web service route,
+// which is how that restriction reaches every feature: a backend built from a
+// cookie is exactly what "ws-only" means to exclude.
+func (s *Session) Cookie() moodle.SessionCookie {
+	if s.wsOnly {
+		return moodle.SessionCookie{}
+	}
+	return s.cookie
+}
+
+// RestrictToWebService confines this session to the web service route. The
+// fallbacks read pages meant for a person, which a site may have every reason
+// to treat differently from an API call, so a caller is allowed to say no.
+func (s *Session) RestrictToWebService() { s.wsOnly = true }
+
+// WebServiceOnly reports whether the fallbacks were ruled out.
+func (s *Session) WebServiceOnly() bool { return s.wsOnly }
 
 // HasToken reports whether a web service token is available.
 func (s *Session) HasToken() bool { return s.token != "" }
