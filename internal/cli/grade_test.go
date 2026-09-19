@@ -407,3 +407,56 @@ func TestAGradebookWithNoVisibleItemsDoesNotPrintABareHeader(t *testing.T) {
 		t.Errorf("the course total was dropped along with the table:\n%s", stdout)
 	}
 }
+
+func TestAFailingGradeIsNotAnAbsentOne(t *testing.T) {
+	// 被當掉是一個**有分數**的狀態。把 42 分讀成「還沒評分」，或是反過來把
+	// 「還沒評分」讀成 0 分，都會讓學生對自己的學業狀況有錯誤的認識——
+	// 而這兩件事在一張全是「-」的表裡看起來一模一樣。
+	f := newFixture(t)
+	f.withGrades(
+		gradeItem(1, "Problem Set 6", "mod", map[string]any{
+			"graderaw": 42.0, "gradeformatted": "42.00",
+			"gradedategraded": 1629072000,
+		}),
+		gradeItem(2, "Problem Set 7", "mod", nil), // 真的還沒評分
+	)
+	f.server.HandleValue(moodle.FunctionGradableUsers, map[string]any{
+		"users": []any{map[string]any{"id": 4}}, "warnings": []any{},
+	})
+	f.addSiteAndLogin()
+
+	stdout, stderr, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "42") {
+		t.Errorf("a failing grade was not shown:\n%s", stdout)
+	}
+
+	report := gradeReport(t, mustGradeJSON(t, f))
+	var failed, ungraded *float64
+	for _, item := range report.Items {
+		switch item.Name {
+		case "Problem Set 6":
+			failed = item.Grade
+		case "Problem Set 7":
+			ungraded = item.Grade
+		}
+	}
+	if failed == nil || *failed != 42 {
+		t.Errorf("the failing grade did not survive the contract: %v", failed)
+	}
+	if ungraded != nil {
+		t.Errorf("unmarked work was given the number %v instead of null", *ungraded)
+	}
+}
+
+func mustGradeJSON(t *testing.T, f *fixture) string {
+	t.Helper()
+	stdout, stderr, code := f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	validate(t, "grade.list", stdout)
+	return stdout
+}

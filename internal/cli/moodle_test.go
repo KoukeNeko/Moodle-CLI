@@ -600,3 +600,54 @@ func TestAuthMethodsOnAnUnreachableSiteReportsUnknownNotUnavailable(t *testing.T
 		t.Errorf("expected unknown verdicts:\n%s", stdout)
 	}
 }
+
+func TestTwoAttemptsAtTheSameCourseAreNotOneCourse(t *testing.T) {
+	// 重修在 Moodle 裡是兩門不同的課，兩門的 fullname 一模一樣。用名字識別、
+	// 或是用名字去重，就會把其中一次吃掉——被吃掉的那次可能正是不及格的那次，
+	// 於是學生看到的是一段沒有發生過的學習歷程。
+	f := newFixture(t)
+	f.withCourses(
+		map[string]any{
+			"id": 19, "shortname": "UG1201", "fullname": "Calculus II",
+			"startdate": 1618704000, "enddate": 1629072000, "visible": 1,
+		},
+		map[string]any{
+			"id": 32, "shortname": "UG1201R", "fullname": "Calculus II",
+			"startdate": 1649808000, "enddate": 1660176000, "visible": 1,
+		},
+	)
+	f.addSiteAndLogin()
+
+	stdout, stderr, code := f.run("course", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if strings.Count(stdout, "Calculus II") != 2 {
+		t.Errorf("two attempts at the same course were collapsed into one:\n%s", stdout)
+	}
+	// 分得出來的必須是**輸出本身**，不是讀的人自己猜：代碼與開課日都要在。
+	for _, want := range []string{"UG1201", "UG1201R", "2021-04-18", "2022-04-13"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("the listing does not carry %q, so the two rows cannot be told apart:\n%s",
+				want, stdout)
+		}
+	}
+
+	jsonOut, _, code := f.run("course", "list", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "course.list", jsonOut)
+	var doc struct {
+		Data []v1.Course `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(jsonOut), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Data) != 2 {
+		t.Fatalf("got %d courses, want both attempts", len(doc.Data))
+	}
+	if doc.Data[0].ID == doc.Data[1].ID {
+		t.Error("the two attempts share an id, so nothing downstream can separate them")
+	}
+}

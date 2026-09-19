@@ -25,6 +25,24 @@ require_once($CFG->dirroot . '/course/lib.php');
 $now = time();
 $DAY = DAYSECS;
 
+/**
+ * 把一筆選課設成停權。
+ *
+ * 停權跟退選不一樣：紀錄還在、成績也還在，只是 core_enrol_get_users_courses
+ * 不再回這門課。所以「清單裡沒有」不能讀成「沒有修過」。
+ */
+function suspend_enrolment(stdClass $course, stdClass $user): void {
+    global $DB;
+    $row = $DB->get_record_sql(
+        'SELECT ue.* FROM {user_enrolments} ue
+           JOIN {enrol} e ON e.id = ue.enrolid
+          WHERE e.courseid = ? AND ue.userid = ?',
+        [$course->id, $user->id]);
+    if ($row && (int)$row->status !== ENROL_USER_SUSPENDED) {
+        $DB->set_field('user_enrolments', 'status', ENROL_USER_SUSPENDED, ['id' => $row->id]);
+    }
+}
+
 /** 建立使用者，已存在就沿用。 */
 function ensure_user(string $username, string $first, string $last): stdClass {
     global $DB, $CFG;
@@ -153,6 +171,10 @@ function ensure_grade(stdClass $assign, stdClass $user, float $mark, string $fee
         'userid' => $user->id, 'rawgrade' => $mark,
         'feedback' => '<p>' . $feedback . '</p>', 'feedbackformat' => FORMAT_HTML,
     ]);
+    // grade_update 只寫該項目的分數；課程總分是另一個 grade_item，要重算才會有值。
+    // 少了這一步，`grade overview` 對每一門課都回 "not graded yet"——一門明明
+    // 拿了 74 分的課，看起來像從來沒有被批改過。
+    grade_regrade_final_grades($assign->course);
 }
 
 /**
@@ -254,7 +276,71 @@ $mgr = ensure_system_role('mgr1', 'Site', 'Manager', 'manager');
 // 可以開課、但自己沒有選任何課。
 $cc  = ensure_system_role('cc1', 'Course', 'Creator', 'coursecreator');
 
-// ─── 四個學期的課程 ──────────────────────────────────────────────────────
+// ─── 大學四年 ────────────────────────────────────────────────────────────
+//
+// 為什麼要有這一段：一個真實帳號的課程清單不是六門，是六年。分頁、排序、
+// 「早就結束的課」與「進行中的課」混在一起、成績分散在十幾門課裡——這些只有在
+// 資料量接近真實時才會出問題。而且同一個人在這段期間裡的身分是會變的：
+// 大一到大四是學生，畢業之後在同一個站台上變成碩士生，再變成大學部的助教。
+//
+// enddate 都設在 startdate 之後 120 天（ensure_course 的預設），所以前幾年的課
+// 都是「已經結束」的狀態——那正是 core_enrol_get_users_courses 仍然會回、但
+// 語意跟進行中的課不同的一批。
+$undergrad = [
+    // [代碼, 名稱, 開課日（距今天數）]
+    ['UG1101', 'Calculus I',                 -2160],  // 大一上
+    ['UG1102', 'Introduction to Computing',  -2160],
+    ['UG1201', 'Calculus II',                -1980],  // 大一下
+    ['UG1202', 'Data Structures',            -1980],
+    ['UG2101', 'Discrete Mathematics',       -1800],  // 大二上
+    ['UG2102', 'Computer Organization',      -1800],
+    ['UG2201', 'Algorithms',                 -1620],  // 大二下
+    ['UG2202', 'Operating Systems Concepts', -1620],
+    ['UG3101', 'Database Systems',           -1440],  // 大三上
+    ['UG3102', 'Computer Networks',          -1440],
+    ['UG3201', 'Software Engineering',       -1260],  // 大三下
+    ['UG3202', 'Probability and Statistics', -1260],
+    ['UG4101', 'Compilers',                  -1080],  // 大四上
+    ['UG4102', 'Machine Learning Basics',    -1080],
+    ['UG4201', 'Senior Project',              -900],  // 大四下
+];
+$courses = [];
+foreach ($undergrad as [$short, $full, $offsetdays]) {
+    $course = ensure_course($short, $full, $now + $offsetdays * $DAY);
+    // 同一個人的大學時期：那時候他是學生，不是助教。
+    ensure_enrolment($course, $grad, 'student');
+    ensure_enrolment($course, $prof, 'editingteacher');
+    $courses[$short] = $course;
+}
+echo '[masters] 大學四年 ' . count($undergrad) . " 門課（全部已結束）\n";
+
+// ─── 重修 ────────────────────────────────────────────────────────────────
+//
+// 大一下的微積分二被當掉，大二下重修一次。這在 Moodle 裡是**兩門不同的課**，
+// 不是同一門課的第二次：每個學期各開一門，兩門的 fullname 一模一樣。
+//
+// 對客戶端來說這裡有三個陷阱：
+//   1. 課程清單裡會出現兩筆名字相同的課。用名字去識別、或是用名字去做去重，
+//      就會把重修那次吃掉，學生會看到自己少了一門課。
+//   2. 兩門課各有一個成績。「你微積分二幾分？」沒有單一答案——舊的那次是 42 分
+//      （不及格），新的那次是 71 分。把成績照名字合併會得到一個不存在的數字。
+//   3. 舊的那次選課會被停權（ENROL_USER_SUSPENDED），因為學期結束了學籍就收回。
+//      停權的選課**不會**出現在 core_enrol_get_users_courses 裡，所以那一次的
+//      42 分是查不到的——而「查不到」不等於「沒有發生過」。
+//
+// 42 分這個數字是刻意的：不及格是一個**有分數**的狀態，跟「還沒評分」差得最遠，
+// 而兩者在一張全是「-」的表裡看起來一樣。
+$retake = ensure_course('UG1201R', 'Calculus II', $now - 1620 * $DAY);  // 大二下重修
+ensure_enrolment($retake, $grad, 'student');
+ensure_enrolment($retake, $prof, 'editingteacher');
+$courses['UG1201R'] = $retake;
+
+// 第一次那門課的選課停權：學期結束、學籍收回。停權的選課不會出現在
+// core_enrol_get_users_courses，所以那 42 分從一般的課程清單查不到。
+suspend_enrolment($courses['UG1201'], $grad);
+echo "[masters] 重修：UG1201（大一下，42 分不及格、選課已停權）→ UG1201R（大二下，71 分通過），兩門同名\n";
+
+// ─── 碩士四個學期的課程 ──────────────────────────────────────────────────
 $semesters = [
     ['CS5001', 'Advanced Algorithms',   -540],  // 第一學期（最久以前）
     ['CS5002', 'Machine Learning',      -540],
@@ -263,7 +349,6 @@ $semesters = [
     ['CS5005', 'Thesis Seminar I',      -180],  // 第三學期
     ['CS5006', 'Thesis Seminar II',      -30],  // 第四學期（進行中）
 ];
-$courses = [];
 foreach ($semesters as [$short, $full, $offsetdays]) {
     $course = ensure_course($short, $full, $now + $offsetdays * $DAY);
     ensure_enrolment($course, $grad, 'student');
@@ -285,6 +370,30 @@ echo "[masters] 課程 " . count($courses) . " 門，grad1 在 CS1001 是助教\
 // ─── 作業：涵蓋每一種提交狀態 ────────────────────────────────────────────
 $plan = [
     // [課程, 名稱, 設定, grad1 的狀態, 分數]
+    //
+    // 大學四年：每學期一份已完成並評分過的作業。成績分散在十幾門課，
+    // `grade overview` 要能把它們全部帶回來，而不是只帶回最近的幾門。
+    ['UG1101', 'Problem Set 1',        ['duedate' => $now - 2100 * $DAY], 'submitted', 74.0],
+    ['UG1102', 'Lab Report 1',         ['duedate' => $now - 2100 * $DAY], 'submitted', 81.0],
+    // 被當掉的那一次：有交、有分數，分數不及格。42 分不是「沒有分數」。
+    ['UG1201', 'Problem Set 6',        ['duedate' => $now - 1920 * $DAY], 'submitted', 42.0],
+    // 重修那次：同樣的課名、同樣的作業名，不同的分數。
+    ['UG1201R', 'Problem Set 6',       ['duedate' => $now - 1560 * $DAY], 'submitted', 71.0],
+    ['UG1202', 'Linked List Exercise', ['duedate' => $now - 1920 * $DAY], 'submitted', 88.0],
+    ['UG2101', 'Proof Exercise 3',     ['duedate' => $now - 1740 * $DAY], 'submitted', 79.0],
+    ['UG2102', 'Assembly Lab',         ['duedate' => $now - 1740 * $DAY], 'submitted', 83.5],
+    ['UG2201', 'Graph Algorithms',     ['duedate' => $now - 1560 * $DAY], 'submitted', 91.0],
+    ['UG2202', 'Scheduler Simulation', ['duedate' => $now - 1560 * $DAY], 'submitted', 76.0],
+    ['UG3101', 'ER Modelling',         ['duedate' => $now - 1380 * $DAY], 'submitted', 85.0],
+    ['UG3102', 'Socket Programming',   ['duedate' => $now - 1380 * $DAY], 'submitted', 90.0],
+    ['UG3201', 'Requirements Document',
+        ['duedate' => $now - 1200 * $DAY, 'submissiondrafts' => 1], 'submitted', 87.5],
+    ['UG3202', 'Hypothesis Testing',   ['duedate' => $now - 1200 * $DAY], 'submitted', 72.0],
+    ['UG4101', 'Parser Implementation', ['duedate' => $now - 1020 * $DAY], 'submitted', 93.0],
+    ['UG4102', 'Classifier Notebook',  ['duedate' => $now - 1020 * $DAY], 'submitted', 89.0],
+    // 大四專題：交了、但從來沒有被評分。過了好幾年仍然是 notgraded，
+    // 而「沒有分數」與「零分」在這裡差得最遠。
+    ['UG4201', 'Final Report',         ['duedate' => $now - 840 * $DAY], 'submitted', null],
     ['CS5001', 'HW1 Divide and Conquer', ['duedate' => $now - 500 * $DAY], 'submitted', 92.0],
     ['CS5001', 'HW2 Dynamic Programming', ['duedate' => $now - 470 * $DAY], 'submitted', 78.5],
     ['CS5002', 'Lab1 Linear Regression', ['duedate' => $now - 500 * $DAY], 'submitted', 88.0],
