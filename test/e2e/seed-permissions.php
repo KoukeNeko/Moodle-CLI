@@ -94,8 +94,17 @@ foreach (['grad1', 'ug1', 'ug2'] as $name) {
     $users[$name] = $DB->get_record('user', ['username' => $name], '*', MUST_EXIST);
 }
 
+/** 停權／恢復一個帳號的所有選課。停權保留紀錄，只改 status。 */
+function suspend_enrolments(stdClass $user, bool $suspended): void {
+    global $DB;
+    foreach ($DB->get_records('user_enrolments', ['userid' => $user->id]) as $row) {
+        $row->status = $suspended ? ENROL_USER_SUSPENDED : ENROL_USER_ACTIVE;
+        $DB->update_record('user_enrolments', $row);
+    }
+}
+
 if ($mode === 'revert') {
-    apply_and_purge(function () use ($DB, $ta, $forumcm, $assigncm, $chaptercm) {
+    apply_and_purge(function () use ($DB, $ta, $users, $forumcm, $assigncm, $chaptercm) {
         foreach ([GROUP_A, GROUP_B] as $idnumber) {
             if ($group = group_named($ta->id, $idnumber)) {
                 $DB->delete_records('groups_members', ['groupid' => $group->id]);
@@ -111,6 +120,7 @@ if ($mode === 'revert') {
         $DB->set_field('course', 'groupmode', 0, ['id' => $ta->id]);
         set_availability($chaptercm, null);
         set_activity_override($assigncm, 'student', 'mod/assign:view', null);
+        suspend_enrolments($users['ug2'], false);
 
         foreach ($DB->get_records('forum_discussions',
                 ['course' => $ta->id, 'name' => DISCUSSION_B]) as $discussion) {
@@ -192,5 +202,11 @@ apply_and_purge(function () use ($DB, $ta, $users, $forum, $forumcm, $assigncm, 
     // 不一樣的清單——那正是「別拿一個帳號的結果去推論另一個」要測的東西。
     set_activity_override($assigncm, 'student', 'mod/assign:view', CAP_PROHIBIT);
     echo "[perm] CS1001：Exercise 1 Loops 對 student 角色 PROHIBIT mod/assign:view\n";
+
+    // 停權不是退選：紀錄還在，而 core_enrol_get_users_courses 把 onlyactive
+    // 寫死成 true，所以這個帳號的課程清單是空的。學校真正會做的動作是停權，
+    // 不是把人從課程裡刪掉，所以這是個常見狀態而不是邊角案例。
+    suspend_enrolments($users['ug2'], true);
+    echo "[perm] ug2 的選課改為停權（紀錄還在，清單會是空的）\n";
 });
 echo "[perm] 完成\n";

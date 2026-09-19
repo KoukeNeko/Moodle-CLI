@@ -78,6 +78,14 @@ switch ($what) {
         echo count($data->events) . "\n";
         break;
 
+    case 'suspended':
+        // 停權不是退選。問資料庫這個帳號還有幾筆停權的選課紀錄——那正是
+        // core_enrol_get_users_courses 不會回、而 CLI 不能因此否認的東西。
+        $user = user_by_name($argv[2]);
+        echo $DB->count_records('user_enrolments',
+            ['userid' => $user->id, 'status' => ENROL_USER_SUSPENDED]) . "\n";
+        break;
+
     case 'forums':
         echo forum_count((int)$argv[2]) . "\n";
         break;
@@ -97,6 +105,6 @@ switch ($what) {
         break;
 
     default:
-        fwrite(STDERR, "usage: fixture-truth.php submittable|courseid|calendar|forums|readable|release\n");
+        fwrite(STDERR, "usage: fixture-truth.php submittable|courseid|calendar|suspended|forums|readable|release\n");
         exit(2);
 }

@@ -753,6 +753,25 @@ if [ -n "$NOCOURSE_TOKEN" ]; then
   unset MOODLE_WS_TOKEN
 fi
 
+# 停權的學生：選課紀錄還在，清單卻是空的（onlyactive 在 Moodle 裡寫死成 true）。
+# 先由控制面證明紀錄確實存在，再要求 CLI 不得把那個空清單說成沒有選過課。
+SUSPENDED=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
+  suspended ug2 2>/dev/null | tr -d '\r')
+note "前提（問資料庫，不是問 CLI）：ug2 的停權選課紀錄有 $SUSPENDED 筆"
+UG2_TOKEN=$(curl -fsS "http://127.0.0.1:$STD_PORT/login/token.php" \
+  -d username=ug2 -d 'password=Student123!' -d service=moodle_mobile_app \
+  | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))' 2>/dev/null)
+if [ "${SUSPENDED:-0}" -gt 0 ] && [ -n "$UG2_TOKEN" ]; then
+  SECRETS+=("$UG2_TOKEN")
+  export MOODLE_WS_TOKEN="$UG2_TOKEN"
+  runenv "MOODLE_WS_TOKEN=$UG2_TOKEN" course list
+  assert_not_claiming "停權的學生 → 不得說他沒有選過課" \
+    "not enrolled on any course" course list
+  assert_not_claiming "停權的學生 → 不得只說隱藏與結束而漏掉停權" \
+    "hidden, finished, or reachable" course list
+  unset MOODLE_WS_TOKEN
+fi
+
 # 學生這一側也要量，而且量的是數字不是句子：行事曆以前只回「有動作的」那幾筆，
 # 對 grad1 是四分之一。少講不會觸發任何一條「不得宣稱」的斷言。
 GRAD_CAL=$(E2E_CONTAINER="$STD_CONTAINER" "$REPO_DIR/test/e2e/fixture-truth.sh" \
