@@ -17,12 +17,34 @@ LOGS="$REPO_DIR/test/e2e/logs"
 
 resolve() { case "$1" in */*) printf '%s' "$1" ;; *) printf '%s' "$LOGS/$1" ;; esac; }
 
+# 哪一座站台跑的。不同版本的站台之間比對沒有意義——題材、id、甚至功能都不一樣，
+# 差異會多到把真正的訊號淹掉。第一次寫這支的時候沒想到，於是拿 v45 的結果去跟
+# v52 的比，報出 3794 行「差異」。
+site_of() { sed -n 's/^# 站台：//p' "$1/transcript.log" 2>/dev/null | head -1; }
+
 if [ $# -ge 2 ]; then
   NEW=$(resolve "$1"); OLD=$(resolve "$2")
+  if [ "$(site_of "$NEW")" != "$(site_of "$OLD")" ]; then
+    echo "這兩輪跑的不是同一座站台，比對沒有意義：" >&2
+    echo "  ${NEW##*/}: $(site_of "$NEW")" >&2
+    echo "  ${OLD##*/}: $(site_of "$OLD")" >&2
+    exit 2
+  fi
 else
   mapfile -t runs < <(ls -1d "$LOGS"/*/ 2>/dev/null | sed 's:/$::' | sort)
-  [ "${#runs[@]}" -ge 2 ] || { echo "logs/ 裡不到兩輪紀錄" >&2; exit 2; }
-  NEW=${runs[-1]}; OLD=${runs[-2]}
+  [ "${#runs[@]}" -ge 1 ] || { echo "logs/ 裡沒有紀錄" >&2; exit 2; }
+  NEW=${runs[-1]}
+  NEWSITE=$(site_of "$NEW")
+  OLD=""
+  for (( i=${#runs[@]} - 2; i >= 0; i-- )); do
+    if [ "$(site_of "${runs[$i]}")" = "$NEWSITE" ]; then OLD=${runs[$i]}; break; fi
+  done
+  if [ -z "$OLD" ]; then
+    # 全新的 volume 跑第一輪就是這樣：沒有可比的基準不是失敗。
+    echo "本次：${NEW##*/}（$NEWSITE）"
+    echo "沒有同一座站台的前一輪可以比對——如果這是第一輪，那是預期的。"
+    exit 0
+  fi
 fi
 for d in "$OLD" "$NEW"; do
   [ -f "$d/summary.tsv" ] || { echo "$d 裡沒有 summary.tsv" >&2; exit 2; }

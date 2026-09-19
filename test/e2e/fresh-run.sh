@@ -39,7 +39,17 @@ echo "==> 2/5 重新安裝並佈建（首次安裝要幾分鐘）"
 echo "==> 3/5 建置"
 make build
 
-echo "==> 4/5 跑完整 e2e"
+# full-run.sh 的連接埠預設是 v52 的。不把版本的連接埠傳進去，就會變成
+# 「佈建了這個版本、卻對另一個版本跑測」——而且兩邊都活著的時候不會報錯，
+# 只會安靜地量錯站台。第一次寫這支就是這樣壞的。
+case "$VERSION" in
+  v45) export STD_PORT=8451 NOWS_PORT=8452 ;;
+  v51) export STD_PORT=8511 NOWS_PORT=8512 ;;
+  v52) export STD_PORT=8521 NOWS_PORT=8522 ;;
+  *) echo "不認得的版本：$VERSION" >&2; exit 2 ;;
+esac
+
+echo "==> 4/5 跑完整 e2e（std=$STD_PORT nows=$NOWS_PORT）"
 ./test/e2e/full-run.sh --nows
 
 echo "==> 5/5 跟上一輪比對"
