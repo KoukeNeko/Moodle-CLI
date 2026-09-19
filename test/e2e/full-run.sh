@@ -47,6 +47,9 @@ SUMMARY="$LOGDIR/summary.tsv"
 # had vanished.
 MANIFEST="$LOGDIR/run.json"
 
+# shellcheck source=test/e2e/assert.sh
+. "$REPO_DIR/test/e2e/assert.sh"
+
 # The container behind STD_PORT. The control plane asks it things the CLI must
 # not be asked — a tool under test cannot witness its own preconditions.
 STD_CONTAINER=$(docker compose --project-name moodle-cli-e2e \
@@ -676,6 +679,59 @@ if [ -n "$UG_TOKEN" ]; then
   runenv "MOODLE_WS_TOKEN=$UG_TOKEN" grade list --course "$CSSEM"
 fi
 
+# ─────────────────────────────────────────────────────────────────────────
+say "19a. 最不能說錯的那幾句"
+note "前面每一節問的是「今天跟昨天長得一樣嗎」。這一節問的是別的問題："
+note "「一句從第一天就錯的話，有沒有被說出來？」——那種錯誤每天都一樣，"
+note "所以逐字比對永遠抓不到。斷言讀的是 JSON 契約，不是人類輸出的字句。"
+
+# 前提先由控制面證明，不靠被測的工具。課程 2 裡真的有論壇，grad1 真的讀不到——
+# 少了這一步，一門本來就沒有論壇的課會讓錯誤的實作漂亮地通過。
+CS204=2
+FORUMS_IN_CS204=$(E2E_CONTAINER="$STD_CONTAINER" \
+  "$REPO_DIR/test/e2e/fixture-truth.sh" forums "$CS204" 2>/dev/null | tr -d '\r')
+GRAD_READS_CS204=$(E2E_CONTAINER="$STD_CONTAINER" \
+  "$REPO_DIR/test/e2e/fixture-truth.sh" readable grad1 "$CS204" 2>/dev/null | tr -d '\r')
+note "前提（問資料庫，不是問 CLI）：課程 $CS204 有 $FORUMS_IN_CS204 個論壇；grad1 讀得到＝$GRAD_READS_CS204"
+
+if [ "${FORUMS_IN_CS204:-0}" -gt 0 ] && [ "${GRAD_READS_CS204:-1}" = "0" ]; then
+  export MOODLE_WS_TOKEN="$GRAD_TOKEN"
+
+  # 讀不到的課：空清單絕不能變成「這門課沒有論壇」。站台丟掉了 warnings，
+  # 所以這裡是整個專案最容易自信講錯的地方。
+  assert_case "讀不到的課 → 拒絕而不是空清單" error permission_denied \
+    forum list --course "$CS204"
+  assert_not_claiming "讀不到的課 → 不得說沒有論壇" "No forums" \
+    forum list --course "$CS204"
+
+  # 同一門課，同樣讀不到，換一個功能問。
+  assert_case "讀不到的課 → 作業也拒絕" error permission_denied \
+    assignment list --course "$CS204"
+  assert_case "讀不到的課 → 成績也拒絕" error permission_denied \
+    grade list --course "$CS204"
+
+  unset MOODLE_WS_TOKEN
+else
+  note "前提不成立（論壇數 $FORUMS_IN_CS204、可讀 $GRAD_READS_CS204），跳過——"
+  note "這不是通過，是這一節沒有資格下判斷。"
+fi
+
+# 零選課的帳號：清單是空的，但那不等於「沒有課程」——一個零選課的管理者
+# 讀得到課程，而行事曆回的是「這個帳號看得到的」，不是「存在的」。
+NOCOURSE_TOKEN=$(curl -fsS "http://127.0.0.1:$STD_PORT/login/token.php" \
+  -d username=nocourse -d 'password=Student123!' -d service=moodle_mobile_app 2>/dev/null \
+  | python3 -c 'import json,sys;print(json.load(sys.stdin).get("token",""))' 2>/dev/null || true)
+if [ -n "$NOCOURSE_TOKEN" ]; then
+  SECRETS+=("$NOCOURSE_TOKEN")
+  export MOODLE_WS_TOKEN="$NOCOURSE_TOKEN"
+  assert_not_claiming "零選課 → 不得說沒有課程" "No courses." course list
+  assert_not_claiming "零選課 → 行事曆不得說沒事要做" "Nothing to do" calendar upcoming
+  unset MOODLE_WS_TOKEN
+fi
+
+assert_summary | tee -a "$TRANSCRIPT"
+
+# ─────────────────────────────────────────────────────────────────────────
 say "19b. 每個身分組都走一遍"
 note "Moodle 有八個標準角色。前面跑的是學生、助教與教師，這裡補上剩下的："
 note "零選課的帳號（每個新帳號的起點）、站台 manager 與 coursecreator、站台管理員。"
@@ -935,6 +991,13 @@ PY
   printf '逐條清單：%s\n' "$SUMMARY"
   printf '這一輪的來歷：%s\n' "$MANIFEST"
 } | tee -a "$TRANSCRIPT"
+
+# 語意斷言跟結束碼分布不同：它們問的是「這句話對不對」，而錯的答案沒有
+# 「預期」可言。有一條沒過，這一輪就是失敗的。
+if [ "$ASSERT_FAIL" -gt 0 ]; then
+  printf '\n語意斷言有 %d 條沒過——那是我們最不能說錯的話。\n' "$ASSERT_FAIL" >&2
+  exit 1
+fi
 
 # 非零結束碼在這裡多半是預期的（拒絕、找不到、衝突），所以腳本本身不因此失敗。
 # 它產生的是證據，判斷留給讀的人。
