@@ -71,7 +71,9 @@ func newForumListCommand(r *Renderer, deps Deps) *cobra.Command {
 			forums, _ := envelope.Data.([]v1.Forum)
 			return r.Render(Result{
 				Envelope: envelope,
-				Human:    func(w io.Writer) error { return writeForumTable(w, forums) },
+				Human: func(w io.Writer) error {
+					return writeForumTable(w, forums, len(courseIDs) > 0)
+				},
 			})
 		},
 	}
@@ -145,14 +147,26 @@ func newForumReadCommand(r *Renderer, deps Deps) *cobra.Command {
 	return cmd
 }
 
-func writeForumTable(w io.Writer, forums []v1.Forum) error {
+func writeForumTable(w io.Writer, forums []v1.Forum, named bool) error {
 	if len(forums) == 0 {
 		// Not "this course has no forums": that is more than the reply
 		// supports. mod_forum_get_forums_by_courses filters by activity
 		// visibility and by mod/forum:viewdiscussion before it answers, so an
 		// empty listing is about what this account can see, never about what
 		// the course holds. A course it cannot read at all is refused earlier.
-		_, err := fmt.Fprintln(w, "No forums are visible to this account.")
+		//
+		// Nor is it about the account: asked without a course, the function
+		// searches the courses that account is enrolled on. Measured, a
+		// manager told "no forums are visible to this account" read one in the
+		// next breath by naming the course.
+		if named {
+			_, err := fmt.Fprintln(w, "No forums are visible to this account in those courses.")
+			return err
+		}
+		_, err := fmt.Fprintln(w,
+			"No forums are visible in the courses this account is enrolled on.\n"+
+				"A course reachable without an enrolment is not searched; "+
+				"name it with --course to look there.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

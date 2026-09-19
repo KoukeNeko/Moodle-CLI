@@ -95,7 +95,9 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 			items, _ := envelope.Data.([]v1.Assignment)
 			return r.Render(Result{
 				Envelope: envelope,
-				Human:    func(w io.Writer) error { return writeAssignmentTable(w, items) },
+				Human: func(w io.Writer) error {
+					return writeAssignmentTable(w, items, len(courseIDs) > 0)
+				},
 			})
 		},
 	}
@@ -280,9 +282,19 @@ func confirmSubmit(streams Streams, interactive func() bool, req assignment.Subm
 	return nil
 }
 
-func writeAssignmentTable(w io.Writer, items []v1.Assignment) error {
+func writeAssignmentTable(w io.Writer, items []v1.Assignment, named bool) error {
 	if len(items) == 0 {
-		_, err := fmt.Fprintln(w, "No assignments.")
+		// Named without a course, mod_assign_get_assignments searches the
+		// courses this account is enrolled on and nothing else. An account can
+		// read a course it is not enrolled on — measured: a manager who can
+		// open a course holding two assignments was told there were none.
+		// The set is in the sentence rather than in a footnote under it.
+		if named {
+			_, err := fmt.Fprintln(w, "No assignments in those courses.")
+			return err
+		}
+		_, err := fmt.Fprintln(w,
+			"No assignments in the courses this account is enrolled on.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
