@@ -502,6 +502,9 @@ func TestARedirectAwayFromTheEndpointIsNamed(t *testing.T) {
 	// answers 200 with its own page — so the status line looks healthy and
 	// only the hop gives it away. Reported as "not a Moodle endpoint", the
 	// reader would go and check a URL that was right all along.
+	//
+	// A gateway is only one of the things that does this, so the message says
+	// where the request ended rather than why.
 	client := driftSite(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/sso" {
 			w.Header().Set("Content-Type", "text/html")
@@ -520,8 +523,15 @@ func TestARedirectAwayFromTheEndpointIsNamed(t *testing.T) {
 	if e.Code != errs.CodeAuthentication {
 		t.Errorf("code = %q, want authentication", e.Code)
 	}
-	if !strings.Contains(e.Hint, "single sign-on") {
-		t.Errorf("the hint does not name what happened: %q", e.Hint)
+	if !strings.Contains(e.Hint, "redirected to") {
+		t.Errorf("the hint does not say where the request ended: %q", e.Hint)
+	}
+	// The cause is not knowable from a redirect alone: a gateway, a session
+	// the site stopped accepting, and a host it does not answer for all look
+	// the same here. Measured on Moodle 5.1, which redirects /my/ to the login
+	// page for a session it will not take — nothing to do with sign-on.
+	if strings.Contains(e.Hint, "cannot be reached with a token alone") {
+		t.Errorf("one possible cause was stated as the cause: %q", e.Hint)
 	}
 	if strings.Contains(e.Hint, "not a Moodle web service endpoint") {
 		t.Error("a correct URL was blamed")

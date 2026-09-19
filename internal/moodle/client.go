@@ -300,11 +300,16 @@ func (c *Client) send(request *http.Request, function string) ([]byte, error) {
 		// Said before the status check on purpose: such a gateway usually
 		// answers 200 with its own sign-in page, so the status line looks
 		// perfectly healthy and only the hop gives it away.
+		// The reason is not knowable from here. A gateway in front of the site,
+		// a session the site no longer accepts, a host it does not consider
+		// its own — each ends at a page instead of an answer. Naming one of
+		// them is a guess, and the first wording named single sign-on, which
+		// was wrong for the session case this is most often.
 		return nil, errs.New(errs.CodeAuthentication,
-			fmt.Sprintf("the request for %s was redirected away from the web service", function)).
+			fmt.Sprintf("the request for %s was answered by a page, not the web service", function)).
 			WithReason(errs.ReasonTokenExpired).
-			WithHint("it ended at " + redirectedTo + ", which answered with a page; " +
-				"a site behind single sign-on cannot be reached with a token alone")
+			WithHint("it was redirected to " + redirectedTo + "; the credential may no " +
+				"longer be accepted, or something in front of the site is handling sign-in")
 	}
 
 	if response.StatusCode != http.StatusOK {
