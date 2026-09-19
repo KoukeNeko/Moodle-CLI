@@ -202,7 +202,13 @@ type SubmissionState struct {
 	// running. It is not a deadline: Moodle accepts work afterwards and marks
 	// it as over time, and the cut-off is what closes submission.
 	TimerEndsAt *string `json:"timer_ends_at"`
-	FileCount   int     `json:"file_count"`
+	// OnlineSubmission is false for an offline assignment: one marked from
+	// work done somewhere else, with every submission plugin switched off.
+	// That is a normal setting, not a fault — such an assignment carries a
+	// grade and feedback like any other.
+	// Null when the route that answered cannot see the setting.
+	OnlineSubmission *bool `json:"online_submission"`
+	FileCount        int   `json:"file_count"`
 	// Files is what Moodle actually holds, so a caller can check that what was
 	// received is what they meant to send.
 	Files []File `json:"files"`
@@ -252,6 +258,7 @@ func newSubmissionState(assignmentID string, state assignment.State) SubmissionS
 		MembersStillToSubmit: state.MembersStillToSubmit,
 		EarlierAttempts:      newAttempts(state.Earlier),
 		TimerEndsAt:          Timestamp(state.TimerEndsAt),
+		OnlineSubmission:     state.OnlineSubmission,
 		FileCount:            state.FileCount,
 		Files:                newFiles(state.Files),
 	}

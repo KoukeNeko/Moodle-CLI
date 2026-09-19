@@ -152,6 +152,15 @@ type State struct {
 	// submit. It is meaningful only on an assignment that requires every
 	// member to; zero covers both "none left" and "the setting is off".
 	MembersStillToSubmit int
+	// OnlineSubmission reports whether Moodle has any submission plugin
+	// switched on. False is an offline assignment — marked from work done
+	// somewhere else — which is a normal, deliberate setting and not a fault:
+	// it can carry a grade and feedback like any other.
+	//
+	// It is a pointer because a route that cannot see the setting must not
+	// answer it. Reading the zero value would call every assignment offline
+	// on the page-reading route, which has no way to know.
+	OnlineSubmission *bool
 	// TimerEndsAt is when a started time limit runs out, nil when the
 	// assignment has no limit or this account has not started it.
 	//

@@ -403,6 +403,13 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 	if state.GradingStatus != nil {
 		fmt.Fprintf(w, "Grading:   %s\n", *state.GradingStatus)
 	}
+	if state.OnlineSubmission != nil && !*state.OnlineSubmission {
+		// "Handed in: no" is true and reads as a failure to submit. There is
+		// nothing to submit: the work for this one is done somewhere else and
+		// the grade arrives without anything passing through Moodle.
+		fmt.Fprintln(w, "Offline:   this assignment takes no online submission; "+
+			"the work is marked from elsewhere")
+	}
 	if state.TimerEndsAt != nil {
 		// Deliberately not called a deadline. Moodle accepts work after the
 		// timer expires and marks it as over time; the cut-off is what closes

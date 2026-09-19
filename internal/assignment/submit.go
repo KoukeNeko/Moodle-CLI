@@ -218,6 +218,16 @@ func (s *Submitter) preflight(ctx context.Context, req SubmitRequest) (Summary, 
 			"this assignment has already been handed in").
 			WithHint("check it with `moodle assignment status`")
 	}
+	if state.OnlineSubmission != nil && !*state.OnlineSubmission {
+		// Checked before canedit, which is also false here: an offline
+		// assignment is not a closed one. There is nothing to hand in at all,
+		// and the three guesses below would each be wrong about a setting the
+		// teacher chose on purpose.
+		return Summary{}, State{}, errs.New(errs.CodeUnavailable,
+			"this assignment takes no online submission").
+			WithReason(errs.ReasonCapability).
+			WithHint("the work for it is marked from somewhere else")
+	}
 	if !state.CanEdit {
 		// Moodle reports a window that has not opened yet exactly as it reports
 		// one that has closed, and this call carries neither date. Naming the

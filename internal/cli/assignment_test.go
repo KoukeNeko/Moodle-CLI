@@ -1289,3 +1289,54 @@ func TestATimeLimitNotYetStartedIsNotRunning(t *testing.T) {
 		t.Errorf("a timer that is not running must be null:\n%s", jsonOut)
 	}
 }
+
+func TestAnOfflineAssignmentIsNotAClosedOne(t *testing.T) {
+	// 線下作業（所有繳交外掛都關掉，Moodle 把這件事快取成 nosubmissions）是一個
+	// 刻意的設定，不是故障：老師照樣可以給分。實測站台上它有 76 分在成績簿裡，
+	// 而 assignment status 卻整個拒絕回答（exit 9「這條路走不通」）。
+	a := newAssignmentFixture(t, true, false)
+	state := lastAttempt("new", nil)
+	attempt, _ := state["lastattempt"].(map[string]any)
+	attempt["submissionsenabled"] = false
+	attempt["canedit"] = false
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, state)
+
+	stdout, stderr, code := a.run("assignment", "status", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d, want 0 — an offline assignment has a status\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "no online submission") {
+		t.Errorf("nothing says why there is nothing to hand in:\n%s", stdout)
+	}
+
+	jsonOut, _, code := a.run("assignment", "status", "7", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	validate(t, "assignment.status", jsonOut)
+	if !strings.Contains(jsonOut, `"online_submission":false`) {
+		t.Errorf("the contract did not carry it:\n%s", jsonOut)
+	}
+}
+
+func TestSubmittingToAnOfflineAssignmentSaysWhyNot(t *testing.T) {
+	// 擋是對的，但原因不是「可能過期了、可能被鎖了」——那三個猜測對一個老師
+	// 刻意設定的線下作業每一個都是錯的。
+	a := newAssignmentFixture(t, true, false)
+	state := lastAttempt("new", nil)
+	attempt, _ := state["lastattempt"].(map[string]any)
+	attempt["submissionsenabled"] = false
+	attempt["canedit"] = false
+	a.server.HandleValue(moodle.FunctionSubmissionStatus, state)
+
+	_, stderr, code := a.run("assignment", "submit", "7", workFile(t), "--dry-run")
+	if code == v1.ExitOK {
+		t.Fatal("a submission was planned for an assignment that takes none")
+	}
+	if !strings.Contains(stderr, "no online submission") {
+		t.Errorf("the refusal does not name the real reason:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "cut-off may have passed") {
+		t.Errorf("a deliberate setting was reported as a missed deadline:\n%s", stderr)
+	}
+}

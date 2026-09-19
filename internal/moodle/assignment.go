@@ -488,13 +488,15 @@ func (b *AssignmentBackend) Status(ctx context.Context, assignmentID string) (as
 		GradingStatus:        last.GradingStatus,
 		Earlier:              earlierAttempts(dto),
 		TimerEndsAt:          timerEnd(last),
+		OnlineSubmission:     boolPtr(last.SubmissionsEnabled),
 		Provenance:           site.NewProvenance(site.BackendWS),
 	}
-	if !last.SubmissionsEnabled {
-		return state, errs.New(errs.CodeUnavailable,
-			"this assignment is not accepting submissions").
-			WithReason(errs.ReasonCapability)
-	}
+	// submissionsenabled=false used to end the call here. It is false for an
+	// offline assignment — every submission plugin switched off, which Moodle
+	// caches as nosubmissions and documents as the way to mark work done
+	// elsewhere. Refusing left a student unable to read a status for an
+	// assignment that already had a grade: measured, 76/100 visible in the
+	// gradebook while this call answered "no route to this data".
 	if last.Submission == nil {
 		// No submission record yet: nothing has been saved.
 		return state, nil

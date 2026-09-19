@@ -33,7 +33,8 @@
         "group_submission",
         "members_still_to_submit",
         "earlier_attempts",
-        "timer_ends_at"
+        "timer_ends_at",
+        "online_submission"
       ],
       "additionalProperties": false,
       "properties": {
@@ -152,6 +153,17 @@
             }
           ],
           "description": "When a started time limit runs out, null when none is running. Not a deadline: Moodle accepts work afterwards and marks it as over time; the cut-off closes submission."
+        },
+        "online_submission": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "False for an offline assignment: every submission plugin is switched off and the work is marked from somewhere else — a normal setting, not a fault. Null when the route that answered cannot see the setting."
         }
       }
     },
