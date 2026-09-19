@@ -135,4 +135,10 @@ func TestAnEmptyEnrolmentListDoesNotClaimThereAreNoCourses(t *testing.T) {
 	if strings.Contains(stdout, "not enrolled on any course") {
 		t.Errorf("an empty list was read as an absence of enrolments:\n%s", stdout)
 	}
+	// 第四種：停權。學校不退選，學校停權，而 enrol_get_users_courses 的
+	// onlyactive 在 Moodle 裡是寫死的 true——實測停權一筆選課，清單就空了。
+	// 列了三個原因卻漏掉這一個，讀起來就像那三個是全部。
+	if !strings.Contains(stdout, "suspended") {
+		t.Errorf("the reasons given leave out the one an institution actually uses:\n%s", stdout)
+	}
 }

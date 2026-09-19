@@ -82,9 +82,16 @@ func writeCourseTable(w io.Writer, courses []v1.Course, nextCursor string) error
 		// measured: a student of an archived cohort has a live enrolment and
 		// an empty list. "You are not enrolled on any course" was false for
 		// every one of them.
+		// The list of exclusions is not decoration: naming three of them and
+		// leaving out the fourth reads as if those three were all of them.
+		// core_enrol_get_users_courses calls enrol_get_users_courses with
+		// onlyactive hardcoded true — read in 5.2's enrol/externallib.php —
+		// and suspending a student is what an institution does instead of
+		// unenrolling them. Measured: suspend one enrolment and the list is
+		// empty.
 		_, err := fmt.Fprintln(w, "No courses came back for this account.\n"+
-			"This lists current enrolments, so a course that is hidden, finished, "+
-			"or reachable without an enrolment is not here.")
+			"This lists enrolments the site counts as active, so a course that is "+
+			"hidden, finished, suspended, or reachable without an enrolment is not here.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
