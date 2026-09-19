@@ -137,6 +137,11 @@ CS1001 看得到別人的繳交，但沒有 `mod/assign:viewownsubmissionsummary
 
 腳本**不判斷對錯**，它產生的是可讀的證據；判斷留給讀的人與上面的驗收腳本。
 
+## 瀏覽器 fixture
+
+`internal/browser` 讀 Firefox 自己寫的檔案，所以 fixture 必須由 Firefox 產生。
+怎麼在沒有桌面的機器上做到（headless 就夠），見 [firefox.md](firefox.md)。
+
 ## 語意範圍與範圍突變
 
 欄位稽核（`scripts/audit-optional-fields.sh`）查的是「欄位在不在」。
