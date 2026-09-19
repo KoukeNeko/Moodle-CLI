@@ -66,9 +66,9 @@ func TestAnAccountWithNoEnrolmentsIsToldSoInPlainWords(t *testing.T) {
 		message string
 		args    []string
 	}{
-		{"not enrolled on any course", []string{"course", "list"}},
+		{"No courses came back", []string{"course", "list"}},
 		{"No assignments", []string{"assignment", "list"}},
-		{"No course totals", []string{"grade", "overview"}},
+		{"No course totals came back", []string{"grade", "overview"}},
 		{"No forums", []string{"forum", "list"}},
 	}
 	for _, tc := range cases {
@@ -122,10 +122,17 @@ func TestAnEmptyEnrolmentListDoesNotClaimThereAreNoCourses(t *testing.T) {
 	if code != v1.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
-	if strings.Contains(stdout, "No courses") {
-		t.Errorf("an empty enrolment list was reported as having no courses:\n%s", stdout)
+	if strings.Contains(stdout, "no courses") ||
+		strings.Contains(stdout, "not enrolled on any course") {
+		t.Errorf("an empty enrolment list was reported as an absence of courses:\n%s", stdout)
 	}
 	if !strings.Contains(stdout, "enrolments") {
 		t.Errorf("the answer does not say which question it answered:\n%s", stdout)
+	}
+	// 不只是管理者。實測站台上，一批課程被封存的學生仍然持有有效的選課紀錄，
+	// 而 core_enrol_get_users_courses 對他回空清單——「你沒有選修任何課程」
+	// 對他是錯的。同一個空清單至少有四種成因。
+	if strings.Contains(stdout, "not enrolled on any course") {
+		t.Errorf("an empty list was read as an absence of enrolments:\n%s", stdout)
 	}
 }

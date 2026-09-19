@@ -194,7 +194,16 @@ func outOf(item v1.Grade) string {
 
 func writeOverviewTable(w io.Writer, totals []v1.CourseTotal) error {
 	if len(totals) == 0 {
-		_, err := fmt.Fprintln(w, "No course totals.")
+		// gradereport_overview answers with the courses this account is graded
+		// on and can still see, which is a shorter list than it sounds —
+		// measured: a teacher of 31 courses gets an empty list, and so does a
+		// student holding a course total of 135 in a course the site archived.
+		// Both get the same list a brand-new account gets, so the sentence has
+		// to name why rather than let each of them read it as "you have none".
+		_, err := fmt.Fprintln(w, "No course totals came back for this account.\n"+
+			"This report covers courses where you are graded and that are still "+
+			"open to you, so teaching a course, or a course the site has hidden, "+
+			"is not here.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

@@ -585,3 +585,26 @@ func TestAStudentIsNotHedgedAtOnEveryCourse(t *testing.T) {
 		t.Errorf("every student would read this on every course:\n%s", stdout)
 	}
 }
+
+func TestATeacherIsNotToldThereAreNoTotals(t *testing.T) {
+	// gradereport_overview 回的是「這個帳號被評分的課」，教職員一門都沒有——
+	// 實測：教了 31 門課的 prof1 拿到空清單，跟一個全新帳號拿到的一模一樣。
+	// 「沒有課程總分」對他是錯的：總分有，只是不是他的。
+	f := newFixture(t)
+	f.withCourses()
+	f.server.HandleValue(moodle.FunctionCourseGrades, map[string]any{"grades": []any{}})
+	f.addSiteAndLogin()
+
+	stdout, stderr, code := f.run("grade", "overview")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "where you are graded") {
+		t.Errorf("the answer does not say which question it answered:\n%s", stdout)
+	}
+	// 同一個空清單有兩個原因，而說出其中一個的句子會讓另一種人讀成「你沒有成績」。
+	// 實測：封存班的 s2024-1 在一門被站台隱藏的課裡有 135 分的總分，清單一樣是空的。
+	if !strings.Contains(stdout, "hidden") {
+		t.Errorf("an archived course is the other reason this list is empty:\n%s", stdout)
+	}
+}

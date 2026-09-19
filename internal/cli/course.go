@@ -76,8 +76,15 @@ func writeCourseTable(w io.Writer, courses []v1.Course, nextCursor string) error
 		// enrolments, and an account can reach a course without holding one: a
 		// manager with no enrolment at all reads courses perfectly well, and
 		// was being told they had none. Say which question was answered.
-		_, err := fmt.Fprintln(w, "You are not enrolled on any course.\n"+
-			"This lists enrolments, so a course you can reach without one is not here.")
+		// Neither half of this may claim more than the call answered.
+		// core_enrol_get_users_courses leaves out a course whose enrolment is
+		// suspended, whose dates have passed, and one the site has hidden —
+		// measured: a student of an archived cohort has a live enrolment and
+		// an empty list. "You are not enrolled on any course" was false for
+		// every one of them.
+		_, err := fmt.Fprintln(w, "No courses came back for this account.\n"+
+			"This lists current enrolments, so a course that is hidden, finished, "+
+			"or reachable without an enrolment is not here.")
 		return err
 	}
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
