@@ -70,16 +70,30 @@ sboms:
   # a CVE, and this says which released archives contained it.
   - artifacts: archive
 
-# Signing is deliberately absent from this file.
+# What this signature does and does not mean.
 #
-# Signing the checksum file with cosign proves these bits came from this
-# release workflow, which is worth doing — but it is not what makes macOS or
-# Windows trust the binary. That needs Developer ID plus notarization, and an
-# Authenticode certificate, neither of which exists yet. Claiming otherwise in
-# a config comment is how a project ends up believing it is signed.
+# It signs the checksum file, keylessly, through the release workflow's OIDC
+# identity. That proves one thing: these bits came out of this repository's
+# release job. It is worth having — it is how someone can tell a download
+# apart from a lookalike.
 #
-# Until then the release notes must say plainly that the artifacts are
-# unsigned and that Gatekeeper and SmartScreen will say so.
+# It is not what makes an operating system trust the binary. Gatekeeper wants
+# Developer ID plus notarization; SmartScreen wants Authenticode and a
+# publisher reputation built over releases. Neither exists here yet, so the
+# release notes below say so in as many words. A project that conflates the
+# two ends up believing it is signed when every user still sees a warning.
+signs:
+  - cmd: cosign
+    # The checksum file covers every archive, so signing it signs them all.
+    artifacts: checksum
+    certificate: "${artifact}.pem"
+    output: true
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes"
 
 release:
   draft: true

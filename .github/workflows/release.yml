@@ -30,6 +30,10 @@ jobs:
 
       - uses: anchore/sbom-action/download-syft@v0.20.10
 
+      # Keyless: the signing identity is this workflow, proved by the OIDC
+      # token above. There is no private key to leak or rotate.
+      - uses: sigstore/cosign-installer@v4.1.0
+
       - name: Build the release
         uses: goreleaser/goreleaser-action@v6.4.0
         with:
@@ -63,3 +67,20 @@ jobs:
           # This binary reads OS keychains on three platforms. A dynamic
           # dependency is how it stops working on someone else's machine.
           file "$workdir/moodle" | grep -q "statically linked"
+
+      # A signature nobody has verified is a file, not a proof. This runs the
+      # check a careful user would, against the artifacts about to be
+      # published, so a broken signing step fails the release rather than
+      # shipping something that looks signed.
+      - name: The signature has to verify
+        run: |
+          set -euo pipefail
+          cosign verify-blob \
+            --certificate dist/checksums.txt.pem \
+            --signature dist/checksums.txt.sig \
+            --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            dist/checksums.txt
+
+          # And the checksums have to match the archives they claim to cover.
+          cd dist && sha256sum --check --ignore-missing checksums.txt
