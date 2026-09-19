@@ -137,6 +137,24 @@ CS1001 看得到別人的繳交，但沒有 `mod/assign:viewownsubmissionsummary
 
 腳本**不判斷對錯**，它產生的是可讀的證據；判斷留給讀的人與上面的驗收腳本。
 
+## 語意範圍與範圍突變
+
+欄位稽核（`scripts/audit-optional-fields.sh`）查的是「欄位在不在」。
+另一類缺陷是「這支函式在回傳 `[]` 之前搜尋的宇宙是什麼」——空回應能不能支撐
+一句全稱否定。那一份表在 [semantic-scope.md](semantic-scope.md)。
+
+對應的工具保留物件本身、只動一個縮減維度：
+
+```sh
+test/e2e/mutate.sh list
+test/e2e/mutate.sh apply  suspend-enrolment
+test/e2e/mutate.sh revert suspend-enrolment
+```
+
+受測的性質**不是**「端點應該還是要回傳這個物件」——通常它正確地不該回傳。
+而是：端點不再回傳一個確實存在的物件時，CLI 不得把那個觀測強化成更廣的
+不存在宣稱。
+
 ## 交作業流程的驗收
 
 ```bash
