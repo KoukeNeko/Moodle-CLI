@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  # Both are for the SBOM and for provenance later. They are the minimum that
+  # makes those artifacts mean anything, and nothing more.
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # goreleaser derives the version and the changelog from tags, and a
+          # shallow clone silently produces a wrong one rather than failing.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7.0.0
+        with:
+          # Pinned, not "latest": the compiler is an input to the binary, so a
+          # floating toolchain means two builds of one tag can differ.
+          go-version: "1.27.x"
+          cache: true
+
+      - uses: anchore/sbom-action/download-syft@v0.20.10
+
+      - name: Build the release
+        uses: goreleaser/goreleaser-action@v6.4.0
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # What `go test` proves is that the source works. This proves the thing
+      # people actually download does: an archive can be built from passing
+      # code and still ship the wrong binary, miss a file, or carry a dynamic
+      # dependency that is absent on the user's machine.
+      - name: The archive people download has to work
+        run: |
+          set -euo pipefail
+          archive=$(ls dist/*_linux_amd64.tar.gz)
+          workdir=$(mktemp -d)
+          tar xzf "$archive" -C "$workdir"
+
+          test -f "$workdir/moodle"
+          test -f "$workdir/README.md"
+          test -f "$workdir/LICENSE"
+
+          "$workdir/moodle" version
+          "$workdir/moodle" version --json | grep -q '"schema_version":1'
+          # The tag, not "dev": a release that reports its version wrongly
+          # makes every future bug report unanswerable.
+          "$workdir/moodle" version --json \
+            | grep -q "\"version\":\"${GITHUB_REF_NAME#v}\""
+
+          # This binary reads OS keychains on three platforms. A dynamic
+          # dependency is how it stops working on someone else's machine.
+          file "$workdir/moodle" | grep -q "statically linked"
