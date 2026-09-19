@@ -14,6 +14,7 @@ package callback
 
 import (
 	"crypto/subtle"
+	"errors"
 	"sync"
 	"time"
 
@@ -39,6 +40,12 @@ type Transaction struct {
 	Passport string
 	Expires  time.Time
 }
+
+// ErrPeerCheckUnavailable means this platform cannot say who is at the other
+// end of the channel. It is not a refusal: the caller decides what to do
+// without that answer, and the runtime directory's mode is the boundary
+// either way.
+var ErrPeerCheckUnavailable = errors.New("the peer's user cannot be checked here")
 
 // Store holds the logins in flight.
 //

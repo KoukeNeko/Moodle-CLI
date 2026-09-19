@@ -64,6 +64,11 @@ const (
 	// reason to wait, never a reason to retry a write: the request may have
 	// been refused before it ran or after.
 	ReasonRateLimited Reason = "rate_limited"
+	// ReasonTimeout means the thing being waited for never arrived. It is
+	// distinct from a site refusing: nothing was refused, and whether it
+	// would have succeeded is unknown. The contract calls reason an open set
+	// for exactly this.
+	ReasonTimeout Reason = "timeout"
 )
 
 // Outcome says whether the effect of a request is known. An ambiguous outcome

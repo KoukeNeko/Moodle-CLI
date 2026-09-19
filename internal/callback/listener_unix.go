@@ -63,6 +63,16 @@ func Listen(dir string) (net.Listener, error) {
 	return listener, nil
 }
 
+// socketPath is where the channel lives, without creating anything.
+func socketPath(dir string) (string, error) {
+	if dir == "" {
+		return "", errs.New(errs.CodeUnavailable,
+			"there is no per-user runtime directory to look in").
+			WithHint("XDG_RUNTIME_DIR is unset")
+	}
+	return filepath.Join(dir, "moodle-cli", socketName), nil
+}
+
 // checkPrivate refuses a directory another user could reach into.
 func checkPrivate(dir string) error {
 	info, err := os.Lstat(dir)
@@ -125,32 +135,4 @@ func clearStale(path string) error {
 		return errs.Wrap(errs.CodeUnavailable, err, "cannot clear "+path)
 	}
 	return nil
-}
-
-// PeerIsSelf reports whether the process at the other end runs as this user.
-//
-// It is defence in depth, not the boundary: the directory's mode is what
-// keeps another user out. This catches the case where that has been weakened
-// without anyone noticing.
-func PeerIsSelf(conn net.Conn) (bool, error) {
-	unixConn, ok := conn.(*net.UnixConn)
-	if !ok {
-		return false, errs.New(errs.CodeInternal, "not a unix connection")
-	}
-	raw, err := unixConn.SyscallConn()
-	if err != nil {
-		return false, errs.Wrap(errs.CodeInternal, err, "cannot inspect the connection")
-	}
-	var creds *syscall.Ucred
-	var credErr error
-	if err := raw.Control(func(fd uintptr) {
-		creds, credErr = syscall.GetsockoptUcred(
-			int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-	}); err != nil {
-		return false, errs.Wrap(errs.CodeInternal, err, "cannot read the peer")
-	}
-	if credErr != nil {
-		return false, errs.Wrap(errs.CodeInternal, credErr, "cannot read the peer")
-	}
-	return int(creds.Uid) == os.Getuid(), nil
 }
