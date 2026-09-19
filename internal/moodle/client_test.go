@@ -380,3 +380,29 @@ func TestAGroupTheUserIsNotInIsAPermissionProblem(t *testing.T) {
 		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
 	}
 }
+
+func TestAnActivityOnItsWayOutIsNotASiteFault(t *testing.T) {
+	// Moodle 接受了刪除、正在處理，所以這個活動再也不會回來。報成上游錯誤
+	// 等於建議重試——而重試唯一的結局是它不見了。實測 errorcode 是
+	// activityisscheduledfordeletion。
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("mod_assign_get_submission_status", map[string]any{})
+	server.FailException("mod_assign_get_submission_status",
+		"core\\exception\\moodle_exception",
+		"activityisscheduledfordeletion", "Activity deletion in progress...")
+
+	var out map[string]any
+	err := newClient(t, server).Call(context.Background(), "tok",
+		"mod_assign_get_submission_status", nil, &out)
+	if err == nil {
+		t.Fatal("an activity being deleted was treated as readable")
+	}
+	e := errs.From(err)
+	if e.Code != errs.CodeUnavailable {
+		t.Errorf("code = %q, want unavailable", e.Code)
+	}
+	if e.Upstream == nil || e.Upstream.ErrorCode != "activityisscheduledfordeletion" {
+		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
+	}
+}

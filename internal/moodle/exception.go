@@ -100,6 +100,12 @@ var knownErrorCodes = map[string]classification{
 
 	// The site is up but refusing work.
 	"maintenanceinprogress": {errs.CodeUnavailable, "", "the site is in maintenance mode"},
+	// The activity is on its way out: Moodle has accepted a delete and is
+	// working through it. Nothing is wrong with the site, and nothing here
+	// will start working again, so reporting an upstream fault invited a
+	// retry that can only ever end in the activity being gone.
+	"activityisscheduledfordeletion": {errs.CodeUnavailable, "",
+		"the site is deleting this activity; it will not come back"},
 }
 
 // asError converts a Moodle exception into our error type.
