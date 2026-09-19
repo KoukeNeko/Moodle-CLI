@@ -70,16 +70,31 @@ type Input struct {
 var featureChecks = []struct {
 	name        string
 	anyFunction []string
+	// browserRoute is what the feature falls back to for an account holding a
+	// browser session instead of a token. Empty means it has no fallback, and
+	// saying which is the difference between "this site cannot" and "the web
+	// service cannot" — measured on a site with mobile web services off,
+	// where six of these seven work and the report called them all missing.
+	browserRoute site.BackendKind
 }{
 	{"Course listing", []string{
 		"core_enrol_get_users_courses",
 		"core_course_get_enrolled_courses_by_timeline_classification",
-	}},
-	{"Assignments", []string{"mod_assign_get_assignments"}},
-	{"Assignment submission", []string{"mod_assign_save_submission"}},
-	{"Grades", []string{"gradereport_overview_get_course_grades", "gradereport_user_get_grade_items"}},
-	{"Calendar", []string{"core_calendar_get_calendar_upcoming_view", "core_calendar_get_action_events_by_timesort"}},
-	{"Forums", []string{"mod_forum_get_forums_by_courses"}},
+	}, site.BackendAJAX},
+	{"Assignments", []string{"mod_assign_get_assignments"}, site.BackendHTML},
+	// No fallback on purpose: reading a page cannot see whether saving is
+	// submitting, and handing work in on a guess is the one mistake this
+	// project will not make.
+	{"Assignment submission", []string{"mod_assign_save_submission"}, ""},
+	{"Grades", []string{
+		"gradereport_overview_get_course_grades",
+		"gradereport_user_get_grade_items",
+	}, site.BackendHTML},
+	{"Calendar", []string{
+		"core_calendar_get_calendar_monthly_view",
+		"core_calendar_get_action_events_by_timesort",
+	}, site.BackendAJAX},
+	{"Forums", []string{"mod_forum_get_forums_by_courses"}, site.BackendHTML},
 }
 
 // Run performs the diagnosis. It never returns an error for a site problem:
@@ -162,19 +177,46 @@ func Run(ctx context.Context, in Input) Report {
 		Name: "Authentication", Status: StatusOK,
 		Detail: describeAccount(capabilities),
 	})
-	report.Checks = append(report.Checks, Check{
-		Name: "Moodle version", Status: StatusOK, Detail: capabilities.Release,
-	})
-	report.Checks = append(report.Checks, fileCheck("File download", capabilities.CanDownload))
-	report.Checks = append(report.Checks, fileCheck("File upload", capabilities.CanUpload))
+	// A browser session is never told what the site offers: the call that
+	// says so is not exposed over the AJAX endpoint. Everything below reads
+	// from that answer, so it has to say "not asked" rather than "no".
+	session := capabilities.Credential == site.CredentialBrowserSession
+	if session {
+		// The web services check ran before this was known and marked the
+		// site failed. It is not: this account is signed in and most of the
+		// tool works through the routes below. A failed diagnosis exits 9,
+		// which would tell a script the site is unusable while the commands
+		// beside it succeed.
+		softenWebServices(report.Checks)
+	}
+
+	report.Checks = append(report.Checks, versionCheck(capabilities.Release, session))
+	report.Checks = append(report.Checks,
+		fileCheck("File download", capabilities.CanDownload, session))
+	report.Checks = append(report.Checks,
+		fileCheck("File upload", capabilities.CanUpload, session))
 
 	for _, feature := range featureChecks {
 		requirement := site.Requirement{AnyFunction: feature.anyFunction}
-		if ok, why := requirement.SatisfiedBy(capabilities); ok {
+		ok, why := requirement.SatisfiedBy(capabilities)
+		switch {
+		case ok:
 			report.Checks = append(report.Checks, Check{
 				Name: feature.name, Status: StatusOK, Detail: "available",
 			})
-		} else {
+		case session && feature.browserRoute != "":
+			report.Checks = append(report.Checks, Check{
+				Name: feature.name, Status: StatusOK,
+				Detail: "available over " + string(feature.browserRoute) +
+					" (no web service token)",
+			})
+		case session:
+			report.Checks = append(report.Checks, Check{
+				Name: feature.name, Status: StatusWarning,
+				Detail: "needs a web service token; this account has a browser session",
+				Reason: errs.ReasonCapability,
+			})
+		default:
 			// Not a failure: a site that does not expose forums is not broken,
 			// it just cannot do that. The detail names the missing function.
 			report.Checks = append(report.Checks, Check{
@@ -184,6 +226,41 @@ func Run(ctx context.Context, in Input) Report {
 		}
 	}
 	return report
+}
+
+// softenWebServices turns the web services verdict into a finding rather than
+// a failure, for an account that got in without them.
+func softenWebServices(checks []Check) {
+	for i := range checks {
+		if checks[i].Name != "Web services" || checks[i].Status != StatusFailed {
+			continue
+		}
+		checks[i].Status = StatusWarning
+		checks[i].Detail += "; this account is signed in without them"
+		checks[i].Hint = "an administrator must enable them for token login, " +
+			"or use `moodle auth login --method browser-session`"
+	}
+}
+
+// versionCheck reports the release, or says it was never asked for.
+//
+// A blank cell beside "Moodle version" reads as a site that did not answer.
+// A browser session cannot ask: the call that carries the release is not
+// exposed over the AJAX endpoint.
+func versionCheck(release string, session bool) Check {
+	if release != "" {
+		return Check{Name: "Moodle version", Status: StatusOK, Detail: release}
+	}
+	if session {
+		return Check{
+			Name: "Moodle version", Status: StatusSkipped,
+			Detail: "not reported to a browser session",
+		}
+	}
+	return Check{
+		Name: "Moodle version", Status: StatusSkipped,
+		Detail: "the site did not report one",
+	}
 }
 
 func loginMethods(config *auth.PublicConfig) Check {
@@ -210,9 +287,17 @@ func loginMethods(config *auth.PublicConfig) Check {
 	return Check{Name: "Login methods", Status: StatusOK, Detail: join(available)}
 }
 
-func fileCheck(name string, allowed bool) Check {
+func fileCheck(name string, allowed, session bool) Check {
 	if allowed {
 		return Check{Name: name, Status: StatusOK, Detail: "allowed"}
+	}
+	if session {
+		// False here means the question was never put. Rendering that as a
+		// refusal tells a student they may not download their own coursework.
+		return Check{
+			Name: name, Status: StatusSkipped,
+			Detail: "not reported to a browser session",
+		}
 	}
 	return Check{
 		Name: name, Status: StatusWarning, Detail: "not allowed for this account",

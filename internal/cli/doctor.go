@@ -44,7 +44,11 @@ func newDoctorCommand(r *Renderer, deps Deps) *cobra.Command {
 			// counts, even with nothing stored.
 			if sessionAccount, token, sessionErr := resolveSession(deps, file, siteFlag, accountFlag); sessionErr == nil {
 				input.AccountName = sessionAccount.AccountName
-				input.Session = deps.Auth.OpenWithToken(target, sessionAccount.Account.ID, token)
+				// The same session every other command would open. Building a
+				// token session unconditionally is what made doctor report
+				// HTTP 403 and tell a signed-in browser-session user to sign
+				// in again — on a site where six of its seven commands work.
+				input.Session = openSessionFor(deps, sessionAccount, token)
 			}
 
 			report := doctor.Run(cmd.Context(), input)
