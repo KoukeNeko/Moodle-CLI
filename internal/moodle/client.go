@@ -380,6 +380,16 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 	case response.StatusCode == http.StatusNotFound:
 		code = errs.CodeNotFound
 		hint = "check the site URL points at a Moodle installation"
+		if function == PathPluginFile {
+			// Moodle answers a file this account may not read with the same
+			// 404 as one that does not exist — deliberately, so that a listing
+			// cannot be probed for what it is hiding. Measured: a classmate
+			// asking for another student's submission gets exactly this.
+			// Sending them to check the site URL is advice for a problem they
+			// do not have.
+			hint = "the file may not exist, or this account may not be allowed " +
+				"to read it — Moodle answers both the same way"
+		}
 	case response.StatusCode == http.StatusTooManyRequests:
 		code = errs.CodeUnavailable
 		reason = errs.ReasonRateLimited

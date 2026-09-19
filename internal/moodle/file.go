@@ -25,6 +25,11 @@ type FileFetcher struct {
 }
 
 // NewFileFetcher builds the downloader's transport.
+// PathPluginFile names the file endpoint in diagnostics. It is not a web
+// service function, and its refusals do not read like one: a file this
+// account may not see comes back as a 404, the same as one that is gone.
+const PathPluginFile = "pluginfile.php"
+
 func NewFileFetcher(client *Client, token string, capabilities *site.Capabilities) *FileFetcher {
 	fetcher := &FileFetcher{client: client, token: token}
 	if capabilities != nil {
@@ -60,7 +65,7 @@ func (f *FileFetcher) Fetch(ctx context.Context, rawURL string) (*file.Body, err
 		return nil, errs.Wrap(errs.CodeInternal, err, "cannot build the download request")
 	}
 
-	response, err := f.client.stream(request, "pluginfile.php")
+	response, err := f.client.stream(request, PathPluginFile)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +103,7 @@ func rejectErrorPayload(response *http.Response) error {
 
 	// decode already knows every shape a Moodle failure arrives in, including
 	// this endpoint's habit of reporting in "error" rather than "message".
-	if failure := decode(head, "pluginfile.php", nil); failure != nil {
+	if failure := decode(head, PathPluginFile, nil); failure != nil {
 		return failure
 	}
 

@@ -167,3 +167,29 @@ func TestOnlyHttpUrlsAreFetched(t *testing.T) {
 		t.Error("a request was made for a URL that should have been refused")
 	}
 }
+
+func TestAFileTheAccountMayNotReadIsNotBlamedOnTheSiteURL(t *testing.T) {
+	// Moodle 對「你不能讀的檔案」與「這個檔案不存在」回同一個 404——那是刻意的，
+	// 否則清單就能被拿來探測它藏了什麼。我們分不出來，這沒辦法；但把人指去檢查
+	// 站台網址，是在解一個他根本沒有的問題。實測：同學去抓別人的繳交檔就是這樣。
+	p := newPluginfile(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("Sorry, the requested file could not be found"))
+	})
+
+	_, err := p.fetcher(t).Fetch(context.Background(),
+		p.server.URL+"/webservice/pluginfile.php/1/assignsubmission_file/x.pdf")
+	if err == nil {
+		t.Fatal("a 404 was reported as a download")
+	}
+	failure := errs.From(err)
+	if failure.Code != errs.CodeNotFound {
+		t.Errorf("code = %q, want not_found", failure.Code)
+	}
+	if strings.Contains(failure.Hint, "site URL") {
+		t.Errorf("the reader was sent to check a URL that is not the problem: %q", failure.Hint)
+	}
+	if !strings.Contains(failure.Hint, "may not be allowed") {
+		t.Errorf("the hint does not name the other possibility: %q", failure.Hint)
+	}
+}
