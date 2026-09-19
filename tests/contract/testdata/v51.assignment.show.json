@@ -24,6 +24,7 @@
     "max_attempts": 1,
     "team_submission": false,
     "blind_marking": false,
+    "identities_revealed": false,
     "attachments": [
       {
         "name": "rubric.txt",

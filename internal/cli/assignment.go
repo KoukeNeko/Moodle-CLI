@@ -350,6 +350,17 @@ func writeAssignmentDetail(w io.Writer, detail v1.AssignmentDetail) error {
 	if detail.TeamSubmission {
 		row("Team", "this is a group submission")
 	}
+	if detail.BlindMarking {
+		// Deliberately not "no grader can identify you": some roles can, and
+		// saying otherwise would be a promise this tool cannot keep. What a
+		// student does need is that an empty grade may be one Moodle is
+		// holding back rather than one nobody has awarded.
+		marking := "anonymous; a finished grade is withheld until identities are revealed"
+		if detail.IdentitiesRevealed {
+			marking = "was anonymous; identities have been revealed"
+		}
+		row("Marking", marking)
+	}
 	if err := table.Flush(); err != nil {
 		return err
 	}

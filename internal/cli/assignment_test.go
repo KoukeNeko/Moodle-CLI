@@ -1340,3 +1340,65 @@ func TestSubmittingToAnOfflineAssignmentSaysWhyNot(t *testing.T) {
 		t.Errorf("a deliberate setting was reported as a missed deadline:\n%s", stderr)
 	}
 }
+
+func TestAnonymousMarkingExplainsAMissingGradeWithoutPromisingAnonymity(t *testing.T) {
+	// 匿名評分時 Moodle 會把已經改好的分數扣住，等揭露身分才放進成績簿
+	// （`is_blind_marking() && !is_marking_anonymous()` 就不推送）。所以一個空的
+	// 分數可能是「被扣住」而不是「沒人改」——學生需要知道這件事。
+	//
+	// 但**不能**講成「沒有評分者認得出你」：持有 mod/assign:viewblinddetails
+	// 之類權限的角色看得到，那是一個我們守不住的承諾。
+	a := newAssignmentFixture(t, true, false, "onlinetext")
+	a.server.HandleValue(moodle.FunctionAssignments, blindAssignment(false))
+
+	stdout, stderr, code := a.run("assignment", "show", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "withheld until identities are revealed") {
+		t.Errorf("nothing explains why a grade may be missing:\n%s", stdout)
+	}
+	for _, overclaim := range []string{"cannot identify", "no grader", "nobody can"} {
+		if strings.Contains(stdout, overclaim) {
+			t.Errorf("a promise this tool cannot keep (%q):\n%s", overclaim, stdout)
+		}
+	}
+}
+
+func TestRevealedIdentitiesAreNotStillCalledAnonymous(t *testing.T) {
+	a := newAssignmentFixture(t, true, false, "onlinetext")
+	a.server.HandleValue(moodle.FunctionAssignments, blindAssignment(true))
+
+	stdout, _, code := a.run("assignment", "show", "7")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(stdout, "identities have been revealed") {
+		t.Errorf("an assignment whose anonymity was lifted still reads as anonymous:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "withheld until") {
+		t.Errorf("a grade that can now be released was said to be withheld:\n%s", stdout)
+	}
+}
+
+// blindAssignment is the fixture's assignment with anonymous marking on.
+func blindAssignment(revealed bool) map[string]any {
+	reveal := 0
+	if revealed {
+		reveal = 1
+	}
+	return map[string]any{
+		"courses": []any{map[string]any{
+			"id": 2, "shortname": "CS204",
+			"assignments": []any{map[string]any{
+				"id": 7, "cmid": 12, "course": 2, "name": "Essay 1",
+				"duedate": 1789000000, "cutoffdate": 0,
+				"intro": "", "introformat": 1, "grade": 100,
+				"allowsubmissionsfromdate": 0, "maxattempts": -1, "timelimit": 0,
+				"teamsubmission": 0, "blindmarking": 1, "revealidentities": reveal,
+				"introattachments": []any{}, "configs": pluginConfigs(nil),
+				"submissiondrafts": boolToInt(true), "requiresubmissionstatement": 0,
+			}},
+		}},
+	}
+}

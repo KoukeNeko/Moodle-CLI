@@ -40,7 +40,8 @@
         "team_submission",
         "blind_marking",
         "submission",
-        "attachments"
+        "attachments",
+        "identities_revealed"
       ],
       "additionalProperties": false,
       "properties": {
@@ -293,6 +294,10 @@
             "$ref": "#/$defs/file"
           },
           "description": "Files the teacher attached to the description"
+        },
+        "identities_revealed": {
+          "type": "boolean",
+          "description": "Anonymity has been lifted. While blind_marking is true and this is false, Moodle can withhold a grade it already holds, so an empty grade is not proof nothing was marked. It says nothing about who can identify the submitter."
         }
       }
     },

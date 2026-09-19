@@ -53,7 +53,12 @@ type assignmentsDTO struct {
 			TimeLimit                  int     `json:"timelimit"`
 			MaxAttempts                int     `json:"maxattempts"`
 			TeamSubmission             int     `json:"teamsubmission"`
-			BlindMarking               int     `json:"blindmarking"`
+			// RevealIdentities is whether anonymity has been lifted. Under
+			// blind marking Moodle withholds the grade from the gradebook
+			// until it is, so a missing grade can mean "not released" rather
+			// than "not marked".
+			RevealIdentities int `json:"revealidentities"`
+			BlindMarking     int `json:"blindmarking"`
 			// IntroAttachments are the files attached to the description.
 			IntroAttachments []fileDTO `json:"introattachments"`
 			Configs          []struct {
@@ -378,16 +383,17 @@ func (b *AssignmentBackend) details(dto assignmentsDTO) []assignment.Detail {
 				}
 			}
 			out = append(out, assignment.Detail{
-				Summary:           summary,
-				Description:       item.Intro,
-				DescriptionFormat: item.IntroFormat,
-				MaxGrade:          item.Grade,
-				AllowFrom:         unixTime(item.AllowFrom),
-				TimeLimit:         item.TimeLimit,
-				MaxAttempts:       item.MaxAttempts,
-				TeamSubmission:    item.TeamSubmission == 1,
-				BlindMarking:      item.BlindMarking == 1,
-				Attachments:       fileRefs(item.IntroAttachments),
+				Summary:            summary,
+				Description:        item.Intro,
+				DescriptionFormat:  item.IntroFormat,
+				MaxGrade:           item.Grade,
+				AllowFrom:          unixTime(item.AllowFrom),
+				TimeLimit:          item.TimeLimit,
+				MaxAttempts:        item.MaxAttempts,
+				TeamSubmission:     item.TeamSubmission == 1,
+				IdentitiesRevealed: item.RevealIdentities == 1,
+				BlindMarking:       item.BlindMarking == 1,
+				Attachments:        fileRefs(item.IntroAttachments),
 			})
 		}
 	}

@@ -113,6 +113,10 @@ type Detail struct {
 	MaxAttempts    int
 	TeamSubmission bool
 	BlindMarking   bool
+	// IdentitiesRevealed reports that anonymity has been lifted. While it is
+	// false and BlindMarking is true, Moodle can withhold a grade it already
+	// holds, so an empty grade is not evidence that nothing was marked.
+	IdentitiesRevealed bool
 	// Attachments are the files the teacher attached to the description.
 	Attachments []file.Ref
 }

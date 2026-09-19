@@ -99,6 +99,12 @@ type AssignmentDetail struct {
 	MaxAttempts    *int `json:"max_attempts"`
 	TeamSubmission bool `json:"team_submission"`
 	BlindMarking   bool `json:"blind_marking"`
+	// IdentitiesRevealed reports that anonymity has been lifted. While blind
+	// marking is on and this is false, Moodle can hold back a grade it
+	// already has — so an empty grade is not proof nothing was marked. It
+	// says nothing about who can identify the submitter: some roles can,
+	// whatever this reports.
+	IdentitiesRevealed bool `json:"identities_revealed"`
 	// Attachments are the files the teacher attached to the description.
 	Attachments []File          `json:"attachments"`
 	Submission  SubmissionState `json:"submission"`
@@ -141,14 +147,15 @@ func newFiles(refs []file.Ref) []File {
 // without knowing where you stand in it.
 func AssignmentShow(detail assignment.Detail, state assignment.State, siteName, accountName string) Envelope {
 	payload := AssignmentDetail{
-		Assignment:        newAssignment(detail.Summary),
-		Description:       detail.Description,
-		DescriptionFormat: detail.DescriptionFormat,
-		AllowFrom:         Timestamp(detail.AllowFrom),
-		TeamSubmission:    detail.TeamSubmission,
-		BlindMarking:      detail.BlindMarking,
-		Attachments:       newFiles(detail.Attachments),
-		Submission:        newSubmissionState(detail.ID, state),
+		Assignment:         newAssignment(detail.Summary),
+		Description:        detail.Description,
+		DescriptionFormat:  detail.DescriptionFormat,
+		AllowFrom:          Timestamp(detail.AllowFrom),
+		TeamSubmission:     detail.TeamSubmission,
+		BlindMarking:       detail.BlindMarking,
+		IdentitiesRevealed: detail.IdentitiesRevealed,
+		Attachments:        newFiles(detail.Attachments),
+		Submission:         newSubmissionState(detail.ID, state),
 	}
 	if detail.MaxGrade > 0 {
 		grade := detail.MaxGrade
