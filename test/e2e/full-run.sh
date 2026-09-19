@@ -974,12 +974,14 @@ if [ $WITH_NOWS = 1 ]; then
   say "23. 關閉 Web Services 的站"
   note "這種站發不出 token。唯一的路是瀏覽器已經登入的 session。"
   JAR="$WORKDIR/cookies.txt"
+  # head -1 的理由同上：4.5 與 5.1 的登入頁把表單畫兩次。
   LOGINTOKEN=$(curl -fsS -c "$JAR" "http://127.0.0.1:$NOWS_PORT/login/index.php" \
-    | grep -o 'name="logintoken" value="[^"]*"' | sed 's/.*value="\([^"]*\)".*/\1/')
+    | grep -o 'name="logintoken" value="[^"]*"' | head -1 \
+    | sed 's/.*value="\([^"]*\)".*/\1/')
   curl -fsS -b "$JAR" -c "$JAR" -o /dev/null \
     -d "username=student1&password=Student123!&logintoken=$LOGINTOKEN" \
     "http://127.0.0.1:$NOWS_PORT/login/index.php" 2>/dev/null
-  SESSION=$(grep -i moodlesession "$JAR" | awk '{print $7}')
+  SESSION=$(grep -i moodlesession "$JAR" | awk '{print $7}' | tail -1)
   SECRETS+=("$SESSION")
 
   printf '\n  # 先確認這個站真的發不出 token：\n' | tee -a "$TRANSCRIPT"
