@@ -9,7 +9,6 @@
   <a href="#compatibility"><img alt="Verified with Moodle 4.5.12, 5.1.7, and 5.2.3" src="https://img.shields.io/badge/MOODLE-4.5.12%20%7C%205.1.7%20%7C%205.2.3-FF8B00?style=for-the-badge&logo=moodle&logoColor=white"></a>
   <a href="#compatibility"><img alt="Linux, macOS, and Windows" src="https://img.shields.io/badge/PLATFORMS-LINUX%20%7C%20MACOS%20%7C%20WINDOWS-5C6BC0?style=for-the-badge"></a>
   <a href="#a-contract-fit-for-automation"><img alt="JSON contract version 1" src="https://img.shields.io/badge/JSON%20CONTRACT-V1-009688?style=for-the-badge&logo=json&logoColor=white"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/LICENSE-MIT-4CAF50?style=for-the-badge&logo=github"></a>
 </p>
 
 <p align="center">
@@ -229,6 +228,12 @@ update `KoukeNeko/homebrew-tap` for stable versions. Windows Authenticode signin
 The first tagged artifact remains the point at which the Apple distribution credentials are proven
 end to end; until it exists, do not treat the pipeline configuration as a shipped release.
 
+<p>
+  <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
+  <a href="https://go.dev/"><img alt="Go 1.26 or newer" src="https://img.shields.io/badge/GO-1.26%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/LICENSE-MIT-4CAF50?style=for-the-badge&logo=github"></a>
+</p>
+
 ## License and trademarks
 
 [MIT](LICENSE) © 2026 KoukeNeko.
@@ -236,9 +241,4 @@ end to end; until it exists, do not treat the pipeline configuration as a shippe
 Moodle CLI is an independent project. It is not affiliated with, endorsed by, or sponsored by Moodle
 or Moodle HQ. “Moodle” is a trademark of Moodle Pty Ltd. No Moodle source code is included.
 
-## Engineering metadata
 
-<p>
-  <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
-  <a href="https://go.dev/"><img alt="Go 1.26 or newer" src="https://img.shields.io/badge/GO-1.26%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white"></a>
-</p>
