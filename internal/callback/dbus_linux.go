@@ -4,7 +4,6 @@ package callback
 
 import (
 	"context"
-	"errors"
 	"net"
 	"time"
 
@@ -124,65 +123,6 @@ func Deliver(runtimeDir, uri string) error {
 	}
 	return nil
 }
-
-// Receive waits for a handler to deliver one callback.
-//
-// The peer's user is checked before its bytes are read. The directory's mode
-// is what keeps other users out; this catches the case where that has been
-// weakened, and it costs one syscall.
-func Receive(listener net.Listener, wait time.Duration) (string, error) {
-	type result struct {
-		uri string
-		err error
-	}
-	answers := make(chan result, 1)
-
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				answers <- result{err: errs.Wrap(errs.CodeUnavailable, err,
-					"the sign-in channel closed")}
-				return
-			}
-			same, err := PeerIsSelf(conn)
-			switch {
-			case errors.Is(err, ErrPeerCheckUnavailable):
-				// This platform cannot say. Carry on: the directory's mode is
-				// the boundary and this was always the second line. What is
-				// not done is pretend the check passed.
-			case err != nil || !same:
-				// Not this user. Say nothing to it and keep waiting: the real
-				// callback may still be coming.
-				_ = conn.Close()
-				continue
-			}
-			buf := make([]byte, maxCallbackURI)
-			_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-			n, _ := conn.Read(buf)
-			_ = conn.Close()
-			if n == 0 {
-				continue
-			}
-			answers <- result{uri: string(buf[:n])}
-			return
-		}
-	}()
-
-	select {
-	case answer := <-answers:
-		return answer.uri, answer.err
-	case <-time.After(wait):
-		return "", errs.New(errs.CodeUnavailable,
-			"the sign-in was not completed in time").
-			WithReason(errs.ReasonTimeout).
-			WithHint("finish it in the browser, or use `--method manual`")
-	}
-}
-
-// maxCallbackURI bounds what is read from the channel. Moodle's callback is a
-// few hundred bytes; this is generous and still refuses to read a stream.
-const maxCallbackURI = 8 << 10
 
 // BusNameFor and ObjectPathFor expose what a handler claims, so a test can
 // call it the way the desktop would rather than duplicating the derivation.

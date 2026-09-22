@@ -130,6 +130,17 @@ type AuthStatus struct {
 	Valid    bool    `json:"valid"`
 }
 
+// HandlerStatus is the auth.handler payload. Paths are local installation
+// details and are null when the platform has no corresponding artifact.
+type HandlerStatus struct {
+	Scheme      string  `json:"scheme"`
+	Installed   bool    `json:"installed"`
+	DesktopFile *string `json:"desktop_file"`
+	ServiceFile *string `json:"service_file"`
+	Executable  *string `json:"executable"`
+	MIMEDefault *string `json:"mime_default"`
+}
+
 // Timestamp formats a time for the contract: RFC 3339 in UTC, or null.
 //
 // A nil time stays null. Moodle uses 0 for "not set", and rendering that as

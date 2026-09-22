@@ -18,6 +18,8 @@ func isolatedHome(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", dir)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(dir, "config"))
+	t.Setenv("HOME", dir)
 	return dir
 }
 
@@ -54,7 +56,7 @@ func TestRegisteringWritesADBusActivatableEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no D-Bus service file, so the bus cannot start the handler: %v", err)
 	}
-	if !strings.Contains(string(service), "/opt/moodle/bin/moodle auth callback") {
+	if !strings.Contains(string(service), `"/opt/moodle/bin/moodle" auth callback --scheme moodle-cli-test`) {
 		t.Errorf("the service file does not start this program:\n%s", service)
 	}
 }
@@ -69,6 +71,13 @@ func TestTheMobileAppsSchemeIsNeverTaken(t *testing.T) {
 	}
 	if !strings.Contains(errs.From(err).Hint, "app") {
 		t.Errorf("the refusal does not explain the harm: %v", err)
+	}
+}
+
+func TestTheMobileAppsSchemeIsCaseInsensitive(t *testing.T) {
+	isolatedHome(t)
+	if _, err := callback.Register("MoodleMobile", "/opt/moodle/bin/moodle"); err == nil {
+		t.Fatal("a differently cased spelling claimed the Moodle app's scheme")
 	}
 }
 
@@ -89,6 +98,40 @@ func TestARelativeExecutableIsRefused(t *testing.T) {
 	isolatedHome(t)
 	if _, err := callback.Register("moodle-cli-test", "./moodle"); err == nil {
 		t.Fatal("a relative path was written into a desktop entry")
+	}
+}
+
+func TestRegistrationNamesDoNotCollapseDistinctSchemes(t *testing.T) {
+	isolatedHome(t)
+	first, err := callback.Register("moodle-cli-test", "/opt/moodle/bin/moodle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := callback.Register("moodleclitest", "/opt/moodle/bin/moodle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.DesktopFile == second.DesktopFile || first.ServiceFile == second.ServiceFile {
+		t.Fatalf("distinct schemes share registration files: %+v / %+v", first, second)
+	}
+}
+
+func TestAnExecutablePathWithSpacesIsQuotedAndReportedExactly(t *testing.T) {
+	isolatedHome(t)
+	want := "/opt/Moodle CLI/bin/moodle"
+	reg, err := callback.Register("moodle-cli-test", want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(reg.ServiceFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `Exec="/opt/Moodle CLI/bin/moodle" auth callback`) {
+		t.Errorf("service command does not quote the executable:\n%s", raw)
+	}
+	if got := callback.Status("moodle-cli-test").Executable; got != want {
+		t.Errorf("status executable = %q, want %q", got, want)
 	}
 }
 

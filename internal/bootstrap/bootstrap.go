@@ -16,10 +16,12 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/browsersession"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/manual"
+	"github.com/KoukeNeko/moodle-cli/internal/authmethod/mobilelaunch"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/password"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/qrlogin"
 	"github.com/KoukeNeko/moodle-cli/internal/authmethod/token"
 	"github.com/KoukeNeko/moodle-cli/internal/calendar"
+	"github.com/KoukeNeko/moodle-cli/internal/callback"
 	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
@@ -71,11 +73,15 @@ func Run(ctx context.Context, build Build, args []string) int {
 	deps := cli.Deps{
 		ConfigPath: configPath,
 		Auth:       manager,
+		Handler:    desktopHandler{},
 		// Preference order: least disruptive first. A method that needs the
 		// user to paste something is never chosen automatically.
 		Login: auth.NewCoordinator(manager,
 			token.New(),
 			password.New(newClient, readPassword),
+			// Browser handoff is the SSO path that asks for no credential to
+			// be copied. Its Probe skips it when no handler is installed.
+			mobilelaunch.New(newClient, callback.DefaultBroker()),
 			qrlogin.New(newClient),
 			// Never chosen automatically: it needs a session cookie handed
 			// over, and a credential that powerful is not something to go

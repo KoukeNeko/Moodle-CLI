@@ -2,6 +2,7 @@ package callback
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 )
@@ -33,7 +34,7 @@ func CheckScheme(scheme string) error {
 			WithHint("it has to start with a letter and hold only letters, " +
 				"digits, and the characters . + -")
 	}
-	if scheme == MobileScheme {
+	if strings.EqualFold(scheme, MobileScheme) {
 		return errs.New(errs.CodeUsage,
 			"that is the Moodle app's own scheme").
 			WithHint("a site can send its students to the official app with it; " +

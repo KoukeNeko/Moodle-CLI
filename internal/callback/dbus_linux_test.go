@@ -66,7 +66,7 @@ func TestACallbackArrivesOverTheBusAndNeverOnACommandLine(t *testing.T) {
 		t.Fatalf("the desktop's own call failed: %v", call.Err)
 	}
 
-	got, err := callback.Receive(listener, 10*time.Second)
+	got, err := callback.Receive(context.Background(), listener, 10*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestTheChannelIsNotReadIntoUnboundedMemory(t *testing.T) {
 		_, _ = conn.Write([]byte(strings.Repeat("x", 1<<20)))
 	}()
 
-	got, err := callback.Receive(listener, 5*time.Second)
+	got, err := callback.Receive(context.Background(), listener, 5*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}

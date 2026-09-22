@@ -116,6 +116,10 @@ func needsInput(method Method, req Request) bool {
 		return req.Username == "" || req.Password == ""
 	case "qr":
 		return req.QR == ""
+	case "browser-session":
+		// Reading or pasting a browser credential is always explicit. The
+		// coordinator must never turn profile discovery into background work.
+		return req.SessionCookie == ""
 	case "manual":
 		// Always interactive: it is the fallback of last resort, never the
 		// automatic choice.

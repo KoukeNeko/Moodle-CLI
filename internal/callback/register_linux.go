@@ -3,6 +3,7 @@
 package callback
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -29,7 +30,10 @@ import (
 // busName is what this claims on the session bus. It is derived from the
 // scheme so that two builds registering different schemes do not collide.
 func busName(scheme string) string {
-	return "org.moodlecli." + strings.NewReplacer("-", "", ".", "", "+", "").Replace(scheme)
+	// Schemes are case-insensitive and may contain punctuation that D-Bus
+	// names cannot. Hex is reversible and collision-free; deleting punctuation
+	// made foo-bar and foobar overwrite the same registration.
+	return "org.moodlecli.Handler.s" + hex.EncodeToString([]byte(strings.ToLower(scheme)))
 }
 
 func objectPath(scheme string) string {
@@ -79,6 +83,10 @@ func Register(scheme, executable string) (Registration, error) {
 			"the handler needs this program's full path").
 			WithHint("a desktop entry is read long after the shell that made it")
 	}
+	if strings.ContainsAny(executable, "\r\n") {
+		return Registration{}, errs.New(errs.CodeUsage,
+			"the handler program path contains a line break")
+	}
 
 	applications := filepath.Join(data, "applications")
 	services := filepath.Join(data, "dbus-1", "services")
@@ -124,12 +132,13 @@ func desktopEntry(scheme, executable string) string {
 Type=Application
 Name=Moodle CLI sign-in
 Comment=Receives the sign-in result from your browser
-Exec=%s auth callback
+Exec=%s
+X-MoodleCLI-Executable=%s
 NoDisplay=true
 Terminal=false
 DBusActivatable=true
 MimeType=x-scheme-handler/%s;
-`, executable, scheme)
+`, handlerCommand(scheme, executable), executable, scheme)
 }
 
 // serviceEntry lets the bus start the handler on demand, so nothing has to be
@@ -137,8 +146,24 @@ MimeType=x-scheme-handler/%s;
 func serviceEntry(scheme, executable string) string {
 	return fmt.Sprintf(`[D-BUS Service]
 Name=%s
-Exec=%s auth callback
-`, busName(scheme), executable)
+Exec=%s
+`, busName(scheme), handlerCommand(scheme, executable))
+}
+
+func handlerCommand(scheme, executable string) string {
+	return quoteExecArg(executable) + " auth callback --scheme " + scheme
+}
+
+// quoteExecArg follows the Desktop Entry quoting rules. Quoting every path is
+// simpler than maintaining two subtly different forms for paths with spaces.
+func quoteExecArg(value string) string {
+	escaped := strings.NewReplacer(
+		`\`, `\\`,
+		`"`, `\"`,
+		"`", "\\`",
+		"$", `\$`,
+	).Replace(value)
+	return `"` + escaped + `"`
 }
 
 // Status reports what is installed for a scheme, and what the desktop
@@ -153,8 +178,8 @@ func Status(scheme string) Registration {
 	}
 	if raw, err := os.ReadFile(reg.DesktopFile); err == nil {
 		for _, line := range strings.Split(string(raw), "\n") {
-			if rest, ok := strings.CutPrefix(line, "Exec="); ok {
-				reg.Executable = strings.TrimSuffix(strings.TrimSpace(rest), " auth callback")
+			if rest, ok := strings.CutPrefix(line, "X-MoodleCLI-Executable="); ok {
+				reg.Executable = rest
 			}
 		}
 	}
@@ -173,6 +198,9 @@ func (r Registration) Installed() bool {
 
 // Unregister removes only what Register wrote.
 func Unregister(scheme string) error {
+	if err := CheckScheme(scheme); err != nil {
+		return err
+	}
 	reg := Status(scheme)
 	for _, path := range []string{reg.DesktopFile, reg.ServiceFile} {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {

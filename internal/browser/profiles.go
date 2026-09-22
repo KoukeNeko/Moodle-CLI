@@ -163,7 +163,7 @@ func parseProfilesINI(content, root string) ([]Profile, error) {
 func PickProfile(profiles []Profile) (Profile, error) {
 	switch len(profiles) {
 	case 0:
-		return Profile{}, errs.New(errs.CodeNotFound, "no Firefox profile found")
+		return Profile{}, errs.New(errs.CodeNotFound, "no browser profile found")
 	case 1:
 		return profiles[0], nil
 	}
@@ -184,7 +184,7 @@ func PickProfile(profiles []Profile) (Profile, error) {
 	// Not the ambiguous-outcome code: that one means a write may already have
 	// landed upstream, and this is the caller needing to say which profile.
 	return Profile{}, errs.New(errs.CodeUsage,
-		"this machine has several Firefox profiles and no single default").
+		"this machine has several browser profiles and no single default").
 		WithHint("they hold different sessions, so say which with --profile: " +
 			strings.Join(names, ", "))
 }

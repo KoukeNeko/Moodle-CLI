@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/auth.handler.schema.json",
+  "title": "moodle-cli auth.handler",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "auth.handler" },
+    "data": {
+      "type": "object",
+      "required": ["scheme", "installed", "desktop_file", "service_file", "executable", "mime_default"],
+      "additionalProperties": false,
+      "properties": {
+        "scheme": { "type": "string", "minLength": 1 },
+        "installed": { "type": "boolean" },
+        "desktop_file": { "type": ["string", "null"] },
+        "service_file": { "type": ["string", "null"] },
+        "executable": { "type": ["string", "null"] },
+        "mime_default": { "type": ["string", "null"] }
+      }
+    },
+    "meta": { "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json" }
+  }
+}

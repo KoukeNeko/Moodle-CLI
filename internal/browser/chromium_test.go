@@ -25,7 +25,11 @@ func chromeProfile(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(profile, "Cookies"), raw, 0o600); err != nil {
+	network := filepath.Join(profile, "Network")
+	if err := os.MkdirAll(network, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(network, "Cookies"), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return profile
@@ -85,7 +89,7 @@ func TestAWriteAheadLogIsRefusedRatherThanRead(t *testing.T) {
 	// main file alone would answer with a stale row or miss the cookie
 	// entirely — and look exactly like a correct answer either way.
 	profile := chromeProfile(t)
-	if err := os.WriteFile(filepath.Join(profile, "Cookies-wal"),
+	if err := os.WriteFile(filepath.Join(profile, "Network", "Cookies-wal"),
 		[]byte("pretend this is a log"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -95,6 +99,18 @@ func TestAWriteAheadLogIsRefusedRatherThanRead(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "write-ahead log") {
 		t.Errorf("the refusal does not say why: %v", err)
+	}
+}
+
+func TestTheLegacyCookieLocationStillWorks(t *testing.T) {
+	profile := chromeProfile(t)
+	current := filepath.Join(profile, "Network", "Cookies")
+	legacy := filepath.Join(profile, "Cookies")
+	if err := os.Rename(current, legacy); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := browser.ChromiumSession(profile, "192.168.50.169", ""); err != nil {
+		t.Fatalf("legacy profile layout was not read: %v", err)
 	}
 }
 

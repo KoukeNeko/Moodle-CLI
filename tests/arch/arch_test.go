@@ -37,7 +37,7 @@ var forbidden = map[string][]string{
 	"internal/mcp": {"internal/cli", "github.com/spf13/cobra"},
 
 	// The presentation layer must not build HTTP requests itself.
-	"internal/cli": {"internal/moodle...", "internal/webread", "net/http"},
+	"internal/cli": {"internal/moodle...", "internal/webread", "internal/callback", "net/http"},
 
 	// Reading a browser's storage is an adapter to someone else's file
 	// format, and nothing above it should know that format exists.

@@ -3,6 +3,7 @@
 package callback
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 )
@@ -62,6 +64,67 @@ func Listen(dir string) (net.Listener, error) {
 	}
 	return listener, nil
 }
+
+// Receive waits for the desktop handler to deliver one callback.
+//
+// Socket reception is a Unix concern, not a D-Bus concern: macOS will use a
+// different desktop handler but the same private local channel. Keeping this
+// beside Listen also guarantees every Unix build has the complete channel.
+func Receive(ctx context.Context, listener net.Listener, wait time.Duration) (string, error) {
+	type result struct {
+		uri string
+		err error
+	}
+	answers := make(chan result, 1)
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				answers <- result{err: errs.Wrap(errs.CodeUnavailable, err,
+					"the sign-in channel closed")}
+				return
+			}
+			same, err := PeerIsSelf(conn)
+			switch {
+			case errors.Is(err, ErrPeerCheckUnavailable):
+				// The private directory remains the security boundary on a
+				// platform that cannot inspect peer credentials.
+			case err != nil || !same:
+				_ = conn.Close()
+				continue
+			}
+
+			buf := make([]byte, maxCallbackURI)
+			_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			n, _ := conn.Read(buf)
+			_ = conn.Close()
+			if n == 0 {
+				continue
+			}
+			answers <- result{uri: string(buf[:n])}
+			return
+		}
+	}()
+
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case answer := <-answers:
+		return answer.uri, answer.err
+	case <-timer.C:
+		return "", errs.New(errs.CodeUnavailable,
+			"the sign-in was not completed in time").
+			WithReason(errs.ReasonTimeout).
+			WithHint("finish it in the browser, or use `--method manual`")
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
+// maxCallbackURI bounds what is read from the channel. Moodle's callback is a
+// few hundred bytes; this is generous and still refuses to read a stream.
+const maxCallbackURI = 8 << 10
 
 // socketPath is where the channel lives, without creating anything.
 func socketPath(dir string) (string, error) {

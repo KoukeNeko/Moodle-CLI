@@ -9,6 +9,8 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
@@ -147,6 +149,47 @@ func (m *Manager) StoreToken(siteID, accountID site.ID, token string) error {
 	return m.secrets.Set(secret.Ref{
 		SiteID: siteID, AccountID: accountID, Kind: secret.KindWSToken,
 	}, token)
+}
+
+// StoreCredential persists every secret returned by a login method.
+//
+// The private token is optional, but when Moodle returns one it is part of the
+// credential rather than disposable metadata. If storing it fails after the
+// web-service token was replaced, the old token is restored so a failed login
+// does not silently change the account underneath its configuration.
+func (m *Manager) StoreCredential(siteID, accountID site.ID, credential Credential) error {
+	tokenRef := secret.Ref{SiteID: siteID, AccountID: accountID, Kind: secret.KindWSToken}
+	privateRef := secret.Ref{SiteID: siteID, AccountID: accountID, Kind: secret.KindPrivateToken}
+
+	previous, previousErr := m.secrets.Get(tokenRef)
+	hadPrevious := previousErr == nil
+	if previousErr != nil && !errors.Is(previousErr, secret.ErrNotFound) {
+		return previousErr
+	}
+	if err := m.secrets.Set(tokenRef, credential.Token); err != nil {
+		return err
+	}
+
+	var err error
+	if credential.PrivateToken == "" {
+		err = m.secrets.Delete(privateRef)
+	} else {
+		err = m.secrets.Set(privateRef, credential.PrivateToken)
+	}
+	if err == nil {
+		return nil
+	}
+
+	var rollbackErr error
+	if hadPrevious {
+		rollbackErr = m.secrets.Set(tokenRef, previous)
+	} else {
+		rollbackErr = m.secrets.Delete(tokenRef)
+	}
+	if rollbackErr != nil {
+		return errors.Join(err, fmt.Errorf("restore previous token: %w", rollbackErr))
+	}
+	return err
 }
 
 // Session returns a stored browser session for an account.

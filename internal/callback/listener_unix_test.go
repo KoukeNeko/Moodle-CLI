@@ -3,11 +3,14 @@
 package callback_test
 
 import (
+	"context"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/callback"
 )
@@ -22,6 +25,22 @@ func runtimeDir(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return dir
+}
+
+func TestWaitingForACallbackHonoursCancellation(t *testing.T) {
+	dir := runtimeDir(t)
+	listener, err := callback.Listen(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = callback.Receive(ctx, listener, time.Minute)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Receive error = %v, want context cancellation", err)
+	}
 }
 
 func TestTheChannelIsPrivateToThisUser(t *testing.T) {

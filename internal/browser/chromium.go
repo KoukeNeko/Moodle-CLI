@@ -34,13 +34,9 @@ const (
 	chromiumSchemaHash = 24 // the version from which the plaintext is prefixed
 )
 
-// chromiumIterations differs by platform, and getting it wrong produces a key
-// that decrypts to rubbish rather than an error — so it is stated per
-// platform rather than assumed to be one number.
+// chromiumIterations is the Linux fallback's PBKDF2 count. macOS also labels
+// values v10, but uses a keychain password and is rejected before this runs.
 func chromiumIterations() int {
-	if runtime.GOOS == "darwin" {
-		return 1003
-	}
 	return 1
 }
 
@@ -53,12 +49,7 @@ func ChromiumSession(profile, host, cookieName string) (Found, error) {
 	if cookieName == "" {
 		cookieName = SessionCookieName
 	}
-	path := filepath.Join(profile, "Cookies")
-	if _, err := os.Stat(path); err != nil {
-		// Chrome keeps per-profile directories under the user data directory;
-		// accept either being named.
-		path = filepath.Join(profile, "Default", "Cookies")
-	}
+	path := chromiumCookiesPath(profile)
 
 	// A write-ahead log holds committed rows that are not in the main file,
 	// so reading the main file alone would quietly answer with a stale row —
@@ -144,6 +135,24 @@ func ChromiumSession(profile, host, cookieName string) (Found, error) {
 			"in; a different profile would look the same")
 }
 
+// chromiumCookiesPath accepts either a profile directory or its user-data
+// parent. Current Chromium keeps the database under Network; older releases
+// used the profile root, so both layouts remain readable.
+func chromiumCookiesPath(profile string) string {
+	candidates := []string{
+		filepath.Join(profile, "Network", "Cookies"),
+		filepath.Join(profile, "Cookies"),
+		filepath.Join(profile, "Default", "Network", "Cookies"),
+		filepath.Join(profile, "Default", "Cookies"),
+	}
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return candidates[0]
+}
+
 // decryptChromium unwraps one stored value.
 func decryptChromium(encrypted []byte, host string, schema int64) (string, error) {
 	if len(encrypted) < 3 {
@@ -166,6 +175,14 @@ func decryptChromium(encrypted []byte, host string, schema int64) (string, error
 			WithHint("that is not read yet; sign in with another method, or " +
 				"import from Firefox")
 	case chromiumPrefixV10:
+		if runtime.GOOS == "darwin" {
+			// macOS uses the v10 label too, but derives its key from the
+			// browser's Safe Storage item rather than the Linux fallback.
+			return "", errs.New(errs.CodeUnavailable,
+				"this cookie's key is held in the macOS keychain").
+				WithHint("keychain-backed Chromium cookies are not read yet; " +
+					"import from Firefox or sign in with another method")
+		}
 	default:
 		return "", errs.New(errs.CodeUpstream,
 			fmt.Sprintf("this cookie is stored in an unknown form (%q)", prefix)).

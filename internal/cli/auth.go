@@ -38,6 +38,10 @@ func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 		newAuthStatusCommand(r, deps),
 		newAuthLogoutCommand(r, deps),
 		newAuthImportBrowserCommand(r, deps),
+		newAuthRegisterHandlerCommand(r, deps.Handler),
+		newAuthUnregisterHandlerCommand(r, deps.Handler),
+		newAuthHandlerStatusCommand(r, deps.Handler),
+		newAuthCallbackCommand(deps.Handler),
 	)
 	return cmd
 }
@@ -140,7 +144,7 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				AuthMethod:     credential.Method,
 				CredentialKind: site.CredentialWSToken,
 			})
-			if err := deps.Auth.StoreToken(resolved.Site.ID, account.ID, credential.Token); err != nil {
+			if err := deps.Auth.StoreCredential(resolved.Site.ID, account.ID, credential); err != nil {
 				return err
 			}
 			if resolved.Site.WWWRoot == "" {
@@ -170,7 +174,7 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 	cmd.Flags().StringVar(&siteFlag, "site", "", "site to sign in to")
 	cmd.Flags().StringVar(&accountName, "account", "", "name for this account (defaults to the Moodle username)")
 	cmd.Flags().StringVar(&methodName, "method", "",
-		"login method: token, password, qr, browser-session or manual")
+		"login method: token, password, qr, mobilelaunch, browser-session or manual")
 	cmd.Flags().StringVar(&token, "token", "", "an existing web service token")
 	cmd.Flags().BoolVar(&tokenStdin, "token-stdin", false, "read the token from stdin")
 	cmd.Flags().StringVar(&username, "username", "", "Moodle username (password method)")

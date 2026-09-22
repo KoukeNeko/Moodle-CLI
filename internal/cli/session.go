@@ -24,6 +24,10 @@ import (
 type Deps struct {
 	ConfigPath string
 	Auth       *auth.Manager
+	// Handler owns the platform-specific registration and callback process for
+	// browser login. It is injected so the presentation layer never imports a
+	// desktop adapter directly.
+	Handler CallbackHandler
 	// Backend overrides the site's own setting for this run: "" leaves the
 	// site's choice alone, "ws-only" rules out the page and AJAX routes.
 	//
@@ -61,6 +65,27 @@ type Deps struct {
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.
 	Interactive func() bool
+}
+
+// HandlerRegistration is the presentation layer's view of an installed
+// browser callback handler.
+type HandlerRegistration struct {
+	Scheme      string
+	DesktopFile string
+	ServiceFile string
+	Executable  string
+	MIMEDefault string
+	Installed   bool
+}
+
+// CallbackHandler is the CLI-facing port for desktop callback management.
+// The concrete Linux implementation is wired by bootstrap.
+type CallbackHandler interface {
+	Scheme() string
+	Register() (HandlerRegistration, error)
+	Unregister() error
+	Status() HandlerRegistration
+	Serve(context.Context, string) error
 }
 
 // MCPSession is everything the agent server needs for one session. It is bound
