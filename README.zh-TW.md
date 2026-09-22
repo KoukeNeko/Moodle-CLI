@@ -6,9 +6,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
   <a href="#相容性"><img alt="Verified with Moodle 4.5.12, 5.1.7, and 5.2.3" src="https://img.shields.io/badge/MOODLE-4.5.12%20%7C%205.1.7%20%7C%205.2.3-FF8B00?style=for-the-badge&logo=moodle&logoColor=white"></a>
-  <a href="https://go.dev/"><img alt="Go 1.26 or newer" src="https://img.shields.io/badge/GO-1.26%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white"></a>
+  <a href="#相容性"><img alt="Linux, macOS, and Windows" src="https://img.shields.io/badge/PLATFORMS-LINUX%20%7C%20MACOS%20%7C%20WINDOWS-5C6BC0?style=for-the-badge"></a>
+  <a href="#適合自動化的穩定-contract"><img alt="JSON contract version 1" src="https://img.shields.io/badge/JSON%20CONTRACT-V1-009688?style=for-the-badge&logo=json&logoColor=white"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/LICENSE-MIT-4CAF50?style=for-the-badge&logo=github"></a>
 </p>
 
@@ -214,3 +214,10 @@ macOS runner 驗證後才公開 release，替 checksum 加上 keyless workflow s
 
 Moodle CLI 是獨立專案，與 Moodle 或 Moodle HQ 沒有隸屬、認可或贊助關係。「Moodle」是 Moodle Pty Ltd
 的商標。本專案不包含 Moodle 原始碼。
+
+## 工程資訊
+
+<p>
+  <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
+  <a href="https://go.dev/"><img alt="Go 1.26 or newer" src="https://img.shields.io/badge/GO-1.26%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white"></a>
+</p>
