@@ -3,6 +3,7 @@ package browser_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -161,6 +162,12 @@ func TestChromiumProfilesAreNamedFromItsOwnIndex(t *testing.T) {
 	home := t.TempDir()
 	configHome := filepath.Join(home, ".config")
 	root := filepath.Join(configHome, "google-chrome")
+	switch runtime.GOOS {
+	case "darwin":
+		root = filepath.Join(home, "Library", "Application Support", "Google", "Chrome")
+	case "windows":
+		root = filepath.Join(configHome, "Google", "Chrome", "User Data")
+	}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -197,6 +204,9 @@ func TestNoChromiumIsAnEmptyListNotAFailure(t *testing.T) {
 }
 
 func TestAProfileNamedByHandIsTriedBothWays(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("the recorded v10 fixture uses Chromium's Linux fallback key")
+	}
 	// Someone who points at a directory knows what they pointed at. Being
 	// told "that is not a Firefox profile" when it is a Chrome one helps
 	// nobody.

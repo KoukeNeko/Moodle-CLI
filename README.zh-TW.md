@@ -48,6 +48,9 @@ Moodle CLI 支援既有 token、Moodle 帳密、登入 QR 資料、瀏覽器 ses
 
 匯入瀏覽器 session 必須明確執行：`moodle auth import-browser` 只在 Firefox 或 Chromium 系瀏覽器
 profile 中尋找指定站台的 session，不會成為登入時暗中發生的副作用。
+目前支援 Firefox session snapshot 與 Chromium 的 Linux fallback encryption；由 macOS Keychain、
+Windows DPAPI、Linux secret service（`v11`）或 app-bound encryption（`v20`）保管 key 的 Chromium
+cookie 會被明確拒絕，不嘗試繞過瀏覽器保護。
 
 ### 真的交作業，不只是上傳檔案
 

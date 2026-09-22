@@ -51,10 +51,12 @@ moodle auth import-browser --site school --list-profiles
 moodle auth import-browser --site school --store
 ```
 
-Firefox and Chromium-family profiles are supported. Import is explicit because a browser profile
-contains credentials for many sites. Only the matching Moodle cookie is returned or stored, but the
-browser's storage necessarily has to be parsed to find it. Closing or signing out of the browser may
-invalidate that session.
+Firefox session snapshots and Chromium's Linux fallback encryption are supported. Chromium cookies
+protected by macOS Keychain, Windows DPAPI, a Linux secret service (`v11`), or app-bound encryption
+(`v20`) are refused rather than bypassed. Import is explicit because a browser profile contains
+credentials for many sites. Only the matching Moodle cookie is returned or stored, but the browser's
+storage necessarily has to be parsed to find it. Closing or signing out of the browser may invalidate
+that session.
 
 ## Non-interactive use
 

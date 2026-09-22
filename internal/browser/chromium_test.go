@@ -3,6 +3,7 @@ package browser_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -35,7 +36,15 @@ func chromeProfile(t *testing.T) string {
 	return profile
 }
 
+func requireLinuxChromiumFixture(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("the recorded v10 fixture uses Chromium's Linux fallback key")
+	}
+}
+
 func TestAChromiumSessionCookieIsDecrypted(t *testing.T) {
+	requireLinuxChromiumFixture(t)
 	// Chromium does keep session cookies, unlike Firefox — measured on
 	// Chrome 153: the row is there with is_persistent 0 and no expiry. What
 	// it does not do is keep them in the clear.
@@ -58,6 +67,7 @@ func TestAChromiumSessionCookieIsDecrypted(t *testing.T) {
 }
 
 func TestOnlyTheNamedCookieIsDecrypted(t *testing.T) {
+	requireLinuxChromiumFixture(t)
 	// The database holds another cookie for the same host. Asking for the
 	// session must not return it, and nothing else should be decrypted on
 	// the way past.
@@ -103,6 +113,7 @@ func TestAWriteAheadLogIsRefusedRatherThanRead(t *testing.T) {
 }
 
 func TestTheLegacyCookieLocationStillWorks(t *testing.T) {
+	requireLinuxChromiumFixture(t)
 	profile := chromeProfile(t)
 	current := filepath.Join(profile, "Network", "Cookies")
 	legacy := filepath.Join(profile, "Cookies")
@@ -111,6 +122,26 @@ func TestTheLegacyCookieLocationStillWorks(t *testing.T) {
 	}
 	if _, err := browser.ChromiumSession(profile, "192.168.50.169", ""); err != nil {
 		t.Fatalf("legacy profile layout was not read: %v", err)
+	}
+}
+
+func TestAnEncryptedCookieNamesThePlatformKeyItCannotRead(t *testing.T) {
+	if runtime.GOOS == "linux" {
+		t.Skip("Linux v10 cookies use the supported fallback key")
+	}
+	_, err := browser.ChromiumSession(chromeProfile(t), "192.168.50.169", "")
+	if err == nil {
+		t.Fatal("an encrypted cookie was read without the platform key")
+	}
+	if code := errs.From(err).Code; code != errs.CodeUnavailable {
+		t.Fatalf("code = %q, want unavailable: %v", code, err)
+	}
+	want := "keychain"
+	if runtime.GOOS == "windows" {
+		want = "DPAPI"
+	}
+	if !strings.Contains(err.Error(), want) {
+		t.Errorf("the refusal does not name %s: %v", want, err)
 	}
 }
 

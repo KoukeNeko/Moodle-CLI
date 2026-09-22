@@ -50,6 +50,9 @@ inside the browser where they belong. macOS and Windows currently use the manual
 
 Browser-session import is explicit: `moodle auth import-browser` looks for the requested site's
 session in Firefox or a Chromium-family profile. It never runs as a hidden side effect of login.
+Firefox session snapshots and Chromium's Linux fallback encryption are supported; Chromium cookies
+whose keys are held by macOS Keychain, Windows DPAPI, a Linux secret service (`v11`), or app-bound
+encryption (`v20`) are refused with an actionable error rather than worked around.
 
 ### Submit work, not merely upload it
 

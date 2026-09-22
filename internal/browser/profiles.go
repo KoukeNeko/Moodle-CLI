@@ -196,25 +196,40 @@ func PickProfile(profiles []Profile) (Profile, error) {
 // assuming one from another is how a reader ends up looking in the wrong
 // place and reporting that the user is not signed in.
 func chromiumRoots(home, configHome string) map[string]string {
-	if configHome == "" {
-		configHome = filepath.Join(home, ".config")
-	}
-	roots := map[string]string{
-		"Chrome":   filepath.Join(configHome, "google-chrome"),
-		"Chromium": filepath.Join(configHome, "chromium"),
-		"Edge":     filepath.Join(configHome, "microsoft-edge"),
-		"Brave":    filepath.Join(configHome, "BraveSoftware", "Brave-Browser"),
-	}
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin":
 		support := filepath.Join(home, "Library", "Application Support")
-		roots = map[string]string{
+		return map[string]string{
 			"Chrome":   filepath.Join(support, "Google", "Chrome"),
 			"Chromium": filepath.Join(support, "Chromium"),
 			"Edge":     filepath.Join(support, "Microsoft Edge"),
 			"Brave":    filepath.Join(support, "BraveSoftware", "Brave-Browser"),
 		}
+	case "windows":
+		local := configHome
+		if local == "" {
+			local = os.Getenv("LOCALAPPDATA")
+		}
+		if local == "" {
+			local = filepath.Join(home, "AppData", "Local")
+		}
+		return map[string]string{
+			"Chrome":   filepath.Join(local, "Google", "Chrome", "User Data"),
+			"Chromium": filepath.Join(local, "Chromium", "User Data"),
+			"Edge":     filepath.Join(local, "Microsoft", "Edge", "User Data"),
+			"Brave":    filepath.Join(local, "BraveSoftware", "Brave-Browser", "User Data"),
+		}
+	default:
+		if configHome == "" {
+			configHome = filepath.Join(home, ".config")
+		}
+		return map[string]string{
+			"Chrome":   filepath.Join(configHome, "google-chrome"),
+			"Chromium": filepath.Join(configHome, "chromium"),
+			"Edge":     filepath.Join(configHome, "microsoft-edge"),
+			"Brave":    filepath.Join(configHome, "BraveSoftware", "Brave-Browser"),
+		}
 	}
-	return roots
 }
 
 // localState is the part of Chromium's own index this reads.

@@ -175,12 +175,21 @@ func decryptChromium(encrypted []byte, host string, schema int64) (string, error
 			WithHint("that is not read yet; sign in with another method, or " +
 				"import from Firefox")
 	case chromiumPrefixV10:
-		if runtime.GOOS == "darwin" {
+		switch runtime.GOOS {
+		case "darwin":
 			// macOS uses the v10 label too, but derives its key from the
 			// browser's Safe Storage item rather than the Linux fallback.
 			return "", errs.New(errs.CodeUnavailable,
 				"this cookie's key is held in the macOS keychain").
 				WithHint("keychain-backed Chromium cookies are not read yet; " +
+					"import from Firefox or sign in with another method")
+		case "windows":
+			// Windows v10 values are protected with DPAPI. Feeding them to
+			// Linux's hard-coded fallback does not merely fail: a coincidental
+			// padding match could return garbage as though it were a session.
+			return "", errs.New(errs.CodeUnavailable,
+				"this cookie's key is protected by Windows DPAPI").
+				WithHint("DPAPI-backed Chromium cookies are not read yet; " +
 					"import from Firefox or sign in with another method")
 		}
 	default:

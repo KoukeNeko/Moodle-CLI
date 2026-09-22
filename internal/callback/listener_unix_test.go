@@ -20,7 +20,14 @@ import (
 // permissive one.
 func runtimeDir(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
+	// t.TempDir includes the full test name. On macOS that can make the Unix
+	// socket path exceed sockaddr_un.sun_path before the code under test gets
+	// a chance to enforce any of its security properties.
+	dir, err := os.MkdirTemp("", "mcl-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
