@@ -57,6 +57,11 @@ GitHub Actions runs tests on the supported Go line and the next line, lint and c
 Linux/macOS/Windows, validates the JSON contract from the compiled binary, runs the ten-year Docker
 scenario against all verified Moodle versions, and builds a snapshot release package.
 
-Tags matching `v*` invoke GoReleaser. The release remains a draft until reviewed. Archives contain
-the binary, README, and license, with checksums, SBOMs, and a keyless signature. These signatures do
-not replace Apple notarization or Windows Authenticode; neither is currently provided.
+Tags matching `v*` invoke GoReleaser. Archives contain the binary, README, and license, with
+checksums, SBOMs, and a keyless checksum signature. Both macOS binaries are Developer ID-signed and
+submitted to Apple before they are archived. A separate macOS runner opens the downloadable archives,
+verifies `codesign` and Gatekeeper acceptance, and only then publishes the draft. Stable releases then
+update `KoukeNeko/homebrew-tap`. Windows Authenticode is not configured.
+
+No public release exists yet, so the workflow is distribution-ready but its Apple credentials have
+not been proven against a real tagged artifact. The first tag is the final end-to-end validation.

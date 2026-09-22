@@ -54,6 +54,10 @@ GitHub Actions 會在支援的 Go line 與下一個 line 執行測試、lint、c
 建置；從編譯後 binary 驗 JSON contract；對三個 Moodle 版本跑十年 Docker 情境；並建置 snapshot
 release package。
 
-符合 `v*` 的 tag 會觸發 GoReleaser，產生 draft release 供人工檢查。Archive 包含 binary、README 與
-license，並附 checksum、SBOM 與 keyless signature。這些簽章不能取代 Apple notarization 或 Windows
-Authenticode；目前兩者都未提供。
+符合 `v*` 的 tag 會觸發 GoReleaser。Archive 包含 binary、README 與 license，並附 checksum、SBOM
+與 keyless checksum signature。兩個 macOS binary 會先以 Developer ID 簽署、送 Apple notarization，
+再封裝進 archive；另一個 macOS runner 會打開實際下載檔，驗證 `codesign` 與 Gatekeeper，通過後才公開
+draft。Stable release 接著更新 `KoukeNeko/homebrew-tap`。Windows Authenticode 尚未設定。
+
+目前沒有 public release，因此 workflow 已達 distribution-ready，但 Apple credential 尚未在真正的 tag
+artifact 上完成證明；第一個 tag 才是最後的端到端驗證。

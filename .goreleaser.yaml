@@ -70,6 +70,28 @@ sboms:
   # a CVE, and this says which released archives contained it.
   - artifacts: archive
 
+# Moodle CLI ships a bare command-line binary rather than an application
+# bundle, so GoReleaser's cross-platform binary notarizer is the right layer:
+# it signs each Darwin binary before the archives, checksums and SBOMs are
+# made. Post-processing an archive would make all three attest the wrong bits.
+#
+# Snapshot CI intentionally has no signing material and leaves this disabled.
+# The tag workflow separately requires every secret, so a public release can
+# never fall through to an unsigned macOS artifact.
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "MACOS_CERT_P12_BASE64" }}'
+      ids: [moodle]
+      sign:
+        certificate: "{{ .Env.MACOS_CERT_P12_BASE64 }}"
+        password: "{{ .Env.MACOS_CERT_PASSWORD }}"
+      notarize:
+        issuer_id: "{{ .Env.ASC_ISSUER_ID }}"
+        key_id: "{{ .Env.ASC_KEY_ID }}"
+        key: "{{ .Env.ASC_KEY_P8_BASE64 }}"
+        wait: true
+        timeout: 20m
+
 # What this signature does and does not mean.
 #
 # It signs the checksum file, keylessly, through the release workflow's OIDC
@@ -77,11 +99,10 @@ sboms:
 # release job. It is worth having — it is how someone can tell a download
 # apart from a lookalike.
 #
-# It is not what makes an operating system trust the binary. Gatekeeper wants
-# Developer ID plus notarization; SmartScreen wants Authenticode and a
-# publisher reputation built over releases. Neither exists here yet, so the
-# release notes below say so in as many words. A project that conflates the
-# two ends up believing it is signed when every user still sees a warning.
+# It is not what makes an operating system trust the binary. Darwin artifacts
+# separately receive Developer ID signing and Apple notarization above.
+# Windows still has no Authenticode publisher identity, so SmartScreen may
+# warn even though the checksum signature proves which workflow made the bits.
 signs:
   - cmd: cosign
     # The checksum file covers every archive, so signing it signs them all.
@@ -99,10 +120,10 @@ release:
   draft: true
   prerelease: auto
   footer: |
-    These binaries are **not code-signed or notarized**. macOS Gatekeeper and
-    Windows SmartScreen will warn about them, and that warning is accurate —
-    there is no publisher identity behind these files yet. Verify what you
-    downloaded against `checksums.txt` before running it.
+    The macOS binaries carry a Developer ID signature and Apple notarization.
+    Windows binaries are **not Authenticode-signed**, so SmartScreen may warn.
+    On every platform, verify the archive against `checksums.txt` and its
+    keyless workflow signature before running it.
 
 changelog:
   # The repository's CHANGELOG is written before the tag and never touched

@@ -202,9 +202,11 @@ adapter；`bootstrap` 只是 composition root；CLI 與 MCP 都不能直接碰 H
 
 ## 專案狀態
 
-專案正在積極開發，尚未發布第一個正式版本。上述 source build 與已測命令可使用；安裝套件、程式碼簽章
-與 notarization 尚未提供。未來的 release archive 會由 tag 觸發 GitHub Actions，附 checksum、SBOM 與
-keyless signature。
+專案正在積極開發，尚未發布第一個正式版本。上述 source build 與已測命令可使用。Tag release workflow
+已準備產生 checksum archive 與 SBOM，以 Developer ID 簽署並 notarize 兩個 macOS binary，在真正的
+macOS runner 驗證後才公開 release，替 checksum 加上 keyless workflow signature，並在 stable version
+更新 `KoukeNeko/homebrew-tap`。Windows Authenticode 尚未設定。Apple distribution credential 必須等
+第一個 tag artifact 才能完成端到端證明；在那以前，pipeline 設定不等於已經發布 release。
 
 ## 授權與商標
 

@@ -222,9 +222,12 @@ MCP never reach into HTTP directly. See [docs/architecture.md](docs/architecture
 ## Project status
 
 The project is under active development and has not made its first public release. Source builds and
-the tested command surface above are usable; packaging, code signing, and notarization are not yet
-available. Release archives, when introduced, will be produced by the tagged GitHub Actions workflow
-with checksums, SBOMs, and keyless signatures.
+the tested command surface above are usable. The tagged release workflow is prepared to produce
+checksummed archives and SBOMs, sign and notarize both macOS binaries with Developer ID, verify them
+on a real macOS runner before publication, apply a keyless workflow signature to the checksums, and
+update `KoukeNeko/homebrew-tap` for stable versions. Windows Authenticode signing is not configured.
+The first tagged artifact remains the point at which the Apple distribution credentials are proven
+end to end; until it exists, do not treat the pipeline configuration as a shipped release.
 
 ## License and trademarks
 
