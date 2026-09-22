@@ -210,6 +210,12 @@ func TestTheConnectingProcessIsCheckedAgainstThisUser(t *testing.T) {
 	defer conn.Close()
 
 	same, err := callback.PeerIsSelf(conn)
+	if errors.Is(err, callback.ErrPeerCheckUnavailable) {
+		// Linux supplies SO_PEERCRED as defence in depth. Other Unix
+		// platforms deliberately return this sentinel and rely on the private
+		// directory and socket modes asserted above, exactly as Receive does.
+		return
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
