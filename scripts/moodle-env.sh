@@ -37,6 +37,15 @@ cmd_up() {
   local ver="${1:?usage: moodle-env.sh up <v45|v51|v52|tls>}"
   read -r std_port nows_port <<<"$(ports_for "$ver")"
 
+  # Create the bind source as the caller. If Compose creates a missing source,
+  # Docker owns it as root and the host-UID D-Bus daemon cannot bind its socket.
+  mkdir -p "$REPO_DIR/test/e2e/run"
+  if [ ! -w "$REPO_DIR/test/e2e/run" ]; then
+    echo "ERROR: test/e2e/run is not writable by uid $E2E_HOST_UID" >&2
+    echo "Remove that disposable runtime directory and try again." >&2
+    exit 1
+  fi
+
   if [ "$ver" = "tls" ]; then
     # 憑證要先有，nginx 才起得來。
     "$REPO_DIR/test/e2e/make-certs.sh"

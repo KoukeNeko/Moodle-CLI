@@ -103,7 +103,8 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=$PWD/test/e2e/run/bus
 就結束、容器結束，`restart: unless-stopped` 把它拉起來。healthcheck 問的是
 「`org.freedesktop.secrets` 有主嗎」，不是「bus 活著嗎」——金鑰圈死掉時 bus 還在，
 只檢查 bus 會讓容器一直顯示 healthy。`scripts/moodle-env.sh` 也會把主機 UID/GID
-傳進容器，讓 D-Bus 的 EXTERNAL peer 驗證在非 root 的 CI runner 上仍然成立。
+傳進容器，並在 Compose 啟動前以該使用者建立 `test/e2e/run/`，讓 D-Bus 的
+EXTERNAL peer 驗證與 socket 寫入在非 root 的 CI runner 上仍然成立。
 
 ## 十年資料生命週期
 
