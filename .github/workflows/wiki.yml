@@ -1,0 +1,47 @@
+name: Publish Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/wiki/**
+      - .github/workflows/wiki.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-wiki
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Clone the GitHub Wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git clone \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" \
+            /tmp/moodle-cli-wiki
+
+      - name: Synchronize reviewed pages
+        run: |
+          rsync --archive --delete --exclude=.git/ docs/wiki/ /tmp/moodle-cli-wiki/
+
+      - name: Publish changed pages
+        working-directory: /tmp/moodle-cli-wiki
+        run: |
+          if test -z "$(git status --porcelain)"; then
+            echo "Wiki is already current."
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add --all
+          git commit -m "docs: sync handbook from ${GITHUB_SHA}"
+          git push origin HEAD:master
