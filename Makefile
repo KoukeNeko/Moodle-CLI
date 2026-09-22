@@ -1,4 +1,4 @@
-.PHONY: build install test test-race arch lint verify moodle-up moodle-down moodle-purge moodle-status help
+.PHONY: build install test test-race arch lint verify moodle-up moodle-down moodle-purge moodle-status moodle-decade help
 
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
@@ -28,6 +28,7 @@ help:
 	@echo "  make moodle-down   V=v52   停掉，保留資料"
 	@echo "  make moodle-purge  V=v52   停掉並刪除資料"
 	@echo "  make moodle-status         列出目前的測試站"
+	@echo "  make moodle-decade V=v52   佈建並驗收十年情境"
 
 build:
 	mkdir -p bin
@@ -68,3 +69,6 @@ moodle-purge:
 
 moodle-status:
 	./scripts/moodle-env.sh status
+
+moodle-decade: build
+	./test/e2e/decade-run.sh $(V)

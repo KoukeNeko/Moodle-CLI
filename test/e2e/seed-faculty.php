@@ -1,11 +1,11 @@
 <?php
 /**
- * 一位教師八年的授課史，以及其他角色的真實狀態。由 seed-faculty.sh 呼叫。
+ * 一位教師十年的授課史，以及其他角色的真實狀態。由 seed-faculty.sh 呼叫。
  *
  * seed-masters.php 是從**學生**那一側看六年：一個人的學習歷程。這一份補上另一側：
- *   - 同一位教師把同一門課開了八年，每一年是**一門不同的課、同一個課名**。
- *     這是重修那個問題的教師版，而且規模大得多：清單上會有八筆「Introduction to
- *     Programming」。用課名識別或去重，教師就會少掉七年的教學紀錄。
+ *   - 同一位教師把同一門課開了十年，每一年是**一門不同的課、同一個課名**。
+ *     這是重修那個問題的教師版，而且規模大得多：清單上會有十筆「Introduction to
+ *     Programming」。用課名識別或去重，教師就會少掉九年的教學紀錄。
  *   - 每一年的學生都不同。「這門課的參與者」不能跨年快取。
  *   - 早年的課程封存（visible=0）。封存不是刪除，而教師仍然讀得到。
  *   - manager 與 coursecreator 在**類別**層而不是系統層——那是真實站台的樣子，
@@ -21,10 +21,10 @@ require_once($CFG->libdir . '/gradelib.php');
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->dirroot . '/enrol/manual/lib.php');
 require_once($CFG->dirroot . '/mod/assign/lib.php');
+require_once($CFG->dirroot . '/mod/assign/locallib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 
 $now = time();
-$YEAR = 365 * DAYSECS;
 
 function ensure_user_f(string $username, string $first, string $last): stdClass {
     global $DB, $CFG;
@@ -55,7 +55,20 @@ function ensure_course_f(string $shortname, string $fullname, int $startdate,
                          int $categoryid, bool $visible): stdClass {
     global $DB;
     if ($existing = $DB->get_record('course', ['shortname' => $shortname])) {
-        return $existing;
+        // 每年重跑 fixture 時，「最近兩年」的邊界會往前移。只在第一次建立
+        // 時寫狀態，過一年後就會留下本該封存的課程。fixture 必須收斂到
+        // 現在定義的狀態，而不只是「有就算了」。
+        // 用 Moodle API 移動類別與切換可見性；直接 update_record 會漏掉
+        // context path、cache 與事件等生命週期副作用。
+        update_course((object) [
+            'id' => $existing->id,
+            'fullname' => $fullname,
+            'category' => $categoryid,
+            'startdate' => $startdate,
+            'enddate' => $startdate + 120 * DAYSECS,
+            'visible' => $visible ? 1 : 0,
+        ]);
+        return $DB->get_record('course', ['id' => $existing->id], '*', MUST_EXIST);
     }
     return create_course((object) [
         'shortname' => $shortname, 'fullname' => $fullname,
@@ -70,19 +83,37 @@ function ensure_enrolment_f(stdClass $course, stdClass $user, string $roleshort)
     global $DB;
     $role = $DB->get_record('role', ['shortname' => $roleshort], '*', MUST_EXIST);
     $context = context_course::instance($course->id);
-    if ($DB->record_exists('role_assignments',
-            ['contextid' => $context->id, 'userid' => $user->id, 'roleid' => $role->id])) {
-        return;
-    }
     $manual = $DB->get_record('enrol',
         ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
-    enrol_get_plugin('manual')->enrol_user($manual, $user->id, $role->id, time() - DAYSECS);
+    $enrolment = $DB->get_record('user_enrolments',
+        ['enrolid' => $manual->id, 'userid' => $user->id]);
+    if (!$enrolment) {
+        enrol_get_plugin('manual')->enrol_user(
+            $manual, $user->id, $role->id, time() - DAYSECS);
+    } else if ((int) $enrolment->status !== ENROL_USER_ACTIVE) {
+        $DB->set_field('user_enrolments', 'status', ENROL_USER_ACTIVE,
+            ['id' => $enrolment->id]);
+    }
+    if (!$DB->record_exists('role_assignments',
+            ['contextid' => $context->id, 'userid' => $user->id, 'roleid' => $role->id])) {
+        role_assign($role->id, $user->id, $context->id);
+    }
 }
 
 function ensure_assign_f(stdClass $course, string $name, int $duedate): stdClass {
     global $DB;
     if ($existing = $DB->get_record('assign', ['name' => $name, 'course' => $course->id])) {
-        return $existing;
+        if ((int) $existing->duedate !== $duedate) {
+            $existing->duedate = $duedate;
+            $DB->update_record('assign', $existing);
+            // 作業日期同時存在 assign 與 calendar_events。只改前者會讓 CLI
+            // 的作業清單與行事曆各說一個日期。
+            $cm = get_coursemodule_from_instance('assign', $existing->id, $course->id,
+                false, MUST_EXIST);
+            $context = context_module::instance($cm->id);
+            assign_update_events(new assign($context, $cm, $course));
+        }
+        return $DB->get_record('assign', ['id' => $existing->id], '*', MUST_EXIST);
     }
     $module = $DB->get_record('modules', ['name' => 'assign'], '*', MUST_EXIST);
     $cm = (object) [
@@ -148,17 +179,20 @@ $cc    = $DB->get_record('user', ['username' => 'cc1'], '*', MUST_EXIST);
 $dept    = ensure_category('Computer Science', 'DEPT-CS');
 $archive = ensure_category('Archived years', 'DEPT-CS-ARCHIVE');
 
-// ─── 八年的同一門課 ──────────────────────────────────────────────────────
+// ─── 十年的同一門課 ──────────────────────────────────────────────────────
 //
-// 每一年是一門新的課，課名一模一樣。最近兩年還開著，之前六年封存。
+// 每一年是一門新的課，課名一模一樣。最近兩年還開著，之前八年封存。
 $years = [];
 $made = 0;
-for ($offset = 7; $offset >= 0; $offset--) {
-    $year = (int) date('Y', $now - $offset * $YEAR);
+for ($offset = 9; $offset >= 0; $offset--) {
+    $year = (int) date('Y', $now) - $offset;
+    // 學年用固定的 9 月 1 日，而不是從「現在」往回減 365 天。後者每次
+    // 執行都會讓十年資料微移幾秒，也會在閏年逐漸偏離學期邊界。
+    $startdate = make_timestamp($year, 9, 1, 0, 0, 0);
     $live = $offset <= 1;
     $course = ensure_course_f(
         "CS1001-$year", 'Introduction to Programming',
-        $now - $offset * $YEAR, $live ? $dept->id : $archive->id, $live);
+        $startdate, $live ? $dept->id : $archive->id, $live);
     ensure_enrolment_f($course, $prof, 'editingteacher');
     $years[$year] = $course;
 
@@ -170,8 +204,8 @@ for ($offset = 7; $offset >= 0; $offset--) {
         $cohort[] = $student;
     }
 
-    $hw = ensure_assign_f($course, 'Exercise 1', $now - $offset * $YEAR + 30 * DAYSECS);
-    $final = ensure_assign_f($course, 'Final Project', $now - $offset * $YEAR + 100 * DAYSECS);
+    $hw = ensure_assign_f($course, 'Exercise 1', $startdate + 30 * DAYSECS);
+    $final = ensure_assign_f($course, 'Final Project', $startdate + 100 * DAYSECS);
     $made += 2;
     foreach ($cohort as $i => $student) {
         // 早年的都改完了；今年的還沒。
@@ -179,8 +213,28 @@ for ($offset = 7; $offset >= 0; $offset--) {
         ensure_submission_f($final, $student, $live && $offset === 0 ? null : 65.0 + $i * 10);
     }
 }
-printf("[faculty] prof1 的八年：%d 門同名課程（%d 門封存），作業 %d 份\n",
-    count($years), 6, $made);
+
+// 跨年重跑時，第十一年以前的課仍留在站上（資料不刪），但不再算進
+// prof1 的「最近十屆」。退選比刪課更接近真實封存流程，也讓 fixture 每年
+// 都收斂到剛好十屆，不會在長壽 volume 裡變成 11、12、…。
+$keptids = array_fill_keys(array_map(
+    static fn(stdClass $course): int => (int) $course->id, $years), true);
+$like = $DB->sql_like('shortname', ':historyprefix', false);
+foreach ($DB->get_records_select('course', $like,
+        ['historyprefix' => 'CS1001-%']) as $oldcourse) {
+    if (!preg_match('/^CS1001-\d{4}$/', $oldcourse->shortname)
+            || isset($keptids[(int) $oldcourse->id])) {
+        continue;
+    }
+    $manual = $DB->get_record('enrol',
+        ['courseid' => $oldcourse->id, 'enrol' => 'manual']);
+    if ($manual && $DB->record_exists('user_enrolments',
+            ['enrolid' => $manual->id, 'userid' => $prof->id])) {
+        enrol_get_plugin('manual')->unenrol_user($manual, $prof->id);
+    }
+}
+printf("[faculty] prof1 的十年：%d 門同名課程（%d 門封存），作業 %d 份\n",
+    count($years), 8, $made);
 
 // 同事的課：prof1 不在裡面，所以教師的清單不等於站台上的全部。
 $other = ensure_course_f('CS3001-' . date('Y', $now), 'Operating Systems',

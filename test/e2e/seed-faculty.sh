@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 佈建一位教師八年的授課史，以及其他角色的真實狀態。
+# 佈建一位教師十年的授課史，以及其他角色的真實狀態。
 #
 #   test/e2e/seed-masters.sh && test/e2e/seed-faculty.sh
 #

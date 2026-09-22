@@ -839,10 +839,10 @@ for who in nocourse mgr1 cc1 admin; do
 done
 note "站台管理員不能用 app 的登入流程：Moodle 對 admin 關掉它"
 
-say "19c. 八年之後：同一位教師，同一個課名"
+say "19c. 十年之後：同一位教師，同一個課名"
 
-note "seed-faculty 給 prof1 八個年度的 CS1001，課名全部叫 Introduction to Programming，"
-note "六門已封存（站台隱藏），兩門還開著；每一年的學生都不是同一批人。"
+note "seed-faculty 給 prof1 十個年度的 CS1001，課名全部叫 Introduction to Programming，"
+note "八門已封存（站台隱藏），兩門還開著；每一年的學生都不是同一批人。"
 note "這是教師端的重修問題放大版：同名不是重複，封存不是刪除。"
 PROF_TOKEN=$(curl -fsS "http://127.0.0.1:$STD_PORT/login/token.php" \
   -d username=prof1 -d 'password=Student123!' -d service=moodle_mobile_app \
@@ -855,24 +855,26 @@ if [ -n "$PROF_TOKEN" ]; then
   runenv "MOODLE_WS_TOKEN=$PROF_TOKEN" calendar upcoming
   runenv "MOODLE_WS_TOKEN=$PROF_TOKEN" forum list
 
-  # 同名的那幾門必須分得開。分不開的話，八年的課表對使用者就是一坨一樣的字，
+  # 同名的那幾門必須分得開。分不開的話，十年的課表對使用者就是一坨一樣的字，
   # 而每一門的學生、作業與成績都不一樣——那是會改錯成績的那種分不開。
   SAME_NAME=$(env "MOODLE_WS_TOKEN=$PROF_TOKEN" "$BIN" course list --json 2>/dev/null \
     | python3 -c '
 import json, sys
 courses = json.load(sys.stdin)["data"]
-same = [c for c in courses if c["full_name"] == "Introduction to Programming"]
+same = [c for c in courses
+        if c["full_name"] == "Introduction to Programming"
+        and c.get("short_name", "").startswith("CS1001-")]
 ids = {c["id"] for c in same}
 shorts = {c.get("short_name") for c in same}
 print(f"{len(same)} {len(ids)} {len(shorts)}")
 ' 2>/dev/null)
   note "同名課程 / 相異 id / 相異短名：$SAME_NAME"
   read -r N_SAME N_IDS N_SHORTS <<< "$SAME_NAME"
-  if [ "${N_SAME:-0}" -ge 2 ] && [ "${N_SAME:-0}" = "${N_IDS:-x}" ] \
+  if [ "${N_SAME:-0}" = 10 ] && [ "${N_SAME:-0}" = "${N_IDS:-x}" ] \
      && [ "${N_SAME:-0}" = "${N_SHORTS:-x}" ]; then
-    assert_passed "八年同名課程：每一門都分得開"
+    assert_passed "十年同名課程：10 門都分得開"
   else
-    assert_failed "八年同名課程：每一門都分得開" \
+    assert_failed "十年同名課程：應有 10 門且每門都分得開" \
       "同名 ${N_SAME:-?} 門，id ${N_IDS:-?} 個，短名 ${N_SHORTS:-?} 個" ""
   fi
 

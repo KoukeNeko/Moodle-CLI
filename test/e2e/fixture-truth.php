@@ -13,6 +13,7 @@
  *   php /fixture-truth.php calendar <username> [天數]  站台自己算的到期筆數
  *   php /fixture-truth.php forums <courseid>        該課程的論壇數（不套權限）
  *   php /fixture-truth.php readable <username> <courseid>  1／0
+ *   php /fixture-truth.php history <username> <shortname-prefix>  長期 fixture 摘要 JSON
  */
 
 define('CLI_SCRIPT', true);
@@ -104,7 +105,56 @@ switch ($what) {
         echo $CFG->release . "\n";
         break;
 
+    case 'history':
+        // 長期資料的真值不能由 CLI 自己作證。先以短名前綴限定 fixture，
+        // 再以 Moodle 的選課 API 確認這個人真的在課裡。
+        $user = user_by_name($argv[2]);
+        $prefix = $argv[3] ?? '';
+        $like = $DB->sql_like('shortname', ':prefix', false);
+        $courses = $DB->get_records_select('course', $like,
+            ['prefix' => $prefix . '%'], 'startdate ASC');
+        $courseids = [];
+        $hidden = 0;
+        $oldest = null;
+        $newest = null;
+        foreach ($courses as $course) {
+            $context = context_course::instance($course->id);
+            if (!is_enrolled($context, $user)) {
+                continue;
+            }
+            $courseids[] = (int) $course->id;
+            $hidden += empty($course->visible) ? 1 : 0;
+            $oldest = $oldest === null ? (int) $course->startdate
+                : min($oldest, (int) $course->startdate);
+            $newest = $newest === null ? (int) $course->startdate
+                : max($newest, (int) $course->startdate);
+        }
+        $assignments = 0;
+        $submissions = 0;
+        if ($courseids) {
+            list($insql, $params) = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED);
+            $assignments = $DB->count_records_select('assign', "course $insql", $params);
+            $assignmentids = $DB->get_fieldset_select('assign', 'id', "course $insql", $params);
+            if ($assignmentids) {
+                list($subsql, $subparams) = $DB->get_in_or_equal(
+                    $assignmentids, SQL_PARAMS_NAMED);
+                $submissions = $DB->count_records_select('assign_submission',
+                    "assignment $subsql", $subparams);
+            }
+        }
+        echo json_encode([
+            'courses' => count($courseids),
+            'hidden' => $hidden,
+            'assignments' => $assignments,
+            'submissions' => $submissions,
+            'oldest_start' => $oldest,
+            'newest_start' => $newest,
+            'span_days' => ($oldest !== null && $newest !== null)
+                ? (int) floor(($newest - $oldest) / DAYSECS) : 0,
+        ], JSON_UNESCAPED_SLASHES) . "\n";
+        break;
+
     default:
-        fwrite(STDERR, "usage: fixture-truth.php submittable|courseid|calendar|suspended|forums|readable|release\n");
+        fwrite(STDERR, "usage: fixture-truth.php submittable|courseid|calendar|suspended|forums|readable|release|history\n");
         exit(2);
 }

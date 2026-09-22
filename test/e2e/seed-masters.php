@@ -375,6 +375,8 @@ $plan = [
     // `grade overview` 要能把它們全部帶回來，而不是只帶回最近的幾門。
     ['UG1101', 'Problem Set 1',        ['duedate' => $now - 2100 * $DAY], 'submitted', 74.0],
     ['UG1102', 'Lab Report 1',         ['duedate' => $now - 2100 * $DAY], 'submitted', 81.0],
+    // 零分是一個已評分的結果，不能被 falsey 判斷吃掉後變成「未評分」。
+    ['UG1102', 'Academic Integrity Quiz', ['duedate' => $now - 2090 * $DAY], 'submitted', 0.0],
     // 被當掉的那一次：有交、有分數，分數不及格。42 分不是「沒有分數」。
     ['UG1201', 'Problem Set 6',        ['duedate' => $now - 1920 * $DAY], 'submitted', 42.0],
     // 重修那次：同樣的課名、同樣的作業名，不同的分數。

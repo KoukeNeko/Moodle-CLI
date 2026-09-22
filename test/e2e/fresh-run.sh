@@ -36,7 +36,7 @@ echo "==> 2/5 重新安裝並佈建（首次安裝要幾分鐘）"
 ./scripts/moodle-env.sh up "$VERSION"
 # 三支都要跑，而且順序不能換：seed-faculty 只補 prof1／mgr1／cc1 的歷史，
 # 那幾個帳號是 seed-masters 建的。漏掉任何一支都不會報錯——full-run.sh 會照跑，
-# 只是少測權限情境與八年授課史，而「少測」在紀錄上長得跟「測過了」一樣。
+# 只是少測權限情境與十年授課史，而「少測」在紀錄上長得跟「測過了」一樣。
 ./test/e2e/seed-masters.sh "${VERSION}-std"
 ./test/e2e/seed-permissions.sh apply "${VERSION}-std"
 ./test/e2e/seed-faculty.sh "${VERSION}-std"
