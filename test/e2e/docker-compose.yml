@@ -45,6 +45,10 @@ services:
     # 這裡也設一次：healthcheck 是另外 exec 進去的，不會繼承 entrypoint 的環境。
     environment:
       DBUS_SESSION_BUS_ADDRESS: unix:path=/run/keyring/bus
+      # D-Bus session 認證會核對 peer UID；由 scripts/moodle-env.sh 帶入主機 UID，
+      # 才能讓非 root 的 CI runner 穿過 bind-mounted socket。
+      E2E_HOST_UID: ${E2E_HOST_UID:-0}
+      E2E_HOST_GID: ${E2E_HOST_GID:-0}
     volumes: ["./run:/run/keyring"]
     restart: unless-stopped
     security_opt: ["no-new-privileges:true"]
@@ -52,9 +56,7 @@ services:
       # 問 bus「org.freedesktop.secrets 有主嗎」，而不是只問 bus 活著沒：
       # 金鑰圈死掉時 bus 還在，只檢查 bus 會讓容器一直顯示 healthy，
       # 而 auth login 卻卡在寫不進去。
-      test: ["CMD", "dbus-send", "--session", "--print-reply",
-             "--dest=org.freedesktop.DBus", "/org/freedesktop/DBus",
-             "org.freedesktop.DBus.GetNameOwner", "string:org.freedesktop.secrets"]
+      test: ["CMD-SHELL", "gosu \"$${E2E_HOST_UID}:$${E2E_HOST_GID}\" dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetNameOwner string:org.freedesktop.secrets"]
       interval: 5s
       timeout: 5s
       retries: 20

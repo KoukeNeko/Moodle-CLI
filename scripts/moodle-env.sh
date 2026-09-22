@@ -14,6 +14,12 @@ REPO_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 COMPOSE_FILE="$REPO_DIR/test/e2e/docker-compose.yml"
 PROJECT_NAME="moodle-cli-e2e"
 
+# A session D-Bus accepts EXTERNAL authentication from its own UID. Propagate
+# the host identity so the disposable keyring remains reachable on hosted CI,
+# where Docker runs as a non-root runner account.
+export E2E_HOST_UID="${E2E_HOST_UID:-$(id -u)}"
+export E2E_HOST_GID="${E2E_HOST_GID:-$(id -g)}"
+
 dc() { docker compose --project-name "$PROJECT_NAME" --file "$COMPOSE_FILE" "$@"; }
 
 ports_for() {
@@ -38,7 +44,10 @@ cmd_up() {
 
   echo "==> 啟動 $ver（首次安裝 Moodle 需數分鐘）"
   # --wait 會等到 compose 的 healthcheck 通過才返回，不必自己輪詢。
-  if ! dc --profile "$ver" up --detach --wait; then
+  # --build matters for the project-owned keyring image: without it an edited
+  # entrypoint can be paired with a stale local image and a misleading health
+  # failure. Docker's layer cache keeps the no-change path cheap.
+  if ! dc --profile "$ver" up --detach --wait --build; then
     echo "ERROR: 容器未能就緒，以下是 log：" >&2
     dc --profile "$ver" logs --no-color --tail 50 >&2
     exit 1
@@ -56,7 +65,7 @@ cmd_up() {
 憑證是本機自簽的，要讓工具信任它就設這個環境變數（不需要任何略過檢查的旗標）：
   export SSL_CERT_FILE=$REPO_DIR/test/e2e/tls/ca.crt
 
-`moodle auth login` 需要 OS keychain，而 headless 主機沒有。keyring 容器已經
+\`moodle auth login\` 需要 OS keychain，而 headless 主機沒有。keyring 容器已經
 跟著起來了，把 session bus 指過去就能用：
 
   export DBUS_SESSION_BUS_ADDRESS=unix:path=$REPO_DIR/test/e2e/run/bus
@@ -79,7 +88,7 @@ EOF
   curl -s http://localhost:$std_port/login/token.php \\
     -d username=student1 -d password=Student123! -d service=moodle_mobile_app
 
-`moodle auth login` 需要 OS keychain，而 headless 主機沒有。keyring 容器已經
+\`moodle auth login\` 需要 OS keychain，而 headless 主機沒有。keyring 容器已經
 跟著起來了，把 session bus 指過去就能用：
 
   export DBUS_SESSION_BUS_ADDRESS=unix:path=$REPO_DIR/test/e2e/run/bus

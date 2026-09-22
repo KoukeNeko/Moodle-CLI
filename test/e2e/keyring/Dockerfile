@@ -9,7 +9,7 @@
 FROM ubuntu:26.04
 
 RUN apt-get update -qq \
- && apt-get install -y -qq --no-install-recommends gnome-keyring dbus \
+ && apt-get install -y -qq --no-install-recommends gnome-keyring dbus gosu \
  && rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /entrypoint.sh
