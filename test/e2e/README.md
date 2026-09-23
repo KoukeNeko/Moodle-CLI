@@ -143,14 +143,19 @@ test/e2e/full-run.sh --nows               # 連 Mobile WS 關閉的變體站也�
 CS1001 看得到別人的繳交，但沒有 `mod/assign:viewownsubmissionsummary`，Moodle 於是
 完全不回 `lastattempt` 那個鍵。
 
-八個標準角色裡，這裡跑到六個：`student`（含大學部與研究生）、`teacher`（助教）、
-`editingteacher`、`user`（零選課的新帳號）、`manager`、`coursecreator`，外加站台管理員。
+`make moodle-decade` 另外會動態讀取站台的 `role` 資料表，而不是把八個標準角色寫死。
+它為每個可登入的 runtime role 建立專用 fixture identity，並保留 Moodle 的兩種隱含
+身分語意：`guest` 是未登入訪客，`user`／`frontpage` 是登入後由 Moodle 套用的預設角色，
+不是一般的 `role_assignments`。站台管理員也獨立列為 principal，不冒充一個 role。
 
-另外兩個**刻意不跑**，因為它們不是能帶著憑證登入的身分：
+為了證明 discovery 不是只認標準 shortname，fixture 固定加入兩個 canary：
 
-- `guest` 是未登入的訪客。這支工具一律帶著憑證發問，所以那個情境對應的是「完全沒有
-  憑證」，見第 20 節。
-- `frontpage` 只決定登入者在站台首頁看到什麼，而這裡的每個命令都以課程為範圍。
+- `matrixteacher`：以 `teacher` archetype 建立並重設預設 capabilities。
+- `matrixblank`：無 archetype、無預載 capabilities 的自訂課程角色。
+
+輸出寫到 `test/reports/runtime-roles-<version>.json`，包含實際版本、所有 runtime roles、
+可指派 context levels、專用 username、fixture assignment 與額外的 site administrator。
+這是完整 role/function recipe harness 的角色輸入；它不會把尚未執行的函式 cell 宣稱為通過。
 
 紀錄寫到 `test/e2e/logs/<時間>/`：
 

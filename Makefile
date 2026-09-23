@@ -1,4 +1,4 @@
-.PHONY: build install test test-race arch lint verify docs-check report-data-test moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-matrix moodle-scale report-site help
+.PHONY: build install test test-race arch lint verify docs-check report-data-test moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-roles moodle-matrix moodle-scale report-site help
 
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
@@ -31,6 +31,7 @@ help:
 	@echo "  make moodle-purge  V=v52   停掉並刪除資料"
 	@echo "  make moodle-status         列出目前的測試站"
 	@echo "  make moodle-decade V=v52   佈建並驗收十年情境"
+	@echo "  make moodle-roles  V=v52   動態建立並匯出 runtime roles"
 	@echo "  make moodle-matrix V=v52   小型代表性命令與十年正確性矩陣"
 	@echo "  make moodle-scale  V=v52   50k 學生 PostgreSQL 規模測試"
 	@echo "  make report-site           產生可發布的測試 dashboard"
@@ -83,6 +84,9 @@ moodle-status:
 
 moodle-decade: build
 	./test/e2e/decade-run.sh $(V)
+
+moodle-roles:
+	./test/e2e/role-fixture.sh $(V)
 
 moodle-matrix: build
 	./scripts/moodle-env.sh up $(V)

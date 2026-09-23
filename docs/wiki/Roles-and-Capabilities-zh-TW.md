@@ -20,6 +20,13 @@ artifact，因此公開 dashboard 將這些 cell 明確標為 `not-run`，不會
 Harness 完成後，每個 cell 都必須經 CLI 執行；終態只能是 `passed`、`expected_denied`、
 `expected_unavailable`、`failed`。角色看不到某個函式時，也要用明確拒絕或 unavailable 證明邊界。
 
+`make moodle-decade V=<version>` 現在會從執行中的 Moodle 資料庫動態發現角色，並寫出
+`test/reports/runtime-roles-<version>.json`。fixture 包含所有已安裝 runtime role、獨立的站台管理員
+principal、可指派 context levels、credential kind，以及測試實際採用的 context assignment。
+另外固定安裝兩個 canary：繼承 `teacher` archetype 的 `matrixteacher`，以及沒有 archetype 的
+`matrixblank`。這能證明後續矩陣不能把八個標準 shortname 寫死。此 inventory 是完整
+role/function harness 的輸入；只有 inventory 不會被宣稱為函式已執行。
+
 ## 三層不同的 gate
 
 1. **Registry 支援**：core function 存在於至少一個受支援 Moodle 版本。

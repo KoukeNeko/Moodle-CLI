@@ -22,6 +22,14 @@ Once that harness is complete, every matrix cell must execute through the CLI. I
 outcomes will be `passed`, `expected_denied`, `expected_unavailable`, and `failed`. A role that cannot
 see a function must prove that boundary with an explicit denial or unavailable result.
 
+`make moodle-decade V=<version>` now discovers roles from the running Moodle database and writes
+`test/reports/runtime-roles-<version>.json`. The fixture includes every installed runtime role, a
+distinct site administrator principal, declared context levels, credential kind, and the real context
+assignment used by the test. It also installs two canaries: `matrixteacher`, which inherits the
+`teacher` archetype, and `matrixblank`, which has no archetype. This proves that later matrix stages
+cannot be implemented as a hard-coded list of the eight standard shortnames. This inventory is an
+input to the full role/function harness; inventory alone is not reported as function execution.
+
 ## Three different gates
 
 1. **Registry support** says a core function exists in one of the supported Moodle versions.
