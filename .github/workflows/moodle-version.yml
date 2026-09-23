@@ -32,13 +32,21 @@ jobs:
       MOODLE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version: "1.26.x"
-          cache: true
 
+      # Fail before downloading a toolchain when the small long-haul runner
+      # cannot safely host the Docker fixtures.
       - name: Verify runner capacity
         run: ./scripts/runner-preflight.sh
+
+      - uses: actions/setup-go@v7.0.0
+        timeout-minutes: 10
+        with:
+          go-version: "1.26.x"
+          # Restoring a hosted-runner build cache over the runner's WARP
+          # link can hang for minutes and consumes scarce local disk. The Go
+          # module and Docker layer caches on this persistent runner remain
+          # available between jobs without Actions cache restoration.
+          cache: false
 
       - name: Remove this project's interrupted containers
         run: make moodle-purge V=${{ inputs.version }}
