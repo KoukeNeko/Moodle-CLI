@@ -41,7 +41,11 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         timeout-minutes: 10
         with:
-          go-version: "1.26.x"
+          # GitHub release assets are extremely slow through this runner's
+          # WARP path. Pin the version and use setup-go's supported direct
+          # distribution URL instead of actions/go-versions releases.
+          go-version: "1.26.8"
+          go-download-base-url: https://dl.google.com/go
           # Restoring a hosted-runner build cache over the runner's WARP
           # link can hang for minutes and consumes scarce local disk. The Go
           # module and Docker layer caches on this persistent runner remain
