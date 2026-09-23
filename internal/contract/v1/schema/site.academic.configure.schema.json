@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/site.academic.configure.schema.json",
+  "title": "moodle-cli site.academic.configure",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "site.academic.configure"},
+    "data": {
+      "type": "object",
+      "required": ["site", "credits_field", "level_field", "term_field", "undergraduate_minimum", "graduate_minimum", "dry_run"],
+      "additionalProperties": false,
+      "properties": {
+        "site": {"type": "string"},
+        "credits_field": {"type": "string"},
+        "level_field": {"type": "string"},
+        "term_field": {"type": "string"},
+        "undergraduate_minimum": {"type": "number", "minimum": 0},
+        "graduate_minimum": {"type": "number", "minimum": 0},
+        "dry_run": {"type": "boolean"}
+      }
+    },
+    "meta": {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"}
+  }
+}

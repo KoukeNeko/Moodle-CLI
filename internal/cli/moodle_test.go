@@ -20,6 +20,8 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
+	"github.com/KoukeNeko/moodle-cli/internal/workload"
+	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 	"github.com/KoukeNeko/moodle-cli/tests/testmoodle"
 )
 
@@ -40,6 +42,10 @@ func newFixture(t *testing.T) *fixture {
 	t.Cleanup(server.Close)
 
 	manager := testManager()
+	registry, err := wsregistry.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 	f := &fixture{
 		t:      t,
 		server: server,
@@ -79,6 +85,17 @@ func newFixture(t *testing.T) *fixture {
 					moodle.NewRawCaller(session.Client(), session.Token()),
 					mode, allowWrite,
 				)
+			},
+			WSRegistry: registry,
+			WS: func(session *auth.Session, mode safety.Mode, allowWrite bool) *wsregistry.Service {
+				return wsregistry.NewService(
+					registry,
+					moodle.NewRawCaller(session.Client(), session.Token()),
+					mode, allowWrite,
+				)
+			},
+			Workload: func(session *auth.Session, _ *site.Capabilities) *workload.Service {
+				return workload.NewService(moodle.NewWorkloadBackend(session.Client(), session.Token()))
 			},
 			// No terminal: a test must never be able to answer a prompt by
 			// accident, so confirmation has to be explicit.

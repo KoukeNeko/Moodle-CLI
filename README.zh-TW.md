@@ -1,7 +1,7 @@
 <h1 align="center">Moodle CLI</h1>
 
 <p align="center">
-  <strong>為學生設計的獨立 Moodle 命令列客戶端。</strong><br>
+  <strong>供學習者、教職員與管理者使用的獨立 Moodle 命令列客戶端。</strong><br>
   給人閱讀的終端輸出，以及給 script、CI 與 agent 使用的版本化 contract。
 </p>
 
@@ -9,7 +9,6 @@
   <a href="#相容性"><img alt="Verified with Moodle 4.5.12, 5.1.7, and 5.2.3" src="https://img.shields.io/badge/MOODLE-4.5.12%20%7C%205.1.7%20%7C%205.2.3-FF8B00?style=for-the-badge&logo=moodle&logoColor=white"></a>
   <a href="#相容性"><img alt="Linux, macOS, and Windows" src="https://img.shields.io/badge/PLATFORMS-LINUX%20%7C%20MACOS%20%7C%20WINDOWS-5C6BC0?style=for-the-badge"></a>
   <a href="#適合自動化的穩定-contract"><img alt="JSON contract version 1" src="https://img.shields.io/badge/JSON%20CONTRACT-V1-009688?style=for-the-badge&logo=json&logoColor=white"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/LICENSE-MIT-4CAF50?style=for-the-badge&logo=github"></a>
 </p>
 
 <p align="center">
@@ -19,6 +18,7 @@
 <p align="center">
   <a href="#快速開始">快速開始</a>
   · <a href="https://github.com/KoukeNeko/Moodle-CLI/wiki/Home-zh-TW">使用手冊</a>
+  · <a href="https://koukeneko.github.io/Moodle-CLI/">驗證儀表板</a>
   · <a href="test/e2e/README.md">測試環境</a>
   · <a href="docs/architecture.md">架構</a>
 </p>
@@ -26,13 +26,14 @@
 ```sh
 moodle course list
 moodle calendar upcoming
-moodle assignment show 42
-moodle assignment submit 42 report.pdf --dry-run
+moodle participant list --param courseid=42
+moodle assignment submissions --param 'assignmentids=[17]'
+moodle ws describe core_course_get_contents
 ```
 
 Moodle CLI 連線到你指定的 Moodle 站台，優先使用官方 Web Service API；站台沒有開放所需函式時，
-才回退到唯讀 AJAX 或 HTML adapter。它處理課程、作業、行事曆、成績、論壇與檔案，也不假設每個
-Moodle 安裝都具備相同能力。
+才回退到唯讀 AJAX 或 HTML adapter。它處理課程、參與者、分組、作業、行事曆、成績、論壇、完成度、
+學分負荷與檔案，也不假設每個角色或 Moodle 安裝都具備相同能力。
 
 同一支 binary 同時服務人與程式。一般輸出保持好讀；`--json` 輸出穩定的 `schema_version: 1`
 envelope，命令提供 JSON Schema，錯誤則有固定 exit code。同一套 use case 也提供 MCP server；除非明確
@@ -65,16 +66,33 @@ moodle version --json
 moodle commands --json
 moodle schema assignment.submit
 moodle course list --json
+moodle ws list --version v52 --effect write --json
+moodle ws describe core_course_update_courses --json
+moodle ws call core_course_get_contents --params-json '{"courseid":42}'
 ```
 
 所有 JSON 回應共用同一個版本化 envelope。穩定的錯誤類別各自對應 exit code：成功 `0`、內部錯誤
 `1`、用法 `2`、設定 `3`、認證 `4`、權限 `5`、找不到 `6`、驗證 `7`、衝突 `8`、不可用 `9`、
 網路 `10`、上游 `11`、寫入結果不明 `12`。程式應依結構化 code 分支，不比對英文訊息。
 
+Typed `ws` registry 由拋棄式 Moodle 4.5.12、5.1.7、5.2.3 站台直接產生，目前是 780 個函式的聯集
+（各版 759／761／755）。每個版本的參數與回傳 JSON Schema、transport、effect、capability、deprecated
+與外部依賴都分開保留；執行時還會再核對目前 token 的 service 是否真的暴露該函式。
+
+### 角色依 capability，不依人物假設
+
+這支 CLI 不只給學生使用。Moodle 會依 system、category、course、activity、group 與 override context
+決定帳號能做什麼，因此同一支 binary 可供站台管理員、manager、course creator、editing teacher、
+non-editing teacher、student、一般 authenticated user 與自訂角色使用。命令不從角色名稱猜權限，而是
+檢查目前憑證暴露的函式，再由 Moodle 在真正的 context 執行 capability 判斷。
+
+高階寫入會在 `moodle commands --json` 明確標成 write，要求 `--yes` 或支援 `--dry-run`，不重試泛用
+寫入，且一定服從全域 `--read-only`。第三方 plugin 函式仍由明確標示為 untyped 的 `api call` 處理。
+
 ### 對寫入保持保守
 
 - 官方 Web Service 函式由人工審查過的 safety registry 分類；未知函式一律視為寫入，絕不自動重試。
-- 作業提交的 `--dry-run` 會解析並顯示計畫，但不送出寫入。
+- Typed 與高階寫入的 `--dry-run` 會驗證並顯示計畫，但不送出寫入。
 - `--read-only` 會把寫入命令從命令樹移除。
 - `moodle mcp serve` 預設唯讀，必須明確加上 `--allow-write`。
 - HTML fallback 只讀；無法證明提交語意時，CLI 會拒絕執行。
@@ -146,13 +164,23 @@ moodle forum read 19
 moodle file download 'https://moodle.example.edu/pluginfile.php/...'
 moodle resolve 'https://moodle.example.edu/mod/assign/view.php?id=42'
 
-moodle api functions --match assign
-moodle api call core_enrol_get_users_courses --param userid=4
+moodle participant list --param courseid=2
+moodle enrolment methods --param courseid=2
+moodle enrolment add --params-json '{"enrolments":[{"roleid":5,"userid":7,"courseid":2}]}' --dry-run
+moodle group create --params-json '{"groups":[{"courseid":2,"name":"Lab A"}]}' --dry-run
+moodle assignment submissions --param 'assignmentids=[42]'
+moodle workload validate --require-minimum
+
+moodle ws list --version v52 --component mod_assign
+moodle ws describe mod_assign_save_grade
+moodle ws call core_enrol_get_users_courses --param userid=4
+moodle api call local_example_function --params-json '{}'  # 第三方／未登錄
 moodle mcp serve                      # 唯讀工具
 moodle mcp serve --allow-write        # 明確開放寫入工具
 ```
 
-完整介面請執行 `moodle <command> --help`，或閱讀[命令手冊](https://github.com/KoukeNeko/Moodle-CLI/wiki/Commands-zh-TW)。
+完整介面請執行 `moodle <command> --help`、閱讀自動產生的[完整命令參考](https://github.com/KoukeNeko/Moodle-CLI/wiki/Command-Reference-zh-TW)，
+或在[功能覆蓋](https://github.com/KoukeNeko/Moodle-CLI/wiki/Feature-Coverage-zh-TW)查閱全部 780 個 core function。
 
 ## 安全邊界
 
@@ -176,9 +204,15 @@ Docker 完整測試只宣稱以下實際驗證過的版本：
 | 5.1 | 5.1.7 | 標準站、限制 Web Service 站、十個學年 |
 | 5.2 | 5.2.3 | 標準站、限制 Web Service 站、十個學年 |
 
-十年情境建立 10 個年度 cohort、30 位學生、20 份作業、60 次 submission、八門封存課程與兩門進行中
+小型十年情境建立 10 個年度 cohort、30 位學生、20 份作業、60 次 submission、八門封存課程與兩門進行中
 課程，並涵蓋 calendar event、缺成績、零分、草稿、已交件、逾期與跨年度資料匯流，專門找出只在全新
 示範站才成立的假設。
+
+獨立的 PostgreSQL scale profile 會建立 50,000 位合成學生、跨 20 學期的 1,000 門正式課、一門含
+50,000 人的零學分 orientation 課，以及 237 萬筆選課資料。SQL control plane 另行驗證大學生每學期
+21 學分、研究生每學期 6 學分；CLI 再讀回代表性 workload 與完整 50 頁參與者，記錄 latency、peak
+RSS、HTTP requests 與磁碟。Image bootstrap 完成後，Moodle scale 容器不能連公網。Moodle 5.2.3
+自身要求 PostgreSQL 16，因此使用最低相容版本，不繞過環境檢查。
 
 Release build 目標為 Linux、macOS、Windows 的 amd64 與 arm64。現在只有 Linux 實作自動 browser
 callback handler；CLI 與手動登入路徑會在三種作業系統建置與測試。
@@ -193,6 +227,8 @@ make verify
 
 make moodle-up V=v52
 make moodle-decade V=v52
+make moodle-matrix V=v52
+make moodle-scale V=v52
 make moodle-down V=v52
 ```
 
@@ -208,16 +244,15 @@ macOS runner 驗證後才公開 release，替 checksum 加上 keyless workflow s
 更新 `KoukeNeko/homebrew-tap`。Windows Authenticode 尚未設定。Apple distribution credential 必須等
 第一個 tag artifact 才能完成端到端證明；在那以前，pipeline 設定不等於已經發布 release。
 
+<p>
+  <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
+  <a href="https://go.dev/"><img alt="Go 1.26 or newer" src="https://img.shields.io/badge/GO-1.26%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/LICENSE-MIT-4CAF50?style=for-the-badge&logo=github"></a>
+</p>
+
 ## 授權與商標
 
 [MIT](LICENSE) © 2026 KoukeNeko。
 
 Moodle CLI 是獨立專案，與 Moodle 或 Moodle HQ 沒有隸屬、認可或贊助關係。「Moodle」是 Moodle Pty Ltd
 的商標。本專案不包含 Moodle 原始碼。
-
-## 工程資訊
-
-<p>
-  <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
-  <a href="https://go.dev/"><img alt="Go 1.26 or newer" src="https://img.shields.io/badge/GO-1.26%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white"></a>
-</p>

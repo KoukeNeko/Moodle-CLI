@@ -49,6 +49,10 @@ func TestSaveThenLoadRoundTrip(t *testing.T) {
 		AuthMethod:     "token",
 		CredentialKind: site.CredentialWSToken,
 	})
+	entry.Academic = config.Academic{
+		CreditsField: "credits", LevelField: "academic_level", TermField: "academic_term",
+		Minimum: config.AcademicMinimum{Undergraduate: 21, Graduate: 6},
+	}
 	if err := file.Save(); err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +73,9 @@ func TestSaveThenLoadRoundTrip(t *testing.T) {
 	}
 	if got.Accounts["student"].Username != "student1" {
 		t.Errorf("account not preserved: %+v", got.Accounts["student"])
+	}
+	if got.Academic.Minimum.Undergraduate != 21 || got.Academic.Minimum.Graduate != 6 {
+		t.Errorf("academic settings not preserved: %+v", got.Academic)
 	}
 	if reloaded.Current.Site != "school" {
 		t.Errorf("first site should become current, got %q", reloaded.Current.Site)

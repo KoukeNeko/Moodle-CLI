@@ -10,14 +10,16 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 )
 
-func newCourseCommand(r *Renderer, deps Deps) *cobra.Command {
+func newCourseCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "course",
-		Short: "Work with the courses you are enrolled in",
+		Short: "Read and manage courses allowed by your Moodle role",
 	}
 	cmd.AddCommand(newCourseListCommand(r, deps))
+	addWorkflowCommands(cmd, r, deps, mode, courseWorkflowSpecs()...)
 	return cmd
 }
 

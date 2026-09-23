@@ -106,6 +106,17 @@ jobs:
           set -e
           test -z "$output"
 
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.26.x"
+          cache: true
+      - run: make build
+      - run: ./scripts/generate-wiki.py --binary ./bin/moodle --check
+
   moodle-decade:
     name: Moodle ${{ matrix.version }} decade
     strategy:
@@ -124,7 +135,7 @@ jobs:
         run: make moodle-up V=${{ matrix.version }}
       - name: Exercise ten academic years
         run: make moodle-decade V=${{ matrix.version }}
-      - name: Exercise the complete command surface
+      - name: Exercise representative command scenarios
         if: matrix.version == 'v52'
         run: ./test/e2e/full-run.sh --nows
       - name: Capture container logs

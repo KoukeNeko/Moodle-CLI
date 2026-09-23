@@ -1,0 +1,120 @@
+name: Moodle long-haul
+
+on:
+  schedule:
+    # Saturday is covered by the full three-version weekly run below.
+    - cron: "0 18 * * 0-5"
+    - cron: "0 18 * * 6"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Moodle version, or all supported versions
+        type: choice
+        options: [v52, v51, v45, all]
+        default: v52
+      seed:
+        description: Deterministic fixture seed
+        type: string
+        default: "20260923"
+      scale:
+        description: Also execute the 50k-student PostgreSQL scale profile
+        type: boolean
+        default: false
+      publish:
+        description: Publish the generated report to GitHub Pages
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read
+
+# There is one 5 GiB / 33 GiB machine. Never overlap database-heavy runs,
+# even across branches or manual dispatches.
+concurrency:
+  group: moodle-long-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  daily-v52:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 18 * * 0-5'
+    uses: ./.github/workflows/moodle-version.yml
+    with:
+      version: v52
+      seed: "20260923"
+      scale: true
+
+  weekly:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 18 * * 6'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        version: [v45, v51, v52]
+    uses: ./.github/workflows/moodle-version.yml
+    with:
+      version: ${{ matrix.version }}
+      seed: "20260923"
+      scale: true
+
+  manual:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        version: [v45, v51, v52]
+    uses: ./.github/workflows/moodle-version.yml
+    with:
+      version: ${{ matrix.version }}
+      seed: ${{ inputs.seed }}
+      scale: ${{ inputs.scale && matrix.version == 'v52' }}
+      enabled: ${{ inputs.version == matrix.version || inputs.version == 'all' }}
+
+  report:
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.publish) }}
+    needs: [daily-v52, weekly, manual]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v6.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: report-site/package-lock.json
+      - name: Download all available redacted evidence
+        uses: actions/download-artifact@v7.0.0
+        with:
+          pattern: moodle-*-${{ github.run_id }}
+          path: test/reports
+          merge-multiple: true
+      - name: Build dashboard even when a test job failed
+        run: make report-site
+      - name: Preserve dashboard for 90 days
+        if: always()
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: moodle-dashboard-${{ github.run_id }}
+          path: report-site/dist/
+          if-no-files-found: warn
+          retention-days: 90
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: report-site/dist
+
+  deploy:
+    if: ${{ always() && needs.report.result == 'success' }}
+    needs: report
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy verification dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4

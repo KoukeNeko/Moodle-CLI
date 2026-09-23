@@ -3,15 +3,19 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
 	"github.com/KoukeNeko/moodle-cli/internal/calendar"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
+	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 )
 
 // Deps are the use cases this server serves.
@@ -35,6 +39,8 @@ type Deps struct {
 	Grades      *grade.Service
 	Calendar    *calendar.Service
 	Forums      *forum.Service
+	WSRegistry  *wsregistry.Registry
+	WS          *wsregistry.Service
 }
 
 // now is the clock, replaceable in tests.
@@ -52,11 +58,12 @@ const noArguments = `{"type":"object","properties":{},"additionalProperties":fal
 // never sees a tool it would be refused.
 func Register(deps Deps, allowWrite bool) *Registry {
 	r := newRegistry(allowWrite, deps.SiteName)
+	registerWSTools(r, deps)
 
 	r.add(definition{
 		Name:        "course_list",
 		Title:       "List courses",
-		Description: "The courses the signed-in student is enrolled in.",
+		Description: "The courses visible to the signed-in account through its current service and capabilities.",
 		Schema:      schema(noArguments),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
 			capabilities, err := deps.Capabilities(ctx)
@@ -103,7 +110,7 @@ func Register(deps Deps, allowWrite bool) *Registry {
 		Name:  "assignment_show",
 		Title: "Show one assignment",
 		Description: "One assignment's description, dates and limits, together with " +
-			"where the student currently stands in it.",
+			"the signed-in account's own submission state when Moodle exposes one.",
 		Schema: schema(`{
 			"type": "object",
 			"properties": {
@@ -143,7 +150,7 @@ func Register(deps Deps, allowWrite bool) *Registry {
 	r.add(definition{
 		Name:  "assignment_status",
 		Title: "Check a submission",
-		Description: "Whether the student's work is unsubmitted, saved as a draft, or " +
+		Description: "Whether the signed-in account's work is unsubmitted, saved as a draft, or " +
 			"handed in for grading. handed_in is the answer; a draft is not submitted.",
 		Schema: schema(`{
 			"type": "object",
@@ -180,7 +187,7 @@ func Register(deps Deps, allowWrite bool) *Registry {
 	r.add(definition{
 		Name:  "grade_overview",
 		Title: "Grades across courses",
-		Description: "The student's total in every course. This call carries no maximum, " +
+		Description: "The signed-in account's visible total in every course. This call carries no maximum, " +
 			"so there is no percentage to compute from it.",
 		Schema: schema(noArguments),
 		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
@@ -260,7 +267,7 @@ func Register(deps Deps, allowWrite bool) *Registry {
 	r.add(definition{
 		Name:        "forum_list",
 		Title:       "List forums",
-		Description: "The discussion areas in the student's courses.",
+		Description: "The discussion areas visible to the signed-in account.",
 		Schema: schema(`{
 			"type": "object",
 			"properties": {
@@ -377,7 +384,7 @@ func Register(deps Deps, allowWrite bool) *Registry {
 			"was saved before. The final state is read back from Moodle: check " +
 			"handed_in rather than assuming the steps succeeded. An assignment that " +
 			"requires a submission statement needs accept_statement, which is the " +
-			"student's decision and not yours to make for them.",
+			"account holder's decision and not yours to make for them.",
 		Schema: schema(`{
 			"type": "object",
 			"properties": {
@@ -392,7 +399,7 @@ func Register(deps Deps, allowWrite bool) *Registry {
 				},
 				"accept_statement": {
 					"type": "boolean",
-					"description": "The student accepts this assignment's submission statement. Only ever set this when they have said so."
+					"description": "The account holder accepts this assignment's submission statement. Only ever set this when they have said so."
 				},
 				"dry_run": {
 					"type": "boolean",
@@ -430,4 +437,141 @@ func Register(deps Deps, allowWrite bool) *Registry {
 	})
 
 	return r
+}
+
+func registerWSTools(r *Registry, deps Deps) {
+	if deps.WSRegistry == nil || deps.WS == nil {
+		return
+	}
+	r.add(definition{
+		Name:        "ws_list",
+		Title:       "List typed core web services",
+		Description: "List the generated union of Moodle 4.5, 5.1 and 5.2 core external functions, including effects and supported versions.",
+		Schema: schema(`{
+			"type":"object",
+			"properties":{
+				"version":{"enum":["v45","v51","v52"]},
+				"component":{"type":"string"},
+				"effect":{"enum":["read","write"]},
+				"match":{"type":"string"}
+			},
+			"additionalProperties":false
+		}`),
+		Handler: func(_ context.Context, args Arguments) (v1.Envelope, error) {
+			functions := make([]wsregistry.Function, 0)
+			for _, function := range deps.WSRegistry.All() {
+				if version := args.String("version"); version != "" && !stringIn(function.Versions, version) {
+					continue
+				}
+				if component := args.String("component"); component != "" && function.Component != component {
+					continue
+				}
+				if effect := args.String("effect"); effect != "" && string(function.Effect) != effect {
+					continue
+				}
+				if match := args.String("match"); match != "" && !strings.Contains(function.Name, match) {
+					continue
+				}
+				functions = append(functions, function)
+			}
+			return v1.WSList(deps.WSRegistry, functions), nil
+		},
+	})
+
+	r.add(definition{
+		Name:        "ws_describe",
+		Title:       "Describe a typed core web service",
+		Description: "Return version-specific parameters, results, effects, capabilities, transport, service exposure, and external dependencies.",
+		Schema: schema(`{
+			"type":"object",
+			"properties":{"function":{"type":"string"}},
+			"required":["function"],
+			"additionalProperties":false
+		}`),
+		Handler: func(_ context.Context, args Arguments) (v1.Envelope, error) {
+			name, err := args.Required("function")
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			function, ok := deps.WSRegistry.Lookup(name)
+			if !ok {
+				return v1.Envelope{}, errs.New(errs.CodeNotFound, name+" is not in the core registry")
+			}
+			return v1.WSDescribe(function), nil
+		},
+	})
+
+	callSchema := schema(`{
+		"type":"object",
+		"properties":{
+			"function":{"type":"string"},
+			"params":{"type":"object"},
+			"dry_run":{"type":"boolean"}
+		},
+		"required":["function"],
+		"additionalProperties":false
+	}`)
+	r.add(definition{
+		Name:        "ws_read",
+		Title:       "Call a typed read-only core web service",
+		Description: "Validate and call a registry function only when the selected Moodle version classifies it as a read.",
+		Schema:      callSchema,
+		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			return callWSTool(ctx, deps, args, wsregistry.EffectRead)
+		},
+	})
+	r.add(definition{
+		Name:        "ws_write",
+		Title:       "Call a typed writing core web service",
+		Description: "Validate and call a registry function only when the selected Moodle version classifies it as a write. Calls are never retried and a lost response is ambiguous.",
+		Schema:      callSchema,
+		Mutates:     true,
+		// This generic tool includes delete, revoke, reset and other
+		// destructive functions. The per-function description is authoritative;
+		// the generic annotation is intentionally conservative.
+		Destructive: true,
+		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			return callWSTool(ctx, deps, args, wsregistry.EffectWrite)
+		},
+	})
+}
+
+func callWSTool(ctx context.Context, deps Deps, args Arguments, expected wsregistry.Effect) (v1.Envelope, error) {
+	name, err := args.Required("function")
+	if err != nil {
+		return v1.Envelope{}, err
+	}
+	capabilities, err := deps.Capabilities(ctx)
+	if err != nil {
+		return v1.Envelope{}, err
+	}
+	variant, _, ok := deps.WSRegistry.VariantForRelease(name, capabilities.Release)
+	if !ok {
+		return v1.Envelope{}, errs.New(errs.CodeUnavailable,
+			name+" is unavailable in the selected Moodle registry version").
+			WithReason(errs.ReasonCapability)
+	}
+	if variant.Effect != expected {
+		tool := "ws_read"
+		if expected == wsregistry.EffectWrite {
+			tool = "ws_write"
+		}
+		return v1.Envelope{}, errs.New(errs.CodeUsage,
+			fmt.Sprintf("%s is classified as %s and cannot be called through %s", name, variant.Effect, tool))
+	}
+	result, err := deps.WS.Call(ctx, capabilities, capabilities.Release, name,
+		args.Object("params"), args.Bool("dry_run"))
+	if err != nil {
+		return v1.Envelope{}, err
+	}
+	return v1.WSCall(result, deps.SiteName, deps.AccountName), nil
+}
+
+func stringIn(items []string, wanted string) bool {
+	for _, item := range items {
+		if item == wanted {
+			return true
+		}
+	}
+	return false
 }

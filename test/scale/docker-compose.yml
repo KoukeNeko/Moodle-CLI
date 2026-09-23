@@ -1,0 +1,105 @@
+# Large, disposable scale site. It is deliberately a separate Compose project
+# from test/e2e: the correctness fixtures use SQLite snapshots while this
+# profile exercises PostgreSQL plans, pagination and millions of enrolments.
+services:
+  postgres:
+    # Moodle 5.2.3 rejects PostgreSQL 15 during its own environment check.
+    # Use the minimum accepted major rather than bypassing Moodle's guard.
+    image: postgres:${SCALE_POSTGRES_TAG:-16-alpine}
+    environment:
+      POSTGRES_DB: moodle
+      POSTGRES_USER: moodle
+      POSTGRES_PASSWORD: scale-only-password
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - max_connections=50
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - max_wal_size=2GB
+    mem_limit: 1500m
+    cpus: 1.25
+    shm_size: 256m
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [scale]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moodle -d moodle"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  moodle:
+    image: erseco/alpine-moodle:${SCALE_MOODLE_TAG:-v5.2.3}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      MOODLE_DATABASE_TYPE: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: moodle
+      DB_USER: moodle
+      DB_PASS: scale-only-password
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      REVERSEPROXY: "true"
+      SITE_URL: http://localhost:${SCALE_PORT:-9521}
+      PHP_MEMORY_LIMIT: 768M
+      PHP_MAX_EXECUTION_TIME: "10800"
+    mem_limit: 2500m
+    cpus: 2.50
+    volumes:
+      - moodle-data:/var/www/moodledata
+    # bootstrap provides egress only while this image runs its mandatory
+    # Composer install. moodle-scale-env.sh disconnects it immediately after
+    # the healthcheck passes, before any fixture or external function runs.
+    networks: [scale, bootstrap]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8080/login/index.php"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      moodle:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:${SCALE_PORT:-9521}:8080
+    volumes:
+      - ./proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [scale, host]
+    mem_limit: 96m
+    cpus: 0.20
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/login/index.php"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+networks:
+  scale:
+    # Prevent synthetic fixtures from reaching real mail, payment, SMS, AI or
+    # LTI endpoints. Published loopback ports remain reachable by the host CLI.
+    internal: true
+  bootstrap: {}
+  host: {}
+
+volumes:
+  postgres-data: {}
+  moodle-data: {}

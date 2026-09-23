@@ -14,6 +14,8 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
+	"github.com/KoukeNeko/moodle-cli/internal/workload"
+	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 )
 
 // Deps are the collaborators the composition root injects. Commands reach for
@@ -58,6 +60,11 @@ type Deps struct {
 	// API assembles the direct-call escape hatch. The safety mode and the
 	// caller's acceptance of a write are both per invocation.
 	API func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service
+	// WSRegistry is the generated union of supported core external functions.
+	// WS binds that contract to one authenticated Moodle session.
+	WSRegistry *wsregistry.Registry
+	WS         func(session *auth.Session, mode safety.Mode, allowWrite bool) *wsregistry.Service
+	Workload   func(session *auth.Session, capabilities *site.Capabilities) *workload.Service
 	// ServeMCP runs the agent server. It is injected rather than built here
 	// because the server speaks a protocol, and this layer does not.
 	ServeMCP func(context.Context, MCPSession) error

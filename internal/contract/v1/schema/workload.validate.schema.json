@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/workload.validate.schema.json",
+  "title": "moodle-cli workload.validate",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "workload.validate"},
+    "data": {
+      "type": "object",
+      "required": ["all_meet_minimum", "groups"],
+      "additionalProperties": false,
+      "properties": {
+        "all_meet_minimum": {"type": "boolean"},
+        "groups": {"type": "array", "items": {
+          "type": "object",
+          "required": ["term", "level", "credits", "minimum", "meets_minimum", "complete", "courses"],
+          "additionalProperties": false,
+          "properties": {
+            "term": {"type": "string"}, "level": {"type": "string"},
+            "credits": {"type": "number", "minimum": 0}, "minimum": {"type": "number", "minimum": 0},
+            "meets_minimum": {"type": "boolean"}, "complete": {"type": "boolean"},
+            "courses": {"type": "array", "items": {
+              "type": "object",
+              "required": ["id", "short_name", "full_name", "credits", "level", "term", "missing"],
+              "additionalProperties": false,
+              "properties": {
+                "id": {"type": "string"}, "short_name": {"type": "string"}, "full_name": {"type": "string"},
+                "credits": {"type": ["number", "null"], "minimum": 0}, "level": {"type": "string"},
+                "term": {"type": "string"}, "missing": {"type": "array", "items": {"type": "string"}}
+              }
+            }}
+          }
+        }}
+      }
+    },
+    "meta": {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"}
+  }
+}

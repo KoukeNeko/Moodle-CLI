@@ -5,6 +5,9 @@
 Use `moodle <command> --help` as the authoritative flag reference. IDs shown below can often be
 replaced by a pasted Moodle URL.
 
+The generated [complete command reference](Command-Reference) documents every command and flag;
+[feature coverage](Feature-Coverage) lists every core function in the three-version registry.
+
 ## Sites and authentication
 
 ```sh
@@ -23,7 +26,7 @@ moodle auth handler-status
 moodle auth unregister-handler
 ```
 
-## Student reads
+## Role-aware reads
 
 ```sh
 moodle doctor
@@ -56,11 +59,13 @@ The non-draft path uploads, saves, performs the separate â€œsubmit for gradingâ€
 reads the state back. `--draft` deliberately stops before handing work in. The JSON field `handed_in`
 is the final truth reported by Moodle.
 
-## API escape hatch
+## Typed core services and the plugin escape hatch
 
 ```sh
 moodle api functions --match assign
 moodle api call core_enrol_get_users_courses --param userid=4
+moodle ws list --version v52
+moodle ws describe core_course_update_courses
 ```
 
 The raw call still passes through the safety policy. Unreviewed functions are treated as writes and

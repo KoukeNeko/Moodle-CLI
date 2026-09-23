@@ -34,6 +34,8 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
+	"github.com/KoukeNeko/moodle-cli/internal/workload"
+	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 )
 
 // Build carries the version stamps injected at link time.
@@ -69,6 +71,11 @@ func Run(ctx context.Context, build Build, args []string) int {
 		)
 	}
 	manager := auth.NewManager(secret.Keyring{}, newClient)
+	registry, err := wsregistry.Load()
+	if err != nil {
+		renderer := cli.Renderer{Streams: streams, Format: cli.FormatTable}
+		return renderer.RenderError(err)
+	}
 
 	deps := cli.Deps{
 		ConfigPath: configPath,
@@ -177,6 +184,17 @@ func Run(ctx context.Context, build Build, args []string) int {
 				mode, allowWrite,
 			)
 		},
+		WSRegistry: registry,
+		WS: func(session *auth.Session, mode safety.Mode, allowWrite bool) *wsregistry.Service {
+			return wsregistry.NewService(
+				registry,
+				moodle.NewRawCaller(session.Client(), session.Token()),
+				mode, allowWrite,
+			)
+		},
+		Workload: func(session *auth.Session, _ *site.Capabilities) *workload.Service {
+			return workload.NewService(moodle.NewWorkloadBackend(session.Client(), session.Token()))
+		},
 		ServeMCP: func(ctx context.Context, session cli.MCPSession) error {
 			client, token := session.Session.Client(), session.Session.Token()
 			deps := mcp.Deps{
@@ -197,8 +215,15 @@ func Run(ctx context.Context, build Build, args []string) int {
 				),
 				Grades: grade.NewService(
 					moodle.NewGradeBackend(client, token, session.Capabilities)),
-				Calendar: calendar.NewService(moodle.NewCalendarBackend(client, token)),
-				Forums:   forum.NewService(moodle.NewForumBackend(client, token)),
+				Calendar:   calendar.NewService(moodle.NewCalendarBackend(client, token)),
+				Forums:     forum.NewService(moodle.NewForumBackend(client, token)),
+				WSRegistry: registry,
+				WS: wsregistry.NewService(
+					registry,
+					moodle.NewRawCaller(client, token),
+					safety.Mode{ReadOnly: !session.AllowWrite},
+					session.AllowWrite,
+				),
 			}
 			server := mcp.NewServer(
 				// stdout is the protocol. Everything this server says to a

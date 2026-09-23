@@ -11,14 +11,16 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/calendar"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 )
 
-func newCalendarCommand(r *Renderer, deps Deps) *cobra.Command {
+func newCalendarCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "calendar",
 		Short: "See what you still have to do",
 	}
 	cmd.AddCommand(newCalendarUpcomingCommand(r, deps))
+	addWorkflowCommands(cmd, r, deps, mode, calendarWorkflowSpecs()...)
 	return cmd
 }
 

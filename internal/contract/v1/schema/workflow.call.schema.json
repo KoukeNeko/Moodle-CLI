@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/workflow.call.schema.json",
+  "title": "moodle-cli workflow.call",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1}, "kind": {"const": "workflow.call"},
+    "data": {
+      "type": "object",
+      "required": ["operation", "function", "version", "params", "response", "dry_run", "effect", "destructive"],
+      "additionalProperties": false,
+      "properties": {
+        "operation": {"type": "string"}, "function": {"type": "string"},
+        "version": {"enum": ["v45", "v51", "v52"]}, "params": {"type": "object"},
+        "response": {}, "dry_run": {"type": "boolean"}, "effect": {"enum": ["read", "write"]},
+        "destructive": {"type": "boolean"}
+      }
+    },
+    "meta": {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"}
+  }
+}

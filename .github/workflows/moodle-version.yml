@@ -1,0 +1,94 @@
+name: Moodle version test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      seed:
+        required: true
+        type: string
+      scale:
+        required: false
+        type: boolean
+        default: false
+      enabled:
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    if: inputs.enabled
+    name: Moodle ${{ inputs.version }} command and decade acceptance
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 240
+    env:
+      E2E_SEED: ${{ inputs.seed }}
+      MOODLE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Verify runner capacity
+        run: ./scripts/runner-preflight.sh
+
+      - name: Remove this project's interrupted containers
+        run: make moodle-purge V=${{ inputs.version }}
+
+      - name: Run version acceptance
+        run: make moodle-matrix V=${{ inputs.version }}
+
+      - name: Capture version-matrix diagnostics
+        if: always()
+        run: |
+          mkdir -p test/e2e/artifacts
+          docker compose --project-name moodle-cli-e2e \
+            --file test/e2e/docker-compose.yml \
+            --profile "${{ inputs.version }}" ps --all \
+            > test/e2e/artifacts/matrix-containers.txt 2>&1 || true
+          docker compose --project-name moodle-cli-e2e \
+            --file test/e2e/docker-compose.yml \
+            --profile "${{ inputs.version }}" logs --no-color \
+            > test/e2e/artifacts/matrix-containers.log 2>&1 || true
+
+      # The scale stack reserves 4 GiB by itself. Keep the small two-site
+      # matrix and the PostgreSQL fixture sequential on the 5 GiB runner.
+      - name: Remove version-matrix containers before scale
+        if: always()
+        run: make moodle-purge V=${{ inputs.version }}
+
+      - name: Run PostgreSQL scale profile
+        if: ${{ always() && inputs.scale }}
+        run: make moodle-scale V=${{ inputs.version }}
+
+      - name: Capture runner diagnostics
+        if: always()
+        run: |
+          mkdir -p test/e2e/artifacts
+          df -h > test/e2e/artifacts/disk.txt
+          free -m > test/e2e/artifacts/memory.txt
+          docker system df > test/e2e/artifacts/docker-disk.txt 2>&1 || true
+
+      - name: Upload redacted evidence
+        if: always()
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: moodle-${{ inputs.version }}-${{ github.run_id }}
+          path: |
+            test/e2e/logs/
+            test/e2e/artifacts/
+            test/reports/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Remove containers and disposable volumes
+        if: always()
+        run: make moodle-purge V=${{ inputs.version }}

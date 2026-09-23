@@ -12,9 +12,10 @@ import (
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 )
 
-func newGradeCommand(r *Renderer, deps Deps) *cobra.Command {
+func newGradeCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "grade",
 		Short: "Read your grades",
@@ -23,6 +24,7 @@ func newGradeCommand(r *Renderer, deps Deps) *cobra.Command {
 		newGradeListCommand(r, deps),
 		newGradeOverviewCommand(r, deps),
 	)
+	addWorkflowCommands(cmd, r, deps, mode, gradeWorkflowSpecs()...)
 	return cmd
 }
 

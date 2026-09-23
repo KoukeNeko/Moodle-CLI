@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/ws.describe.schema.json",
+  "title": "moodle-cli ws.describe",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "ws.describe"},
+    "data": {
+      "type": "object",
+      "required": ["name", "component", "versions", "effect", "destructive", "credential", "deprecated_in", "variants"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "component": {"type": "string"},
+        "versions": {"type": "array", "items": {"enum": ["v45", "v51", "v52"]}},
+        "effect": {"enum": ["read", "write"]},
+        "destructive": {"type": "boolean"},
+        "credential": {"type": "boolean"},
+        "deprecated_in": {"type": "array", "items": {"enum": ["v45", "v51", "v52"]}},
+        "variants": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/variant"}
+        }
+      }
+    },
+    "meta": {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"}
+  },
+  "$defs": {
+    "variant": {
+      "type": "object",
+      "required": ["description", "deprecated", "effect", "destructive", "credential", "retry", "capabilities", "services", "transports", "login_required", "external_dependency", "parameters", "returns"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {"type": ["string", "null"]},
+        "deprecated": {"type": "boolean"},
+        "effect": {"enum": ["read", "write"]},
+        "destructive": {"type": "boolean"},
+        "credential": {"type": "boolean"},
+        "retry": {"enum": ["safe", "auth-only", "never"]},
+        "capabilities": {"type": "array", "items": {"type": "string"}},
+        "services": {"type": "array", "items": {"type": "string"}},
+        "transports": {
+          "type": "object",
+          "required": ["rest", "ajax"],
+          "additionalProperties": false,
+          "properties": {"rest": {"type": "boolean"}, "ajax": {"type": "boolean"}}
+        },
+        "login_required": {"type": "boolean"},
+        "external_dependency": {"type": "string"},
+        "parameters": {"type": "object"},
+        "returns": {"type": "object"}
+      }
+    }
+  }
+}

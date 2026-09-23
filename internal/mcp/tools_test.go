@@ -16,6 +16,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/mcp"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
+	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 )
 
 // The fakes below stand in for a site. They are deliberately thin: what is
@@ -121,6 +122,13 @@ func (fakeForums) Thread(context.Context, string) (forum.ThreadResult, error) {
 	return forum.ThreadResult{Provenance: site.NewProvenance(site.BackendWS)}, nil
 }
 
+type fakeWS struct{ calls []string }
+
+func (f *fakeWS) Call(_ context.Context, name string, _ map[string]any) (json.RawMessage, error) {
+	f.calls = append(f.calls, name)
+	return json.RawMessage(`[]`), nil
+}
+
 // build assembles a registry over the fakes.
 func build(t *testing.T, allowWrite bool) (*mcp.Registry, *fakeAssignments, *fakeCalendar) {
 	t.Helper()
@@ -128,16 +136,29 @@ func build(t *testing.T, allowWrite bool) (*mcp.Registry, *fakeAssignments, *fak
 		state: assignment.State{Status: assignment.StatusNew, CanEdit: true, CanSubmit: true},
 	}
 	clock := &fakeCalendar{}
+	registry, err := wsregistry.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	capabilities := site.NewCapabilities()
+	capabilities.Release = "5.2.3 (Build: 20260914)"
+	for _, name := range []string{"core_course_get_contents", "core_calendar_create_calendar_events"} {
+		capabilities.Functions[name] = site.FunctionInfo{Name: name}
+	}
+	ws := &fakeWS{}
 	deps := mcp.Deps{
-		Capabilities: staticCapabilities(site.NewCapabilities()),
+		Capabilities: staticCapabilities(capabilities),
 		SiteName:     "school",
 		AccountName:  "student1",
 		Courses:      course.NewService(fakeCourses{}),
 		Assignments: assignment.NewService(assignments,
 			safety.Mode{ReadOnly: !allowWrite}, assignments),
-		Grades:   grade.NewService(fakeGrades{}),
-		Calendar: calendar.NewService(clock),
-		Forums:   forum.NewService(fakeForums{}),
+		Grades:     grade.NewService(fakeGrades{}),
+		Calendar:   calendar.NewService(clock),
+		Forums:     forum.NewService(fakeForums{}),
+		WSRegistry: registry,
+		WS: wsregistry.NewService(registry, ws,
+			safety.Mode{ReadOnly: !allowWrite}, allowWrite),
 	}
 	return mcp.Register(deps, allowWrite), assignments, clock
 }
@@ -336,6 +357,47 @@ func TestAnAnswerArrivesAsBothDataAndText(t *testing.T) {
 	}
 	if fromText["kind"] != envelope["kind"] {
 		t.Error("the text and the structured content disagree")
+	}
+}
+
+func TestTypedWebServiceToolsAreCapabilityAndEffectSeparated(t *testing.T) {
+	readOnly := testTools(t, false)
+	listed := callTool(t, readOnly, "ws_list", map[string]any{
+		"version": "v52", "match": "core_course_get_contents",
+	})
+	if listed["isError"] == true || data(t, listed)["kind"] != "ws.list" {
+		t.Fatalf("ws_list failed: %v", listed)
+	}
+	read := callTool(t, readOnly, "ws_read", map[string]any{
+		"function": "core_course_get_contents",
+		"params":   map[string]any{"courseid": float64(2)},
+	})
+	if read["isError"] == true || data(t, read)["kind"] != "ws.call" {
+		t.Fatalf("ws_read failed: %v", read)
+	}
+	withheld := callTool(t, readOnly, "ws_write", map[string]any{
+		"function": "core_calendar_create_calendar_events",
+		"params":   map[string]any{"events": []any{}},
+	})
+	if withheld["isError"] != true {
+		t.Fatal("read-only MCP offered a path to typed writes")
+	}
+
+	writing := testTools(t, true)
+	write := callTool(t, writing, "ws_write", map[string]any{
+		"function": "core_calendar_create_calendar_events",
+		"params":   map[string]any{"events": []any{}},
+		"dry_run":  true,
+	})
+	if write["isError"] == true || data(t, write)["kind"] != "ws.call" {
+		t.Fatalf("ws_write dry run failed: %v", write)
+	}
+	wrongTool := callTool(t, writing, "ws_read", map[string]any{
+		"function": "core_calendar_create_calendar_events",
+		"params":   map[string]any{"events": []any{}},
+	})
+	if wrongTool["isError"] != true {
+		t.Fatal("ws_read accepted a registry-classified write")
 	}
 }
 

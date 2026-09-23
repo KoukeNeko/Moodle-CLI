@@ -104,6 +104,15 @@ func (a Arguments) Bool(name string) bool {
 	}
 }
 
+// Object reads a JSON object argument.
+func (a Arguments) Object(name string) map[string]any {
+	value, _ := a[name].(map[string]any)
+	if value == nil {
+		return map[string]any{}
+	}
+	return value
+}
+
 // definition is one tool in the Registry.
 type definition struct {
 	Name        string
@@ -157,9 +166,8 @@ func (r *Registry) describe() []tool {
 			Annotations: &toolAnnotations{
 				Title:        item.Title,
 				ReadOnlyHint: !item.Mutates,
-				// Every Moodle write is a replacement rather than an append,
-				// and none of them carry an idempotency key, so calling twice
-				// is never the same as calling once.
+				// No Moodle write carries an idempotency key. Destructive is
+				// supplied by the use case or generated function registry.
 				DestructiveHint: item.Destructive,
 				IdempotentHint:  !item.Mutates,
 				OpenWorldHint:   true,
@@ -173,7 +181,8 @@ func (r *Registry) describe() []tool {
 // instructions tell the agent what kind of server this is.
 func (r *Registry) instructions() string {
 	var b strings.Builder
-	b.WriteString("Read and act on a Moodle site as the signed-in student.\n\n")
+	b.WriteString("Read and act on a Moodle site within the signed-in account's capabilities. ")
+	b.WriteString("The account may be a learner, educator, course creator, manager, administrator, or a custom role.\n\n")
 	b.WriteString("Ids are strings. A timestamp is RFC 3339 in UTC, or null when the site ")
 	b.WriteString("sets none — Moodle's 0 means \"unset\", not 1970.\n\n")
 	b.WriteString("For assignments: saving work and handing it in are separate steps on ")
@@ -181,13 +190,13 @@ func (r *Registry) instructions() string {
 	b.WriteString("which. Check needs_hand_in, and trust handed_in over any step that ")
 	b.WriteString("appeared to succeed.\n\n")
 	if r.allowWrite {
-		b.WriteString("This session MAY change things on the site. Submitting coursework ")
-		b.WriteString("cannot be undone; confirm with the student before calling a tool ")
-		b.WriteString("that writes.")
+		b.WriteString("This session MAY change things on the site. Confirm the intended ")
+		b.WriteString("scope and target before calling a writing tool; inspect its annotations ")
+		b.WriteString("for destructive and idempotency properties. Some writes cannot be undone.")
 	} else {
 		b.WriteString("This session is read-only: no tool here can change anything on the ")
-		b.WriteString("site. If the student asks you to submit work, tell them to run ")
-		b.WriteString("`moodle assignment submit` themselves.")
+		b.WriteString("site. If a write is needed, a person must restart it explicitly with ")
+		b.WriteString("`moodle mcp serve --allow-write`.")
 	}
 	return b.String()
 }

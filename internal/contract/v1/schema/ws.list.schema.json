@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/ws.list.schema.json",
+  "title": "moodle-cli ws.list",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "ws.list"},
+    "data": {
+      "type": "object",
+      "required": ["registry_digest", "snapshots", "functions"],
+      "additionalProperties": false,
+      "properties": {
+        "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "snapshots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "release", "version"],
+            "additionalProperties": false,
+            "properties": {
+              "key": {"enum": ["v45", "v51", "v52"]},
+              "release": {"type": "string"},
+              "version": {"type": "string"}
+            }
+          }
+        },
+        "functions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/function"}
+        }
+      }
+    },
+    "meta": {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"}
+  },
+  "$defs": {
+    "function": {
+      "type": "object",
+      "required": ["name", "component", "versions", "effect", "destructive", "credential", "deprecated_in"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "component": {"type": "string"},
+        "versions": {"type": "array", "items": {"enum": ["v45", "v51", "v52"]}},
+        "effect": {"enum": ["read", "write"]},
+        "destructive": {"type": "boolean"},
+        "credential": {"type": "boolean"},
+        "deprecated_in": {"type": "array", "items": {"enum": ["v45", "v51", "v52"]}}
+      }
+    }
+  }
+}

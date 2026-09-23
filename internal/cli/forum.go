@@ -12,9 +12,10 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
+	"github.com/KoukeNeko/moodle-cli/internal/safety"
 )
 
-func newForumCommand(r *Renderer, deps Deps) *cobra.Command {
+func newForumCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "forum",
 		Short: "Read course discussions",
@@ -24,6 +25,7 @@ func newForumCommand(r *Renderer, deps Deps) *cobra.Command {
 		newForumDiscussionsCommand(r, deps),
 		newForumReadCommand(r, deps),
 	)
+	addWorkflowCommands(cmd, r, deps, mode, forumWorkflowSpecs()...)
 	return cmd
 }
 

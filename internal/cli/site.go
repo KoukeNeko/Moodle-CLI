@@ -32,7 +32,84 @@ func newSiteCommand(r *Renderer, deps Deps) *cobra.Command {
 		newSiteListCommand(r, deps),
 		newSiteUseCommand(r, deps),
 		newSiteRemoveCommand(r, deps),
+		newSiteAcademicCommand(r, deps),
 	)
+	return cmd
+}
+
+func newSiteAcademicCommand(r *Renderer, deps Deps) *cobra.Command {
+	cmd := &cobra.Command{Use: "academic", Short: "Configure institution-specific workload fields"}
+	cmd.AddCommand(newSiteAcademicConfigureCommand(r, deps))
+	return cmd
+}
+
+func newSiteAcademicConfigureCommand(r *Renderer, deps Deps) *cobra.Command {
+	var siteFlag, creditsField, levelField, termField string
+	var undergraduate, graduate float64
+	var yes, dryRun bool
+	cmd := &cobra.Command{
+		Use:   "configure",
+		Short: "Map course custom fields to credits, academic level and term",
+		Args:  cobra.NoArgs,
+		Annotations: map[string]string{
+			annotationKind: "site.academic.configure", annotationMutates: "true",
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			file, err := config.Load(deps.ConfigPath)
+			if err != nil {
+				return err
+			}
+			resolved, err := file.Resolve(siteFlag, "")
+			if err != nil {
+				return err
+			}
+			academic := config.Academic{
+				CreditsField: creditsField, LevelField: levelField, TermField: termField,
+				Minimum: config.AcademicMinimum{Undergraduate: undergraduate, Graduate: graduate},
+			}
+			if err := academic.Validate(); err != nil {
+				return err
+			}
+			planned := dryRun
+			if !dryRun {
+				if !yes {
+					return errs.New(errs.CodeUsage, "changing academic workload settings requires confirmation").
+						WithHint("inspect it with --dry-run, then pass --yes")
+				}
+				resolved.Site.Academic = academic
+				if err := file.Save(); err != nil {
+					return err
+				}
+			}
+			payload := v1.SiteAcademicConfiguration{
+				Site: resolved.SiteName, CreditsField: academic.CreditsField,
+				LevelField: academic.LevelField, TermField: academic.TermField,
+				UndergraduateMinimum: academic.Minimum.Undergraduate,
+				GraduateMinimum:      academic.Minimum.Graduate, DryRun: planned,
+			}
+			return r.Render(Result{
+				Envelope: v1.NewEnvelope("site.academic.configure", payload, v1.NewMeta(v1.SourceLocal)),
+				Human: func(w io.Writer) error {
+					prefix := "Configured"
+					if planned {
+						prefix = "Would configure"
+					}
+					_, err := fmt.Fprintf(w, "%s academic workload fields for %s: credits=%s, level=%s, term=%s; minimum undergraduate=%.2f, graduate=%.2f.\n",
+						prefix, resolved.SiteName, academic.CreditsField, academic.LevelField,
+						academic.TermField, academic.Minimum.Undergraduate, academic.Minimum.Graduate)
+					return err
+				},
+			})
+		},
+	}
+	cmd.Flags().StringVar(&siteFlag, "site", "", "site to configure")
+	cmd.Flags().StringVar(&creditsField, "credits-field", "credits", "course custom-field shortname containing credits")
+	cmd.Flags().StringVar(&levelField, "level-field", "academic_level", "course custom-field shortname containing undergraduate or graduate")
+	cmd.Flags().StringVar(&termField, "term-field", "academic_term", "course custom-field shortname containing the academic term")
+	cmd.Flags().Float64Var(&undergraduate, "undergraduate-minimum", 21, "minimum undergraduate credits per term")
+	cmd.Flags().Float64Var(&graduate, "graduate-minimum", 6, "minimum graduate credits per term")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the configuration without saving it")
+	cmd.Flags().BoolVar(&yes, "yes", false, "save the configuration without another prompt")
 	return cmd
 }
 

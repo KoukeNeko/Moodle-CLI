@@ -22,6 +22,11 @@ go.work.sum
 .idea/
 .vscode/
 *.swp
+__pycache__/
+*.py[cod]
+
+# Agent-created linked worktrees are local execution state, never source.
+.claude/worktrees/
 
 # 本機設定與憑證：絕不入版控
 config.yaml
@@ -37,6 +42,12 @@ test/e2e/logs/
 
 # keyring 容器的 session bus socket（執行時產生）
 test/e2e/run/
+
+# 產生式測試報告與 dashboard build，不把大型原始 evidence 入版控。
+test/reports/
+report-site/dist/
+report-site/node_modules/
+report-site/.data-app-offline/
 
 # 本機工作日誌：記錄每輪做了什麼，屬個人筆記不入版控
 NOTES.local.md

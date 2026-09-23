@@ -1,7 +1,7 @@
 <h1 align="center">Moodle CLI</h1>
 
 <p align="center">
-  <strong>An independent Moodle command-line client for students.</strong><br>
+  <strong>An independent Moodle command-line client for learners, educators, and administrators.</strong><br>
   Readable terminal output for people, and a versioned contract for scripts, CI, and agents.
 </p>
 
@@ -18,6 +18,7 @@
 <p align="center">
   <a href="#getting-started">Getting started</a>
   · <a href="https://github.com/KoukeNeko/Moodle-CLI/wiki">Handbook</a>
+  · <a href="https://koukeneko.github.io/Moodle-CLI/">Verification dashboard</a>
   · <a href="test/e2e/README.md">Test lab</a>
   · <a href="docs/architecture.md">Architecture</a>
 </p>
@@ -25,14 +26,16 @@
 ```sh
 moodle course list
 moodle calendar upcoming
-moodle assignment show 42
-moodle assignment submit 42 report.pdf --dry-run
+moodle participant list --param courseid=42
+moodle assignment submissions --param 'assignmentids=[17]'
+moodle ws describe core_course_get_contents
 ```
 
 Moodle CLI talks to the Moodle site you configure, preferring its official Web Service API and
 falling back to read-only AJAX or HTML adapters when a site does not expose the required function.
-It handles courses, assignments, calendars, grades, forums, and files without pretending that every
-Moodle installation has the same capabilities.
+It handles courses, participants, groups, assignments, calendars, grades, forums, completion,
+academic workload, and files without pretending that every role or Moodle installation has the
+same capabilities.
 
 One binary serves people and programs. Human output stays readable; `--json` emits a stable
 `schema_version: 1` envelope, commands expose JSON Schema, and failures have fixed exit codes. The
@@ -68,6 +71,9 @@ moodle version --json
 moodle commands --json
 moodle schema assignment.submit
 moodle course list --json
+moodle ws list --version v52 --effect write --json
+moodle ws describe core_course_update_courses --json
+moodle ws call core_course_get_contents --params-json '{"courseid":42}'
 ```
 
 Every JSON response uses the same versioned envelope. Stable error classes map to distinct process
@@ -75,11 +81,30 @@ exit codes: success `0`, internal `1`, usage `2`, configuration `3`, authenticat
 `5`, not found `6`, validation `7`, conflict `8`, unavailable `9`, network `10`, upstream `11`, and
 ambiguous write outcome `12`. Programs branch on structured codes, never English messages.
 
+The typed `ws` registry is generated from disposable installations of Moodle 4.5.12, 5.1.7, and
+5.2.3. It currently describes a 780-function union (759/761/755 functions respectively), retaining
+each version's parameter and return JSON Schema, transport, effect, capability, deprecation, and
+external-dependency metadata. A token's actual service exposure is checked again at runtime.
+
+### Roles are capabilities, not personas
+
+The CLI is not student-only. Moodle decides what an account may do from its system, category,
+course, activity, group, and override context. The same binary therefore serves site
+administrators, managers, course creators, editing and non-editing teachers, students, ordinary
+authenticated users, and custom roles. Commands do not infer authority from a role name: they
+inspect the functions exposed to the active credential and let Moodle enforce the relevant
+capability in its real context.
+
+Read commands remain useful across roles. Reviewed high-level write commands are identified as
+writes in `moodle commands --json`, require `--yes` (or support `--dry-run`), never retry a generic
+write, and honor the process-wide `--read-only` guard. Third-party plugin functions remain
+available through the explicitly untyped `api call` escape hatch.
+
 ### Deliberately conservative writes
 
 - Official Web Service functions are classified by a reviewed safety registry. Unknown functions
   are treated as writes and are never retried automatically.
-- `--dry-run` makes assignment submission resolve and describe its plan without sending a write.
+- `--dry-run` validates typed and high-level writes and describes the plan without sending it.
 - `--read-only` removes write commands from the command tree.
 - `moodle mcp serve` is read-only by default; `--allow-write` must be explicit.
 - HTML fallback is read-only. If Moodle cannot prove a submission's semantics, the CLI refuses it.
@@ -157,14 +182,23 @@ moodle forum read 19
 moodle file download 'https://moodle.example.edu/pluginfile.php/...'
 moodle resolve 'https://moodle.example.edu/mod/assign/view.php?id=42'
 
-moodle api functions --match assign
-moodle api call core_enrol_get_users_courses --param userid=4
+moodle participant list --param courseid=2
+moodle enrolment methods --param courseid=2
+moodle enrolment add --params-json '{"enrolments":[{"roleid":5,"userid":7,"courseid":2}]}' --dry-run
+moodle group create --params-json '{"groups":[{"courseid":2,"name":"Lab A"}]}' --dry-run
+moodle assignment submissions --param 'assignmentids=[42]'
+moodle workload validate --require-minimum
+
+moodle ws list --version v52 --component mod_assign
+moodle ws describe mod_assign_save_grade
+moodle ws call core_enrol_get_users_courses --param userid=4
+moodle api call local_example_function --params-json '{}'  # third-party/unregistered
 moodle mcp serve                      # read-only tools
 moodle mcp serve --allow-write        # opt in to write tools
 ```
 
-Run `moodle <command> --help`, or use the [command handbook](https://github.com/KoukeNeko/Moodle-CLI/wiki/Commands)
-for the complete surface.
+Run `moodle <command> --help`, use the generated [complete command reference](https://github.com/KoukeNeko/Moodle-CLI/wiki/Command-Reference),
+or inspect all 780 core functions in [feature coverage](https://github.com/KoukeNeko/Moodle-CLI/wiki/Feature-Coverage).
 
 ## Security boundary
 
@@ -191,10 +225,18 @@ The full Docker-backed suite is verified against exactly these versions:
 | 5.1 | 5.1.7 | standard site, restricted Web Service site, ten academic years |
 | 5.2 | 5.2.3 | standard site, restricted Web Service site, ten academic years |
 
-The decade scenario creates 10 yearly cohorts, 30 students, 20 assignments, 60 submissions, eight
+The small decade scenario creates 10 yearly cohorts, 30 students, 20 assignments, 60 submissions, eight
 archived courses, two active courses, calendar events, missing grades, zero grades, drafts, submitted
 work, overdue work, and cross-year convergence. It is intended to catch assumptions that only work
 on a fresh demonstration site.
+
+The separate PostgreSQL scale profile creates 50,000 synthetic students, 1,000 academic course
+instances across 20 terms, a 50,000-participant orientation course, and 2.37 million enrolment
+facts. SQL control-plane assertions independently verify 21 undergraduate credits and 6 graduate
+credits per term; the CLI then reads representative workloads and all 50 participant pages while
+recording latency, peak RSS, HTTP requests, and disk use. The scale container has no public egress
+after its image bootstrap completes. Moodle 5.2.3 requires PostgreSQL 16, so the profile uses that
+minimum instead of bypassing Moodle's environment check.
 
 Release builds target Linux, macOS, and Windows on amd64 and arm64. Linux is the only platform with
 the automatic browser callback handler today; the CLI and manual authentication paths build and test
@@ -210,6 +252,8 @@ make verify
 
 make moodle-up V=v52
 make moodle-decade V=v52
+make moodle-matrix V=v52
+make moodle-scale V=v52
 make moodle-down V=v52
 ```
 

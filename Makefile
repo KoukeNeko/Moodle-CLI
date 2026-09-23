@@ -1,4 +1,4 @@
-.PHONY: build install test test-race arch lint verify moodle-up moodle-down moodle-purge moodle-status moodle-decade help
+.PHONY: build install test test-race arch lint verify docs-check moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-matrix moodle-scale report-site help
 
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
@@ -22,6 +22,7 @@ help:
 	@echo "  make arch                  只跑 import 邊界檢查"
 	@echo "  make lint                  gofmt 檢查 + go vet"
 	@echo "  make verify                test + test-race + lint + build"
+	@echo "  make docs-check            驗證自動產生的 wiki 沒有漂移"
 	@echo
 	@echo "測試環境（見 test/e2e/README.md）："
 	@echo "  make moodle-up     V=v52   起容器 → 等就緒 → 佈建"
@@ -29,6 +30,9 @@ help:
 	@echo "  make moodle-purge  V=v52   停掉並刪除資料"
 	@echo "  make moodle-status         列出目前的測試站"
 	@echo "  make moodle-decade V=v52   佈建並驗收十年情境"
+	@echo "  make moodle-matrix V=v52   小型代表性命令與十年正確性矩陣"
+	@echo "  make moodle-scale  V=v52   50k 學生 PostgreSQL 規模測試"
+	@echo "  make report-site           產生可發布的測試 dashboard"
 
 build:
 	mkdir -p bin
@@ -56,7 +60,10 @@ lint:
 	fi
 	go vet ./...
 
-verify: test test-race lint build
+verify: test test-race lint build docs-check
+
+docs-check: build
+	./scripts/generate-wiki.py --binary ./bin/moodle --check
 
 moodle-up:
 	./scripts/moodle-env.sh up $(V)
@@ -72,3 +79,16 @@ moodle-status:
 
 moodle-decade: build
 	./test/e2e/decade-run.sh $(V)
+
+moodle-matrix: build
+	./scripts/moodle-env.sh up $(V)
+	./test/e2e/decade-run.sh $(V)
+	STD_PORT=$$(case "$(V)" in v45) echo 8451;; v51) echo 8511;; v52) echo 8521;; *) exit 2;; esac); \
+	NOWS_PORT=$$(case "$(V)" in v45) echo 8452;; v51) echo 8512;; v52) echo 8522;; *) exit 2;; esac); \
+	STD_PORT=$$STD_PORT NOWS_PORT=$$NOWS_PORT ./test/e2e/full-run.sh --nows
+
+moodle-scale:
+	./test/scale/run.sh $(V)
+
+report-site:
+	./scripts/report-site.sh

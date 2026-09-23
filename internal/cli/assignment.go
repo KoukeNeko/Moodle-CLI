@@ -31,6 +31,7 @@ func newAssignmentCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Comm
 		newAssignmentStatusCommand(r, deps),
 		newAssignmentSubmitCommand(r, deps, mode),
 	)
+	addWorkflowCommands(cmd, r, deps, mode, assignmentWorkflowSpecs()...)
 	return cmd
 }
 

@@ -4,6 +4,9 @@
 
 完整 flag 以 `moodle <command> --help` 為準。以下多數 ID 都可以直接換成從 Moodle 貼來的 URL。
 
+自動產生的[完整命令參考](Command-Reference-zh-TW)逐一說明所有命令與旗標；
+[功能覆蓋](Feature-Coverage-zh-TW)列出三版 registry 的每個 core function。
+
 ## 站台與登入
 
 ```sh
@@ -22,7 +25,7 @@ moodle auth handler-status
 moodle auth unregister-handler
 ```
 
-## 學生讀取功能
+## 依角色 capability 的讀取功能
 
 ```sh
 moodle doctor
@@ -54,11 +57,13 @@ moodle assignment submit <id|url> report.pdf --draft --yes
 非草稿流程會上傳、儲存、在需要時執行獨立的「submit for grading」，最後回讀狀態。`--draft` 明確停在
 尚未交件的狀態；JSON 的 `handed_in` 才是 Moodle 回報的最終事實。
 
-## API escape hatch
+## Typed core service 與 plugin escape hatch
 
 ```sh
 moodle api functions --match assign
 moodle api call core_enrol_get_users_courses --param userid=4
+moodle ws list --version v52
+moodle ws describe core_course_update_courses
 ```
 
 Raw call 仍會經過 safety policy。未審查函式視為寫入且不重試；它是用來操作尚未有高階命令的官方函式，

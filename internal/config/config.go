@@ -17,7 +17,7 @@ import (
 )
 
 // SchemaVersion is the config format version this build understands.
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 // EnvPath overrides the configuration location.
 const EnvPath = "MOODLE_CLI_CONFIG"
@@ -52,8 +52,38 @@ type Site struct {
 	Backend        string              `yaml:"backend"`
 	DefaultAccount string              `yaml:"default_account"`
 	Accounts       map[string]*Account `yaml:"accounts"`
+	Academic       Academic            `yaml:"academic,omitempty"`
 
 	Extra map[string]any `yaml:",inline"`
+}
+
+// Academic maps institution-specific course custom fields onto workload
+// semantics. Moodle does not define a universal credit or academic-level
+// field, so the mapping belongs to each configured site.
+type Academic struct {
+	CreditsField string          `yaml:"credits_field"`
+	LevelField   string          `yaml:"level_field"`
+	TermField    string          `yaml:"term_field"`
+	Minimum      AcademicMinimum `yaml:"minimum"`
+}
+
+// AcademicMinimum is the institution's minimum credits per term.
+type AcademicMinimum struct {
+	Undergraduate float64 `yaml:"undergraduate"`
+	Graduate      float64 `yaml:"graduate"`
+}
+
+// Validate checks a site academic mapping before it is used.
+func (a Academic) Validate() error {
+	if strings.TrimSpace(a.CreditsField) == "" || strings.TrimSpace(a.LevelField) == "" || strings.TrimSpace(a.TermField) == "" {
+		return errs.New(errs.CodeConfiguration,
+			"academic credits_field, level_field and term_field must all be configured").
+			WithHint("run `moodle site academic configure`")
+	}
+	if a.Minimum.Undergraduate < 0 || a.Minimum.Graduate < 0 {
+		return errs.New(errs.CodeConfiguration, "academic minimum credits cannot be negative")
+	}
+	return nil
 }
 
 // Preferences are user-facing defaults. Command-line flags always win.
@@ -141,8 +171,8 @@ func migrate(file *File, original []byte, path string) error {
 	if err := os.WriteFile(backup, original, 0o600); err != nil {
 		return errs.Wrap(errs.CodeConfiguration, err, fmt.Sprintf("cannot back up %s", path))
 	}
-	// No migrations exist yet: version 0 means "written before the field
-	// existed", which is shape-compatible with version 1.
+	// Versions 0 and 1 are shape-compatible with version 2: the academic
+	// mapping is optional until a workload command is used.
 	file.SchemaVersion = SchemaVersion
 	return nil
 }
