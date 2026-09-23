@@ -1,4 +1,4 @@
-.PHONY: build install test test-race arch lint verify docs-check moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-matrix moodle-scale report-site help
+.PHONY: build install test test-race arch lint verify docs-check report-data-test moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-matrix moodle-scale report-site help
 
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
@@ -23,6 +23,7 @@ help:
 	@echo "  make lint                  gofmt 檢查 + go vet"
 	@echo "  make verify                test + test-race + lint + build"
 	@echo "  make docs-check            驗證自動產生的 wiki 沒有漂移"
+	@echo "  make report-data-test      驗證 dashboard 證據契約與 no-skip 規則"
 	@echo
 	@echo "測試環境（見 test/e2e/README.md）："
 	@echo "  make moodle-up     V=v52   起容器 → 等就緒 → 佈建"
@@ -60,10 +61,13 @@ lint:
 	fi
 	go vet ./...
 
-verify: test test-race lint build docs-check
+verify: test test-race lint build docs-check report-data-test
 
 docs-check: build
 	./scripts/generate-wiki.py --binary ./bin/moodle --check
+
+report-data-test:
+	python3 ./scripts/test-report-data.py
 
 moodle-up:
 	./scripts/moodle-env.sh up $(V)

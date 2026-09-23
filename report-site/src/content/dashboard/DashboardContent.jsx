@@ -55,8 +55,12 @@ export function DashboardContent() {
     {tab === "overview" && <>
       <div className="status-note" role="note">
         <span className="status-note__marker">Observed evidence</span>
-        <span>Registry coverage and scale acceptance are separate claims. The current snapshot records the
-          role/function matrix as <strong>not run</strong>; no missing execution is reported as a pass or skip.</span>
+        {executedRoleCells === 0
+          ? <span>Registry coverage and scale acceptance are separate claims. The current snapshot records the
+              role/function matrix as <strong>not run</strong>; no missing execution is reported as a pass or skip.</span>
+          : <span>Registry coverage, role execution, and scale acceptance are separate claims. This snapshot contains
+              <strong> {number(executedRoleCells)} executed role/domain rows</strong>; expected denials and expected
+              unavailability remain visible instead of being counted as skips.</span>}
       </div>
       <Section id="overview-metrics-title" title="Verification snapshot" spacing="none">
         <div className="metric-grid">
@@ -95,10 +99,15 @@ export function DashboardContent() {
     </Section>}
 
     {tab === "roles" && <>
-      <div className="status-note status-note--warning" role="note">
-        <span>The runtime role/function harness has not emitted an artifact for this snapshot. Cells remain
-          <strong> not-run</strong> until Moodle actually returns passed, expected denied, expected unavailable, or failed.</span>
-      </div>
+      {executedRoleCells === 0
+        ? <div className="status-note status-note--warning" role="note">
+            <span>The runtime role/function harness has not emitted an artifact for this snapshot. Cells remain
+              <strong> not-run</strong> until Moodle actually returns passed, expected denied, expected unavailable, or failed.</span>
+          </div>
+        : <div className="status-note" role="note">
+            <span>These rows come from executed CLI cells. A denied or unavailable result is successful only when the
+              fixture expected that exact Moodle authorization outcome; the harness does not emit skip.</span>
+          </div>}
       <Section id="role-matrix-title" title="Role execution matrix" spacing="none">
         <EvidenceTable id="role-table" queryId="roles" title="Role and domain results"
           description="Includes built-in, administrator, archetype-based custom, and no-archetype custom identities."

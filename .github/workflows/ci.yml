@@ -116,6 +116,7 @@ jobs:
           cache: true
       - run: make build
       - run: ./scripts/generate-wiki.py --binary ./bin/moodle --check
+      - run: make report-data-test
 
   moodle-decade:
     name: Moodle ${{ matrix.version }} decade

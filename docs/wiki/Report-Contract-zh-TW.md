@@ -15,6 +15,16 @@ GitHub Pages dashboard 把「函式清冊」與「實際執行 evidence」分開
 可依版本、component、effect、結果篩選。`registry-covered`、`passed`、`partial`、`not-run` 是刻意分開
 的狀態。
 
+## 角色矩陣 JSONL
+
+`test/reports/role-matrix.jsonl` 每行代表一個實際執行的 CLI cell。每個 JSON object 必須包含
+`version`、`role`、`function`、`outcome`；`domain` 可省略，此時由函式 namespace 推導。合法結果
+只有 `passed`、`expected_denied`、`expected_unavailable`、`failed`；`skip` 不合法，會使報告建置失敗。
+
+artifact 不存在時，dashboard 產生明確的 `not-run` placeholder；artifact 存在時，依版本、runtime
+role、domain 彙總，對應函式也會由 `registry-covered` 改為 `executed` 或 `failed`。預期的權限拒絕與
+不可用會保留為獨立授權結果，不會被重新包裝成一般 pass。
+
 ## 保存與去敏
 
 Pages 目前發布最新的合成 snapshot；歷史趨勢累積仍是待完成里程碑，不能從只有一列的 Runs view
@@ -23,4 +33,5 @@ Pages 目前發布最新的合成 snapshot；歷史趨勢累積仍是待完成�
 request secret。
 
 Report builder 讀取產生式 registry 與測試 artifact，附上精確來源 lineage；測試失敗後仍要建置報告，
-讓失敗 evidence 可查。`make report-site` 可在本機重建同一份靜態 dashboard。
+讓失敗 evidence 可查。`make report-site` 可在本機重建同一份靜態 dashboard；CI 以
+`make report-data-test` 驗證缺少、已觀測及非法／no-skip evidence 的行為。

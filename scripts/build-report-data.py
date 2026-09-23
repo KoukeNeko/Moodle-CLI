@@ -22,6 +22,29 @@ def load(path: pathlib.Path, default):
         return default
 
 
+def load_jsonl(path: pathlib.Path) -> list[dict]:
+    """Load a strict JSONL evidence file.
+
+    A present but malformed role matrix must fail the report build. Silently
+    turning bad execution evidence into ``not-run`` would erase a failed run
+    from the public record.
+    """
+    if not path.exists():
+        return []
+    rows = []
+    for line_number, raw in enumerate(path.read_text().splitlines(), 1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise SystemExit(f"{path}:{line_number}: invalid JSON: {error}") from error
+        if not isinstance(row, dict):
+            raise SystemExit(f"{path}:{line_number}: role cell must be a JSON object")
+        rows.append(row)
+    return rows
+
+
 def source(label: str, files: list[str], component_ids: list[str], caveats: list[str] | None = None):
     return {
         "label": label,
@@ -63,20 +86,69 @@ for key in ("v45", "v51", "v52"):
             "result": "registry-covered",
         })
 
-role_names = [
+default_role_names = [
     "site administrator", "manager", "coursecreator", "editingteacher", "teacher",
     "student", "guest", "user", "frontpage", "custom archetype", "custom no-archetype",
 ]
-role_rows = [{
-    "version": version,
-    "role": role,
-    "domain": "all core functions",
-    "passed": 0,
-    "expected_denied": 0,
-    "expected_unavailable": 0,
-    "failed": 0,
-    "status": "not-run",
-} for version in ("v45", "v51", "v52") for role in role_names]
+role_matrix_path = pathlib.Path(os.environ.get(
+    "MOODLE_ROLE_MATRIX_REPORT", ROOT / "test/reports/role-matrix.jsonl"))
+role_cells = load_jsonl(role_matrix_path)
+role_outcome_names = ("passed", "expected_denied", "expected_unavailable", "failed")
+allowed_role_outcomes = set(role_outcome_names)
+function_index = {(row["version"], row["function"]): row for row in functions}
+
+role_groups = {}
+function_outcomes = {}
+for line_number, cell in enumerate(role_cells, 1):
+    missing = [key for key in ("version", "role", "function", "outcome") if not cell.get(key)]
+    if missing:
+        raise SystemExit(
+            f"{role_matrix_path}:{line_number}: role cell is missing {', '.join(missing)}")
+    version = cell["version"]
+    function = cell["function"]
+    outcome = cell["outcome"]
+    registry_row = function_index.get((version, function))
+    if registry_row is None:
+        raise SystemExit(
+            f"{role_matrix_path}:{line_number}: {version}/{function} is not in the generated registry")
+    if outcome not in allowed_role_outcomes:
+        raise SystemExit(
+            f"{role_matrix_path}:{line_number}: outcome {outcome!r} is not allowed; "
+            "skip is deliberately not a role-matrix result")
+    # Moodle records many core functions under the broad "moodle" component.
+    # The first two function-name segments retain a useful product domain
+    # (core_course, mod_assign, tool_mobile, …) unless a recipe supplies one.
+    domain = cell.get("domain") or "_".join(function.split("_")[:2])
+    key = (version, cell["role"], domain)
+    counts = role_groups.setdefault(key, {name: 0 for name in role_outcome_names})
+    counts[outcome] += 1
+    function_outcomes.setdefault((version, function), []).append(outcome)
+
+if role_groups:
+    role_rows = []
+    for (version, role, domain), counts in sorted(role_groups.items()):
+        role_rows.append({
+            "version": version,
+            "role": role,
+            "domain": domain,
+            **counts,
+            "status": "failed" if counts["failed"] else "passed",
+        })
+    for row in functions:
+        outcomes = function_outcomes.get((row["version"], row["function"]), [])
+        if outcomes:
+            row["result"] = "failed" if "failed" in outcomes else "executed"
+else:
+    role_rows = [{
+        "version": version,
+        "role": role,
+        "domain": "all core functions",
+        "passed": 0,
+        "expected_denied": 0,
+        "expected_unavailable": 0,
+        "failed": 0,
+        "status": "not-run",
+    } for version in ("v45", "v51", "v52") for role in default_role_names]
 
 truth = load(ROOT / "test/reports/scale-v52/truth.json", {})
 participant_path = ROOT / "test/reports/scale-v52/participants.tsv"
@@ -136,6 +208,11 @@ try:
 except (OSError, subprocess.CalledProcessError):
     commit = "unknown"
 generated = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+role_matrix_status = (
+    "not-run" if not role_cells else
+    "failed" if any(cell["outcome"] == "failed" for cell in role_cells) else
+    "observed"
+)
 runs = [{
     "run": os.environ.get("GITHUB_RUN_ID", "local-observation"),
     "commit": os.environ.get("GITHUB_SHA", commit),
@@ -143,7 +220,7 @@ runs = [{
     "runner": os.environ.get("RUNNER_NAME", "local"),
     "runner_image": os.environ.get("ImageOS", "self-hosted-linux-x64"),
     "registry_functions": len({row["function"] for row in functions}),
-    "role_matrix": "not-run",
+    "role_matrix": role_matrix_status,
     "scale": scale_rows[0]["status"] if scale_rows else "not-run",
 }]
 
@@ -171,8 +248,11 @@ snapshot = {
         "functions": {"rows": functions, "source": source("Core external-function coverage",
             ["test/e2e/export-ws-registry.php", "internal/wsregistry/data/*.json"], ["function-table"])},
         "roles": {"rows": role_rows, "source": source("Runtime role/function matrix",
-            ["test/reports/role-matrix.jsonl"], ["role-summary", "role-table"],
-            ["No role/function matrix artifact was present in this snapshot; cells are explicitly not-run, never skipped."])},
+            [str(role_matrix_path.relative_to(ROOT)) if role_matrix_path.is_relative_to(ROOT)
+             else str(role_matrix_path)], ["role-summary", "role-table"],
+            (["No role/function matrix artifact was present in this snapshot; cells are explicitly not-run, never skipped."]
+             if not role_cells else
+             ["Every row is an executed CLI cell. Expected denials and expected unavailability are successful security outcomes, not skips."]))},
         "scale": {"rows": scale_rows, "source": source("PostgreSQL scale acceptance",
             ["test/reports/scale-v52/truth.json", "test/reports/scale-v52/participants.tsv",
              "test/reports/scale-v52/scale-summary.json", "test/reports/scale-v52/rest-access.log"],

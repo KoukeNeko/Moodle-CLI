@@ -16,6 +16,18 @@ artifact into a pass.
 Filters are available for version, component, effect, and result. `registry-covered`, `passed`,
 `partial`, and `not-run` are deliberately distinct states.
 
+## Role matrix JSONL
+
+`test/reports/role-matrix.jsonl` contains one executed CLI cell per line. Every object must contain
+`version`, `role`, `function`, and `outcome`; `domain` is optional and otherwise derives from the
+function namespace. The only valid outcomes are `passed`, `expected_denied`,
+`expected_unavailable`, and `failed`. `skip` is invalid and makes the report build fail.
+
+When the artifact is absent, the dashboard emits explicit `not-run` placeholders. When it is
+present, rows are aggregated by version, runtime role, and domain, and the matching function rows
+change from `registry-covered` to `executed` or `failed`. Expected denial and unavailability are
+kept as separate authorization results rather than being relabelled as passes.
+
 ## Retention and redaction
 
 Pages currently publishes the latest synthetic snapshot. Historical trend accumulation is a pending
@@ -25,4 +37,5 @@ tokens, cookies, passwords, callback URLs, authorization headers, or unredacted 
 
 The report builder reads generated registries and test artifacts, publishes exact source lineage,
 and still builds after a test failure so failed evidence remains inspectable. `make report-site`
-rebuilds the same static dashboard locally.
+rebuilds the same static dashboard locally. `make report-data-test` verifies absent, observed, and
+invalid/no-skip evidence behavior in CI.
