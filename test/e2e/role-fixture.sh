@@ -58,6 +58,12 @@ if by_name["guest"].get("credential_kind") != "guest":
     raise SystemExit("guest was incorrectly modelled as a login account")
 if not by_name["site_administrator"].get("is_site_administrator"):
     raise SystemExit("site administrator was incorrectly modelled as a role")
+for name in ("manager", "coursecreator"):
+    if by_name[name]["assignment"].get("context_level") != 10:
+        raise SystemExit(f"{name} fixture is not assigned at system context")
+for name in ("editingteacher", "teacher", "student", "matrixteacher", "matrixblank"):
+    if by_name[name]["assignment"].get("context_level") != 50:
+        raise SystemExit(f"{name} fixture is not a real course enrolment")
 
 print(
     f"  ✓ discovered {len(runtime)} runtime roles and {len(roles)} principals; "

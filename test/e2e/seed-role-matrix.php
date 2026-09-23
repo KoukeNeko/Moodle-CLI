@@ -79,6 +79,23 @@ function matrix_assign_role(stdClass $role, stdClass $user, stdClass $course): a
     $levels = array_map('intval', array_values(get_role_contextlevels($role->id)));
     $coursecontext = context_course::instance($course->id);
 
+    // Core manager and coursecreator describe site-level personas in the
+    // product matrix. Both can also be assigned lower down; picking the
+    // course first would silently turn a site manager into a course manager.
+    if (in_array((string)$role->archetype, ['manager', 'coursecreator'], true) &&
+            in_array(CONTEXT_SYSTEM, $levels, true)) {
+        $system = context_system::instance();
+        if (!$DB->record_exists('role_assignments', [
+                'contextid' => $system->id,
+                'userid' => $user->id,
+                'roleid' => $role->id,
+            ])) {
+            role_assign($role->id, $user->id, $system->id);
+        }
+        return ['status' => 'assigned', 'context_level' => CONTEXT_SYSTEM,
+            'context_id' => (int)$system->id, 'course_id' => null];
+    }
+
     if (in_array(CONTEXT_COURSE, $levels, true)) {
         $manual = $DB->get_record('enrol',
             ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
