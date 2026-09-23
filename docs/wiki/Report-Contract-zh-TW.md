@@ -8,7 +8,7 @@ GitHub Pages dashboard 把「函式清冊」與「實際執行 evidence」分開
 
 - **Overview**：支援版本、registry 聯集、規模真值與已執行角色 cell 數。
 - **Function coverage**：版本、component、effect、transport、recipe 狀態與 registry 結果。
-- **Role matrix**：各角色／domain 的 passed、expected denied、expected unavailable、failed 數量。
+- **Role matrix**：各角色／domain 的 passed、expected denied、expected unavailable、failed 與 not run 數量。
 - **Scale**：資料真值、學分 invariant、latency、RSS、REST calls 與磁碟觀測。
 - **Runs**：commit、run、產生時間、runner 身分／image 與結果狀態。
 
@@ -22,8 +22,9 @@ GitHub Pages dashboard 把「函式清冊」與「實際執行 evidence」分開
 只有 `passed`、`expected_denied`、`expected_unavailable`、`failed`；`skip` 不合法，會使報告建置失敗。
 
 artifact 不存在時，dashboard 產生明確的 `not-run` placeholder；artifact 存在時，依版本、runtime
-role、domain 彙總，對應函式也會由 `registry-covered` 改為 `executed` 或 `failed`。預期的權限拒絕與
-不可用會保留為獨立授權結果，不會被重新包裝成一般 pass。
+role、domain 彙總，所有尚未執行的 role/function cell 仍會列入明確的 `not_run` 分母，部分 artifact
+不會讓整個角色看似已完成；重複 cell 會使 report build 失敗。對應函式會由 `registry-covered` 改為
+`executed` 或 `failed`。預期的權限拒絕與不可用會保留為獨立授權結果，不會被重新包裝成一般 pass。
 
 `test/reports/runtime-roles-<version>.json` 在函式 cell 尚未執行前提供正確分母。檔案存在時，
 dashboard 的 placeholder 會採用該 Moodle runtime 動態發現的 principals（包含 custom/plugin

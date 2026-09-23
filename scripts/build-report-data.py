@@ -152,8 +152,20 @@ role_outcome_names = ("passed", "expected_denied", "expected_unavailable", "fail
 allowed_role_outcomes = set(role_outcome_names)
 function_index = {(row["version"], row["function"]): row for row in functions}
 
+
+def function_domain(function: str) -> str:
+    """Return the stable product-domain fallback used by matrix reports."""
+    return "_".join(function.split("_")[:2])
+
+
+registry_domains: dict[str, dict[str, set[str]]] = {}
+for row in functions:
+    registry_domains.setdefault(row["version"], {}).setdefault(
+        function_domain(row["function"]), set()).add(row["function"])
+
 role_groups = {}
 function_outcomes = {}
+seen_role_cells = set()
 for line_number, cell in enumerate(role_cells, 1):
     missing = [key for key in ("version", "role", "function", "outcome") if not cell.get(key)]
     if missing:
@@ -174,25 +186,76 @@ for line_number, cell in enumerate(role_cells, 1):
         raise SystemExit(
             f"{role_matrix_path}:{line_number}: outcome {outcome!r} is not allowed; "
             "skip is deliberately not a role-matrix result")
+    cell_key = (version, cell["role"], function)
+    if cell_key in seen_role_cells:
+        raise SystemExit(
+            f"{role_matrix_path}:{line_number}: duplicate role/function cell "
+            f"{version}/{cell['role']}/{function}")
+    seen_role_cells.add(cell_key)
     # Moodle records many core functions under the broad "moodle" component.
     # The first two function-name segments retain a useful product domain
     # (core_course, mod_assign, tool_mobile, …) unless a recipe supplies one.
-    domain = cell.get("domain") or "_".join(function.split("_")[:2])
+    domain = cell.get("domain") or function_domain(function)
     key = (version, cell["role"], domain)
-    counts = role_groups.setdefault(key, {name: 0 for name in role_outcome_names})
+    counts = role_groups.setdefault(key, {
+        **{name: 0 for name in role_outcome_names},
+        "functions": set(),
+    })
     counts[outcome] += 1
+    counts["functions"].add(function)
     function_outcomes.setdefault((version, function), []).append(outcome)
 
-if role_groups:
+if role_cells:
     role_rows = []
-    for (version, role, domain), counts in sorted(role_groups.items()):
-        role_rows.append({
-            "version": version,
-            "role": role,
-            "domain": domain,
-            **counts,
-            "status": "failed" if counts["failed"] else "passed",
-        })
+    for version in ("v45", "v51", "v52"):
+        principals = runtime_roles[version] or default_role_names
+        version_domains = registry_domains[version]
+        version_total = sum(len(names) for names in version_domains.values())
+        for role in principals:
+            observed_domains = {
+                domain for matrix_version, matrix_role, domain in role_groups
+                if matrix_version == version and matrix_role == role
+            }
+            if not observed_domains:
+                role_rows.append({
+                    "version": version, "role": role, "domain": "all core functions",
+                    **{name: 0 for name in role_outcome_names},
+                    "not_run": version_total, "status": "not-run",
+                })
+                continue
+
+            displayed_denominator = 0
+            for domain in sorted(observed_domains):
+                counts = role_groups[(version, role, domain)]
+                domain_functions = version_domains.get(domain, set())
+                observed_functions = counts["functions"]
+                # An explicit recipe domain may combine registry namespaces.
+                # In that case its exact denominator is only the functions the
+                # recipe actually names; they are still removed from the global
+                # remainder by the distinct cell count below.
+                denominator = len(domain_functions or observed_functions)
+                not_run = denominator - len(observed_functions)
+                displayed_denominator += denominator
+                role_rows.append({
+                    "version": version,
+                    "role": role,
+                    "domain": domain,
+                    **{name: counts[name] for name in role_outcome_names},
+                    "not_run": not_run,
+                    "status": (
+                        "failed" if counts["failed"] else
+                        "partial" if not_run else
+                        "passed"
+                    ),
+                })
+
+            remaining = version_total - displayed_denominator
+            if remaining:
+                role_rows.append({
+                    "version": version, "role": role, "domain": "all other core functions",
+                    **{name: 0 for name in role_outcome_names},
+                    "not_run": remaining, "status": "not-run",
+                })
     for row in functions:
         outcomes = function_outcomes.get((row["version"], row["function"]), [])
         if outcomes:
@@ -206,6 +269,7 @@ else:
         "expected_denied": 0,
         "expected_unavailable": 0,
         "failed": 0,
+        "not_run": sum(len(names) for names in registry_domains[version].values()),
         "status": "not-run",
     } for version in ("v45", "v51", "v52")
       for role in (runtime_roles[version] or default_role_names)]
@@ -268,10 +332,15 @@ try:
 except (OSError, subprocess.CalledProcessError):
     commit = "unknown"
 generated = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+expected_role_cells = sum(
+    len(runtime_roles[version] or default_role_names)
+    * sum(len(names) for names in registry_domains[version].values())
+    for version in ("v45", "v51", "v52")
+)
 role_matrix_status = (
     "not-run" if not role_cells else
     "failed" if any(cell["outcome"] == "failed" for cell in role_cells) else
-    "observed"
+    "partial" if len(role_cells) < expected_role_cells else "passed"
 )
 runs = [{
     "run": os.environ.get("GITHUB_RUN_ID", "local-observation"),
@@ -318,7 +387,7 @@ snapshot = {
             ["role-summary", "role-table"],
             (["No role/function matrix artifact was present in this snapshot; discovered runtime principals are explicitly not-run, never skipped."]
              if not role_cells else
-             ["Every row is an executed CLI cell. Expected denials and expected unavailability are successful security outcomes, not skips."]))},
+             ["Executed cells retain their exact outcomes; explicit not-run denominators preserve every missing role/function cell. Expected denials and expected unavailability are successful security outcomes, not skips."]))},
         "scale": {"rows": scale_rows, "source": source("PostgreSQL scale acceptance",
             ["test/reports/scale-v52/truth.json", "test/reports/scale-v52/participants.tsv",
              "test/reports/scale-v52/scale-summary.json", "test/reports/scale-v52/rest-access.log"],

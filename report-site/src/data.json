@@ -1,7 +1,7 @@
 {
   "id": "moodle-cli-verification-dashboard",
   "title": "Moodle CLI verification",
-  "generatedAt": "2026-09-23T05:59:20Z",
+  "generatedAt": "2026-09-23T17:43:21Z",
   "status": "observed",
   "surface": "dashboard",
   "buildStatus": "complete",
@@ -25172,6 +25172,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25182,6 +25183,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25192,6 +25194,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25202,6 +25205,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25212,6 +25216,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25222,6 +25227,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25232,6 +25238,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25242,6 +25249,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25252,6 +25260,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25262,6 +25271,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25272,6 +25282,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 759,
           "status": "not-run"
         },
         {
@@ -25282,6 +25293,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25292,6 +25304,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25302,6 +25315,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25312,6 +25326,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25322,6 +25337,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25332,6 +25348,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25342,6 +25359,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25352,6 +25370,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25362,6 +25381,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25372,6 +25392,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25382,6 +25403,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 761,
           "status": "not-run"
         },
         {
@@ -25392,6 +25414,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25402,6 +25425,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25412,6 +25436,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25422,6 +25447,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25432,6 +25458,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25442,6 +25469,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25452,6 +25480,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25462,6 +25491,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25472,6 +25502,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25482,6 +25513,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         },
         {
@@ -25492,6 +25524,7 @@
           "expected_denied": 0,
           "expected_unavailable": 0,
           "failed": 0,
+          "not_run": 755,
           "status": "not-run"
         }
       ],
@@ -25501,7 +25534,7 @@
           "test/reports/role-matrix.jsonl"
         ],
         "caveats": [
-          "No role/function matrix artifact was present in this snapshot; cells are explicitly not-run, never skipped."
+          "No role/function matrix artifact was present in this snapshot; discovered runtime principals are explicitly not-run, never skipped."
         ],
         "metricDefinitions": [
           {
@@ -25581,12 +25614,13 @@
       "rows": [
         {
           "run": "local-observation",
-          "commit": "a2e61179f325",
-          "generated_at": "2026-09-23T05:59:20Z",
+          "commit": "8e1751fe460d",
+          "generated_at": "2026-09-23T17:43:21Z",
           "runner": "local",
           "runner_image": "self-hosted-linux-x64",
           "registry_functions": 780,
           "role_matrix": "not-run",
+          "runtime_roles": {},
           "scale": "passed"
         }
       ],

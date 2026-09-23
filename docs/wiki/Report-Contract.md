@@ -9,7 +9,7 @@ artifact into a pass.
 
 - **Overview** — supported versions, registry union, scale truth, and executed role-cell count.
 - **Function coverage** — version, component, effect, transport, recipe status, and registry result.
-- **Role matrix** — role/domain counts for passed, expected denied, expected unavailable, and failed.
+- **Role matrix** — role/domain counts for passed, expected denied, expected unavailable, failed, and not run.
 - **Scale** — truth counts, credit invariants, latency, RSS, REST calls, and disk observations.
 - **Runs** — commit, run, generation time, runner identity/image, and result status.
 
@@ -24,9 +24,11 @@ function namespace. The only valid outcomes are `passed`, `expected_denied`,
 `expected_unavailable`, and `failed`. `skip` is invalid and makes the report build fail.
 
 When the artifact is absent, the dashboard emits explicit `not-run` placeholders. When it is
-present, rows are aggregated by version, runtime role, and domain, and the matching function rows
-change from `registry-covered` to `executed` or `failed`. Expected denial and unavailability are
-kept as separate authorization results rather than being relabelled as passes.
+present, rows are aggregated by version, runtime role, and domain, while every unexecuted
+role/function cell remains in an explicit `not_run` denominator. A partial artifact therefore cannot
+make a whole role look complete. Duplicate cells fail the report build. Matching function rows
+change from `registry-covered` to `executed` or `failed`; expected denial and unavailability remain
+separate authorization results rather than being relabelled as passes.
 
 `test/reports/runtime-roles-<version>.json` supplies the denominator before function cells exist. If
 present, dashboard placeholders use the principals discovered from that Moodle runtime, including

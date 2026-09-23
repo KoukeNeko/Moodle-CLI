@@ -49,6 +49,8 @@ def main() -> int:
         placeholders = default["queries"]["roles"]["rows"]
         require(len(placeholders) == 33 and all(row["status"] == "not-run" for row in placeholders),
                 "the explicit 3-version role placeholders changed")
+        require(all(row["not_run"] > 0 for row in placeholders),
+                "not-run placeholders do not expose their function denominator")
 
         roles_dir = temp / "roles"
         roles_dir.mkdir()
@@ -94,14 +96,19 @@ def main() -> int:
         result = build(observed_output, matrix, roles_dir)
         require(result.returncode == 0, result.stderr or result.stdout)
         observed = json.loads(observed_output.read_text())
-        require(observed["queries"]["runs"]["rows"][0]["role_matrix"] == "observed",
-                "executed evidence was not marked observed")
+        require(observed["queries"]["runs"]["rows"][0]["role_matrix"] == "partial",
+                "partial execution evidence was not marked partial")
         rows = observed["queries"]["roles"]["rows"]
-        require(len(rows) == 3, f"expected three role/domain rows, got {rows!r}")
         course = next(row for row in rows
                       if row["role"] == "student" and row["domain"] == "core_course")
-        require(course["expected_denied"] == 1 and course["status"] == "passed",
-                "expected denial was not preserved as a successful security outcome")
+        require(course["expected_denied"] == 1 and course["status"] == "partial"
+                and course["not_run"] > 0,
+                "expected denial or the unexecuted domain denominator was lost")
+        require(sum(row["passed"] + row["expected_denied"]
+                    + row["expected_unavailable"] + row["failed"] for row in rows) == 3,
+                "the report did not preserve the exact executed-cell numerator")
+        require(sum(row["not_run"] for row in rows) > 25000,
+                "partial evidence hid the unexecuted role/function cells")
 
         unknown_role = temp / "unknown-role.jsonl"
         unknown_role.write_text(json.dumps({
@@ -120,6 +127,12 @@ def main() -> int:
         result = build(temp / "invalid.json", invalid)
         require(result.returncode != 0 and "skip is deliberately not" in result.stderr,
                 "the report builder accepted a skipped role/function cell")
+
+        duplicate = temp / "duplicate.jsonl"
+        duplicate.write_text("".join(json.dumps(cells[0]) + "\n" for _ in range(2)))
+        result = build(temp / "duplicate.json", duplicate, roles_dir)
+        require(result.returncode != 0 and "duplicate role/function cell" in result.stderr,
+                "the report builder double-counted a repeated role/function cell")
 
     print("report evidence contract passed")
     return 0

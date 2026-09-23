@@ -47,7 +47,9 @@ export function DashboardContent() {
   const latestRun = runs.at(-1) ?? {};
   const latestScale = scale.at(-1) ?? {};
   const registryTotal = latestRun.registry_functions ?? new Set(functions.map(row => row.function)).size;
-  const executedRoleCells = roles.filter(row => row.status !== "not-run").length;
+  const executedRoleCells = roles.reduce((total, row) => total + (row.passed ?? 0)
+    + (row.expected_denied ?? 0) + (row.expected_unavailable ?? 0) + (row.failed ?? 0), 0);
+  const unexecutedRoleCells = roles.reduce((total, row) => total + (row.not_run ?? 0), 0);
 
   return <article className="verification-dashboard">
     <Filters sticky filters={snapshot.filters ?? []} queries={queries} values={filters} onChange={setFilter} />
@@ -59,7 +61,8 @@ export function DashboardContent() {
           ? <span>Registry coverage and scale acceptance are separate claims. The current snapshot records the
               role/function matrix as <strong>not run</strong>; no missing execution is reported as a pass or skip.</span>
           : <span>Registry coverage, role execution, and scale acceptance are separate claims. This snapshot contains
-              <strong> {number(executedRoleCells)} executed role/domain rows</strong>; expected denials and expected
+              <strong> {number(executedRoleCells)} executed role/function cells</strong> and
+              <strong> {number(unexecutedRoleCells)} not-run cells</strong>; expected denials and expected
               unavailability remain visible instead of being counted as skips.</span>}
       </div>
       <Section id="overview-metrics-title" title="Verification snapshot" spacing="none">
@@ -105,8 +108,9 @@ export function DashboardContent() {
               <strong> not-run</strong> until Moodle actually returns passed, expected denied, expected unavailable, or failed.</span>
           </div>
         : <div className="status-note" role="note">
-            <span>These rows come from executed CLI cells. A denied or unavailable result is successful only when the
-              fixture expected that exact Moodle authorization outcome; the harness does not emit skip.</span>
+            <span>Executed CLI cells and the remaining not-run denominator are shown together. A denied or unavailable
+              result is successful only when the fixture expected that exact Moodle authorization outcome; the harness
+              does not emit skip.</span>
           </div>}
       <Section id="role-matrix-title" title="Role execution matrix" spacing="none">
         <EvidenceTable id="role-table" queryId="roles" title="Role and domain results"
@@ -116,7 +120,8 @@ export function DashboardContent() {
             { field: "domain", label: "Domain" }, { field: "passed", label: "Passed" },
             { field: "expected_denied", label: "Expected denied" },
             { field: "expected_unavailable", label: "Expected unavailable" },
-            { field: "failed", label: "Failed" }, { field: "status", label: "Status", presentation: "status" },
+            { field: "failed", label: "Failed" }, { field: "not_run", label: "Not run" },
+            { field: "status", label: "Status", presentation: "status" },
           ]} />
       </Section>
     </>}
