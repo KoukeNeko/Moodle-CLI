@@ -25,6 +25,11 @@ artifact 不存在時，dashboard 產生明確的 `not-run` placeholder；artifa
 role、domain 彙總，對應函式也會由 `registry-covered` 改為 `executed` 或 `failed`。預期的權限拒絕與
 不可用會保留為獨立授權結果，不會被重新包裝成一般 pass。
 
+\`test/reports/runtime-roles-<version>.json\` 在函式 cell 尚未執行前提供正確分母。檔案存在時，
+dashboard 的 placeholder 會採用該 Moodle runtime 動態發現的 principals（包含 custom/plugin
+roles），而不是標準角色 fallback。已執行 cell 的角色必須存在於同版 inventory；inventory 格式錯誤、
+角色重複、數量不符或缺少 site administrator 都會使報告建置失敗，不會靜默退回固定清單。
+
 ## 保存與去敏
 
 Pages 目前發布最新的合成 snapshot；歷史趨勢累積仍是待完成里程碑，不能從只有一列的 Runs view

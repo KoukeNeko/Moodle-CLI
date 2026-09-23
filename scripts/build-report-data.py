@@ -45,6 +45,51 @@ def load_jsonl(path: pathlib.Path) -> list[dict]:
     return rows
 
 
+def load_runtime_roles(path: pathlib.Path) -> list[str]:
+    """Load one strict runtime-role inventory, or return an empty fallback.
+
+    A present inventory is test evidence. Treating malformed evidence as if no
+    run happened would hide a newly installed custom/plugin role.
+    """
+    if not path.exists():
+        return []
+    try:
+        document = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"{path}: invalid JSON: {error}") from error
+    if not isinstance(document, dict) or document.get("schema_version") != 1:
+        raise SystemExit(f"{path}: unsupported runtime-role schema")
+    roles = document.get("roles")
+    if not isinstance(roles, list):
+        raise SystemExit(f"{path}: roles must be an array")
+
+    names = []
+    runtime_count = 0
+    administrator_count = 0
+    for index, role in enumerate(roles):
+        if not isinstance(role, dict) or not role.get("shortname"):
+            raise SystemExit(f"{path}: roles[{index}] has no shortname")
+        name = role["shortname"]
+        if not isinstance(name, str):
+            raise SystemExit(f"{path}: roles[{index}].shortname must be text")
+        names.append(name)
+        if role.get("is_site_administrator"):
+            administrator_count += 1
+        else:
+            runtime_count += 1
+    if len(names) != len(set(names)):
+        raise SystemExit(f"{path}: role shortnames are not unique")
+    if document.get("runtime_role_count") != runtime_count:
+        raise SystemExit(f"{path}: runtime_role_count does not match role rows")
+    if document.get("principal_count") != len(roles):
+        raise SystemExit(f"{path}: principal_count does not match role rows")
+    if administrator_count != 1:
+        raise SystemExit(f"{path}: expected exactly one site administrator principal")
+    if not document.get("moodle", {}).get("release"):
+        raise SystemExit(f"{path}: Moodle release is missing")
+    return names
+
+
 def source(label: str, files: list[str], component_ids: list[str], caveats: list[str] | None = None):
     return {
         "label": label,
@@ -90,6 +135,16 @@ default_role_names = [
     "site administrator", "manager", "coursecreator", "editingteacher", "teacher",
     "student", "guest", "user", "frontpage", "custom archetype", "custom no-archetype",
 ]
+runtime_roles_dir = pathlib.Path(os.environ.get(
+    "MOODLE_RUNTIME_ROLES_DIR", ROOT / "test/reports"))
+runtime_role_paths = {
+    version: runtime_roles_dir / f"runtime-roles-{version}.json"
+    for version in ("v45", "v51", "v52")
+}
+runtime_roles = {
+    version: load_runtime_roles(path)
+    for version, path in runtime_role_paths.items()
+}
 role_matrix_path = pathlib.Path(os.environ.get(
     "MOODLE_ROLE_MATRIX_REPORT", ROOT / "test/reports/role-matrix.jsonl"))
 role_cells = load_jsonl(role_matrix_path)
@@ -107,6 +162,10 @@ for line_number, cell in enumerate(role_cells, 1):
     version = cell["version"]
     function = cell["function"]
     outcome = cell["outcome"]
+    if runtime_roles.get(version) and cell["role"] not in runtime_roles[version]:
+        raise SystemExit(
+            f"{role_matrix_path}:{line_number}: role {cell['role']!r} is not in "
+            f"{runtime_role_paths[version]}")
     registry_row = function_index.get((version, function))
     if registry_row is None:
         raise SystemExit(
@@ -148,7 +207,8 @@ else:
         "expected_unavailable": 0,
         "failed": 0,
         "status": "not-run",
-    } for version in ("v45", "v51", "v52") for role in default_role_names]
+    } for version in ("v45", "v51", "v52")
+      for role in (runtime_roles[version] or default_role_names)]
 
 truth = load(ROOT / "test/reports/scale-v52/truth.json", {})
 participant_path = ROOT / "test/reports/scale-v52/participants.tsv"
@@ -221,6 +281,9 @@ runs = [{
     "runner_image": os.environ.get("ImageOS", "self-hosted-linux-x64"),
     "registry_functions": len({row["function"] for row in functions}),
     "role_matrix": role_matrix_status,
+    "runtime_roles": {
+        version: len(names) for version, names in runtime_roles.items() if names
+    },
     "scale": scale_rows[0]["status"] if scale_rows else "not-run",
 }]
 
@@ -248,9 +311,12 @@ snapshot = {
         "functions": {"rows": functions, "source": source("Core external-function coverage",
             ["test/e2e/export-ws-registry.php", "internal/wsregistry/data/*.json"], ["function-table"])},
         "roles": {"rows": role_rows, "source": source("Runtime role/function matrix",
-            [str(role_matrix_path.relative_to(ROOT)) if role_matrix_path.is_relative_to(ROOT)
-             else str(role_matrix_path)], ["role-summary", "role-table"],
-            (["No role/function matrix artifact was present in this snapshot; cells are explicitly not-run, never skipped."]
+            ([str(role_matrix_path.relative_to(ROOT)) if role_matrix_path.is_relative_to(ROOT)
+              else str(role_matrix_path)] +
+             [str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+              for path in runtime_role_paths.values() if path.exists()]),
+            ["role-summary", "role-table"],
+            (["No role/function matrix artifact was present in this snapshot; discovered runtime principals are explicitly not-run, never skipped."]
              if not role_cells else
              ["Every row is an executed CLI cell. Expected denials and expected unavailability are successful security outcomes, not skips."]))},
         "scale": {"rows": scale_rows, "source": source("PostgreSQL scale acceptance",

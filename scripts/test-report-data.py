@@ -14,10 +14,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILDER = ROOT / "scripts/build-report-data.py"
 
 
-def build(output: pathlib.Path, matrix: pathlib.Path | None = None) -> subprocess.CompletedProcess[str]:
+def build(output: pathlib.Path, matrix: pathlib.Path | None = None,
+          roles: pathlib.Path | None = None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     if matrix is not None:
         env["MOODLE_ROLE_MATRIX_REPORT"] = str(matrix)
+    if roles is not None:
+        env["MOODLE_RUNTIME_ROLES_DIR"] = str(roles)
     return subprocess.run(
         [sys.executable, str(BUILDER), str(output)],
         cwd=ROOT,
@@ -47,6 +50,36 @@ def main() -> int:
         require(len(placeholders) == 33 and all(row["status"] == "not-run" for row in placeholders),
                 "the explicit 3-version role placeholders changed")
 
+        roles_dir = temp / "roles"
+        roles_dir.mkdir()
+        discovered = [
+            {"shortname": name, "is_site_administrator": name == "site_administrator"}
+            for name in [
+                "manager", "coursecreator", "editingteacher", "teacher", "student",
+                "guest", "user", "frontpage", "matrixteacher", "matrixblank",
+                "plugin_reviewer", "site_administrator",
+            ]
+        ]
+        (roles_dir / "runtime-roles-v52.json").write_text(json.dumps({
+            "schema_version": 1,
+            "moodle": {"release": "5.2.3", "version": "2025041403"},
+            "runtime_role_count": 11,
+            "principal_count": 12,
+            "roles": discovered,
+        }))
+        dynamic_output = temp / "dynamic.json"
+        result = build(dynamic_output, temp / "absent.jsonl", roles_dir)
+        require(result.returncode == 0, result.stderr or result.stdout)
+        dynamic = json.loads(dynamic_output.read_text())
+        dynamic_rows = dynamic["queries"]["roles"]["rows"]
+        require(len(dynamic_rows) == 34,
+                f"runtime inventory did not replace the v52 fallback: {len(dynamic_rows)}")
+        require(any(row["version"] == "v52" and row["role"] == "plugin_reviewer"
+                    for row in dynamic_rows),
+                "runtime plugin role is absent from dashboard placeholders")
+        require(dynamic["queries"]["runs"]["rows"][0]["runtime_roles"] == {"v52": 12},
+                "run provenance did not record the runtime principal count")
+
         matrix = temp / "role-matrix.jsonl"
         cells = [
             {"version": "v52", "role": "student",
@@ -58,7 +91,7 @@ def main() -> int:
         ]
         matrix.write_text("".join(json.dumps(cell) + "\n" for cell in cells))
         observed_output = temp / "observed.json"
-        result = build(observed_output, matrix)
+        result = build(observed_output, matrix, roles_dir)
         require(result.returncode == 0, result.stderr or result.stdout)
         observed = json.loads(observed_output.read_text())
         require(observed["queries"]["runs"]["rows"][0]["role_matrix"] == "observed",
@@ -69,6 +102,15 @@ def main() -> int:
                       if row["role"] == "student" and row["domain"] == "core_course")
         require(course["expected_denied"] == 1 and course["status"] == "passed",
                 "expected denial was not preserved as a successful security outcome")
+
+        unknown_role = temp / "unknown-role.jsonl"
+        unknown_role.write_text(json.dumps({
+            "version": "v52", "role": "not_installed",
+            "function": "core_webservice_get_site_info", "outcome": "passed",
+        }) + "\n")
+        result = build(temp / "unknown-role.json", unknown_role, roles_dir)
+        require(result.returncode != 0 and "is not in" in result.stderr,
+                "the report builder accepted evidence for a role absent from runtime inventory")
 
         invalid = temp / "invalid.jsonl"
         invalid.write_text(json.dumps({

@@ -139,6 +139,14 @@ jobs:
       - name: Exercise representative command scenarios
         if: matrix.version == 'v52'
         run: ./test/e2e/full-run.sh --nows
+      - name: Preserve runtime-role inventory
+        if: always()
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: moodle-${{ matrix.version }}-roles-${{ github.run_id }}
+          path: test/reports/runtime-roles-${{ matrix.version }}.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Capture container logs
         if: failure()
         run: |

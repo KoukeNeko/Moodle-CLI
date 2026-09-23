@@ -28,6 +28,12 @@ present, rows are aggregated by version, runtime role, and domain, and the match
 change from `registry-covered` to `executed` or `failed`. Expected denial and unavailability are
 kept as separate authorization results rather than being relabelled as passes.
 
+\`test/reports/runtime-roles-<version>.json\` supplies the denominator before function cells exist. If
+present, dashboard placeholders use the principals discovered from that Moodle runtime, including
+custom/plugin roles, instead of the standard-role fallback. Executed cells must name a principal in
+the matching inventory. A malformed inventory, duplicate role, count mismatch, or missing site
+administrator fails the report build rather than silently reverting to the fallback.
+
 ## Retention and redaction
 
 Pages currently publishes the latest synthetic snapshot. Historical trend accumulation is a pending
