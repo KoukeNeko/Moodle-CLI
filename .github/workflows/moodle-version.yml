@@ -74,7 +74,10 @@ jobs:
         run: make moodle-purge V=${{ inputs.version }}
 
       - name: Run PostgreSQL scale profile
-        if: ${{ always() && inputs.scale }}
+        # A failed or cancelled setup/acceptance run must not start a
+        # multi-hour fixture. Diagnostics and cleanup below still run for
+        # both failures and cancellations.
+        if: ${{ success() && inputs.scale }}
         run: make moodle-scale V=${{ inputs.version }}
 
       - name: Capture runner diagnostics
