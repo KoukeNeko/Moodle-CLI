@@ -86,8 +86,8 @@ var knownErrorCodes = map[string]classification{
 	// 單數的 nopermission 是 required_capability_exception 的 errorcode，跟
 	// 複數那個不是同一個碼。少了它，一個「你在這門課沒有這個權限」會被報成
 	// 上游錯誤——指向站台，而該做的是換一個帳號或換一門課。
-	"nopermission":                  {errs.CodePermissionDenied, "", "", false},
-	"nopermissiontoviewpage":        {errs.CodePermissionDenied, "", "", false},
+	"nopermission":           {errs.CodePermissionDenied, "", "", false},
+	"nopermissiontoviewpage": {errs.CodePermissionDenied, "", "", false},
 	// Core course/enrol external functions fetch the course record first, then
 	// wrap validate_context's access denial in this webservice errorcode. The
 	// fixture proves the course exists; exposing this as an upstream site fault
