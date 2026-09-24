@@ -140,6 +140,11 @@ default_role_names = [
 ]
 runtime_roles_dir = pathlib.Path(os.environ.get(
     "MOODLE_RUNTIME_ROLES_DIR", ROOT / "test/reports"))
+misnested_artifact_dir = ROOT / "test/reports/reports"
+if misnested_artifact_dir.exists():
+    raise SystemExit(
+        f"Moodle evidence was extracted one directory too deep: {misnested_artifact_dir}; "
+        "download artifacts to test/ so reports/ maps to test/reports/")
 runtime_role_paths = {
     version: runtime_roles_dir / f"runtime-roles-{version}.json"
     for version in ("v45", "v51", "v52")

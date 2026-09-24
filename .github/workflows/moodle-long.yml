@@ -88,7 +88,9 @@ jobs:
         uses: actions/download-artifact@v7.0.0
         with:
           pattern: moodle-*-${{ github.run_id }}
-          path: test/reports
+          # The uploaded artifact already contains reports/ and e2e/ roots.
+          # Extract under test/ so the report builder sees test/reports/*.
+          path: test
           merge-multiple: true
       - name: Build dashboard even when a test job failed
         run: make report-site
