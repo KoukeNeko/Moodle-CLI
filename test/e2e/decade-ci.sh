@@ -24,20 +24,21 @@ for ATTEMPT in 1 2; do
     # Keep routine GitHub logs compact; the emitted fixture and redacted
     # report artifacts contain the detailed evidence.
     tail -35 "$LOG"
-    if [ "$ATTEMPT" -gt 1 ]; then
-      printf 'version=%s\nattempts=%s\nfirst_error=Error writing to database\n' \
-        "$VERSION" "$ATTEMPT" > "test/e2e/artifacts/decade-retry-$VERSION.txt"
-    fi
     exit 0
   fi
 
   tail -60 "$LOG" >&2
-  if [ "$ATTEMPT" -ne 1 ] || ! rg -q '!!! Error writing to database !!!' "$LOG"; then
+  # seed-faculty deliberately redacts Moodle's exception message, so its
+  # dml_write_exception class is the only safe signature available in CI.
+  # Retrying once is bounded; a deterministic schema/fixture bug still fails.
+  if [ "$ATTEMPT" -ne 1 ] || ! rg -q \
+      '!!! Error writing to database !!!|\[seed-faculty\] dml_write_exception code=0 cause=none causecode=none' \
+      "$LOG"; then
     exit 1
   fi
 
   echo "Moodle $VERSION SQLite write failed; rebuilding disposable fixture once" >&2
-  printf 'version=%s\nattempts=2\nfirst_error=Error writing to database\n' "$VERSION" \
+  printf 'version=%s\nattempts=2\nfirst_error=disposable_fixture_database_write\n' "$VERSION" \
     > "test/e2e/artifacts/decade-retry-$VERSION.txt"
   make moodle-purge V="$VERSION"
   make moodle-up V="$VERSION"
