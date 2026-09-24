@@ -92,7 +92,7 @@ var knownErrorCodes = map[string]classification{
 	// wrap validate_context's access denial in this webservice errorcode. The
 	// fixture proves the course exists; exposing this as an upstream site fault
 	// hides the real role/capability boundary from callers.
-	"errorcoursecontextnotvalid":   {errs.CodePermissionDenied, "", "", false},
+	"errorcoursecontextnotvalid":    {errs.CodePermissionDenied, "", "", false},
 	"requireloginerror":             {errs.CodePermissionDenied, "", "", false},
 	"required_capability_exception": {errs.CodePermissionDenied, "", "", false},
 	"cannotviewprofile":             {errs.CodePermissionDenied, "", "", false},
