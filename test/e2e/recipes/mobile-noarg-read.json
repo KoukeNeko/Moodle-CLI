@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "description": "Curated read-only, zero-required-parameter mobile-service calls. Each is executed for every password principal; guest remains in the separate credential preflight.",
+  "functions": [
+    "core_calendar_get_calendar_access_information",
+    "core_course_get_categories",
+    "core_course_get_recent_courses",
+    "core_user_get_user_preferences",
+    "tool_mobile_get_public_config"
+  ]
+}

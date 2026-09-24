@@ -36,6 +36,11 @@ role、domain 彙總，所有尚未執行的 role/function cell 仍會列入明�
 unavailable。Builder 會與 preflight cells 合併、拒絕重複的 role/function 配對，其他 cell 仍計入
 `not_run`。
 
+`role-matrix-read-<version>.jsonl` 記錄同一批可登入 principals 實際執行的精選無必要參數讀取。
+Builder 會對照該版 registry 與版控中的 recipe manifest；僅接受結束碼相符的 `passed`、
+`expected_denied` 或 `expected_unavailable`。artifact 不含回應內容與憑證；guest、其他讀取與寫入
+仍維持 `not_run`，直到各自的 recipe 實際執行。
+
 `test/reports/runtime-roles-<version>.json` 在函式 cell 尚未執行前提供正確分母。檔案存在時，
 dashboard 的 placeholder 會採用該 Moodle runtime 動態發現的 principals（包含 custom/plugin
 roles），而不是標準角色 fallback。已執行 cell 的角色必須存在於同版 inventory；inventory 格式錯誤、

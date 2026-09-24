@@ -167,6 +167,34 @@ def main() -> int:
                 "service fragment claimed an exposed function was unavailable")
         service_fragment.write_text(json.dumps(service_row) + "\n")
 
+        read_fragment = preflight_dir / "role-matrix-read-v52.jsonl"
+        read_row = {
+            "version": "v52", "role": "student",
+            "function": "core_course_get_categories",
+            "outcome": "passed", "recipe": "mobile-noarg-read", "cli_exit": 0,
+        }
+        read_fragment.write_text(json.dumps(read_row) + "\n")
+        read_output = temp / "read-fragment.json"
+        result = build(read_output, roles=roles_dir, preflight=preflight_dir)
+        require(result.returncode == 0, result.stderr or result.stdout)
+        read_snapshot = json.loads(read_output.read_text())
+        require(sum(row["passed"] + row["expected_unavailable"]
+                    for row in read_snapshot["queries"]["roles"]["rows"]) == 4,
+                "exposed read evidence was not merged with other recipe fragments")
+        read_function = next(row for row in read_snapshot["queries"]["functions"]["rows"]
+                             if row["version"] == "v52"
+                             and row["function"] == "core_course_get_categories")
+        require(read_function["recipe"] == "mobile-noarg-read"
+                and read_function["result"] == "executed",
+                "an actual exposed read was not attributed to its recipe")
+        read_fragment.write_text(json.dumps({
+            **read_row, "function": "auth_email_get_signup_settings",
+        }) + "\n")
+        result = build(temp / "invalid-read.json", roles=roles_dir, preflight=preflight_dir)
+        require(result.returncode != 0 and "invalid mobile no-arg read evidence" in result.stderr,
+                "an unexposed function was accepted as a completed read recipe")
+        read_fragment.unlink()
+
         supplemental_dir = temp / "supplemental"
         supplemental_dir.mkdir()
         (supplemental_dir / "role-matrix-service-v52.jsonl").write_text(json.dumps({

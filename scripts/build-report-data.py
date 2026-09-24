@@ -124,7 +124,7 @@ def load_role_preflight(path: pathlib.Path, version: str) -> list[dict]:
 
 
 def load_matrix_fragment(path: pathlib.Path) -> list[dict]:
-    """Load a recipe fragment and verify its claimed service boundary."""
+    """Load a recipe fragment and verify its claimed safety/transport boundary."""
     rows = load_jsonl(path)
     if path.name.startswith("role-matrix-service-"):
         version = path.name.removeprefix("role-matrix-service-").removesuffix(".jsonl")
@@ -136,6 +136,16 @@ def load_matrix_fragment(path: pathlib.Path) -> list[dict]:
                     or row.get("cli_exit") != 9
                     or mobile_exposure.get(key) is not False):
                 raise SystemExit(f"{path}:{line_number}: invalid mobile-service boundary evidence")
+    elif path.name.startswith("role-matrix-read-"):
+        version = path.name.removeprefix("role-matrix-read-").removesuffix(".jsonl")
+        exits = {"passed": 0, "expected_denied": 5, "expected_unavailable": 9}
+        for line_number, row in enumerate(rows, 1):
+            key = (row.get("version"), row.get("function"))
+            if (row.get("version") != version or row.get("role") == "guest"
+                    or row.get("recipe") != "mobile-noarg-read"
+                    or row.get("cli_exit") != exits.get(row.get("outcome"))
+                    or not noarg_read_eligible.get(key, False)):
+                raise SystemExit(f"{path}:{line_number}: invalid mobile no-arg read evidence")
     return [{**row, "_source": str(path)} for row in rows]
 
 
@@ -156,6 +166,13 @@ def source(label: str, files: list[str], component_ids: list[str], caveats: list
 versions = []
 functions = []
 mobile_exposure = {}
+noarg_read_eligible = {}
+read_recipe = load(ROOT / "test/e2e/recipes/mobile-noarg-read.json", {})
+read_recipe_names = read_recipe.get("functions", [])
+if (read_recipe.get("schema_version") != 1 or not isinstance(read_recipe_names, list)
+        or not read_recipe_names or any(not isinstance(name, str) for name in read_recipe_names)
+        or read_recipe_names != sorted(set(read_recipe_names))):
+    raise SystemExit("mobile no-arg read recipe manifest is missing or malformed")
 for key in ("v45", "v51", "v52"):
     path = ROOT / f"internal/wsregistry/data/{key}.json"
     snapshot = load(path, {})
@@ -170,6 +187,17 @@ for key in ("v45", "v51", "v52"):
     })
     for row in rows:
         mobile_exposure[(key, row.get("name"))] = "moodle_mobile_app" in row.get("services", [])
+        noarg_read_eligible[(key, row.get("name"))] = (
+            row.get("name") in read_recipe_names
+            and row.get("effect") == "read"
+            and not row.get("destructive")
+            and not row.get("credential")
+            and row.get("external_dependency") == "none"
+            and mobile_exposure[(key, row.get("name"))]
+            and row.get("transports", {}).get("rest")
+            and not row.get("parameters", {}).get("required")
+            and row.get("returns", {}).get("type") in ("object", "array")
+        )
         functions.append({
             "version": key,
             "function": row.get("name"),

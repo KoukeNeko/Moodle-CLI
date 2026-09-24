@@ -62,6 +62,10 @@ jobs:
         timeout-minutes: 60
         run: make moodle-service-matrix V=${{ inputs.version }}
 
+      - name: Exercise exposed no-argument read function cells
+        timeout-minutes: 15
+        run: make moodle-read-matrix V=${{ inputs.version }}
+
       - name: Capture version-matrix diagnostics
         if: always()
         run: |
