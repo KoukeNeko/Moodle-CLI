@@ -179,10 +179,10 @@ token，實際透過 CLI 執行 typed `core_webservice_get_site_info`，並驗�
 `errorcoursecontextnotvalid`（upstream exit 11），不能誤記為預期權限拒絕；後續需以獨立
 fixture binding 指定課程範圍並驗證各角色行為。
 
-v4.5 SQLite fixture 偶爾在十年 seed 初次寫入時回 `Error writing to database`。
-Push CI 與 `make moodle-matrix` 都透過 `decade-ci.sh`，只針對這個精確訊息重建一次拋棄式
+三版 SQLite fixture 都曾在十年 seed 首次寫入時回 `Error writing to database`；實際資料庫
+原因尚未確認。Push CI 與 `make moodle-matrix` 都透過 `decade-ci.sh`，只針對這個精確訊息重建一次拋棄式
 容器與 volume；若重試成功，
-`test/e2e/artifacts/decade-retry-v45.txt` 保留這次不穩定事件。其他錯誤與第二次失敗仍讓 CI 失敗。
+`test/e2e/artifacts/decade-retry-<version>.txt` 保留這次不穩定事件。其他錯誤與第二次失敗仍讓 CI 失敗。
 
 紀錄寫到 `test/e2e/logs/<時間>/`：
 

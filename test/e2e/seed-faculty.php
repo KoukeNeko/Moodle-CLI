@@ -17,6 +17,17 @@
 
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
+// Moodle's generic CLI exception text hides whether a failed synthetic seed
+// is a transient DB write or a deterministic fixture bug. Log only classes
+// and codes, never SQL, fixture identity, or private response data.
+set_exception_handler(static function(Throwable $error): void {
+    $cause = $error->getPrevious();
+    fwrite(STDERR, '[seed-faculty] ' . get_class($error) .
+        ' code=' . (string)$error->getCode() .
+        ' cause=' . ($cause ? get_class($cause) : 'none') .
+        ' causecode=' . ($cause ? (string)$cause->getCode() : 'none') . PHP_EOL);
+    exit(1);
+});
 require_once($CFG->libdir . '/gradelib.php');
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->dirroot . '/enrol/manual/lib.php');
