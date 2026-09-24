@@ -1,7 +1,7 @@
 {
   "id": "moodle-cli-verification-dashboard",
   "title": "Moodle CLI verification",
-  "generatedAt": "2026-09-24T01:51:57Z",
+  "generatedAt": "2026-09-24T02:16:09Z",
   "status": "observed",
   "surface": "dashboard",
   "buildStatus": "complete",
@@ -25610,9 +25610,11 @@
       "rows": [
         {
           "run": "local-observation",
-          "commit": "ff01618458d8",
-          "report_commit": "ff01618458d8",
-          "generated_at": "2026-09-24T01:51:57Z",
+          "commit": "cfd155d7e833",
+          "report_commit": "cfd155d7e833",
+          "supplemental_run": "",
+          "supplemental_commit": "",
+          "generated_at": "2026-09-24T02:16:09Z",
           "runner": "self-hosted (name unrecorded)",
           "runner_image": "self-hosted-linux-x64",
           "report_runner": "local",

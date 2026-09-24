@@ -17,7 +17,8 @@ BUILDER = ROOT / "scripts/build-report-data.py"
 def build(output: pathlib.Path, matrix: pathlib.Path | None = None,
           roles: pathlib.Path | None = None,
           preflight: pathlib.Path | None = None,
-          evidence_run: str | None = None) -> subprocess.CompletedProcess[str]:
+          evidence_run: str | None = None,
+          supplemental_dir: pathlib.Path | None = None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     if matrix is not None:
         env["MOODLE_ROLE_MATRIX_REPORT"] = str(matrix)
@@ -28,6 +29,10 @@ def build(output: pathlib.Path, matrix: pathlib.Path | None = None,
     if evidence_run is not None:
         env["MOODLE_EVIDENCE_RUN_ID"] = evidence_run
         env["MOODLE_EVIDENCE_SHA"] = "a" * 40
+    if supplemental_dir is not None:
+        env["MOODLE_ROLE_MATRIX_DIR"] = str(supplemental_dir)
+        env["MOODLE_SUPPLEMENTAL_RUN_ID"] = "789"
+        env["MOODLE_SUPPLEMENTAL_SHA"] = "b" * 40
     return subprocess.run(
         [sys.executable, str(BUILDER), str(output)],
         cwd=ROOT,
@@ -161,6 +166,26 @@ def main() -> int:
         require(result.returncode != 0 and "invalid mobile-service boundary evidence" in result.stderr,
                 "service fragment claimed an exposed function was unavailable")
         service_fragment.write_text(json.dumps(service_row) + "\n")
+
+        supplemental_dir = temp / "supplemental"
+        supplemental_dir.mkdir()
+        (supplemental_dir / "role-matrix-service-v52.jsonl").write_text(json.dumps({
+            "version": "v52", "role": "student",
+            "function": "core_cohort_get_cohorts",
+            "outcome": "expected_unavailable", "recipe": "mobile-service-boundary",
+            "cli_exit": 9,
+        }) + "\n")
+        supplement_output = temp / "supplement.json"
+        result = build(supplement_output, roles=roles_dir, preflight=preflight_dir,
+                       supplemental_dir=supplemental_dir)
+        require(result.returncode == 0, result.stderr or result.stdout)
+        supplemental_snapshot = json.loads(supplement_output.read_text())
+        require(sum(row["passed"] + row["expected_unavailable"]
+                    for row in supplemental_snapshot["queries"]["roles"]["rows"]) == 4,
+                "supplemental recipe fragment replaced rather than extended primary evidence")
+        run = supplemental_snapshot["queries"]["runs"]["rows"][0]
+        require(run["supplemental_run"] == "789" and run["supplemental_commit"] == "b" * 40,
+                "supplemental evidence provenance is missing")
 
         preflight_rows[1]["cli_exit"] = 0
         preflight_file.write_text("".join(json.dumps(row) + "\n" for row in preflight_rows))

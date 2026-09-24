@@ -65,6 +65,10 @@ shows the test commit separately from the report commit, and does not repeat the
 `runner` column refers to the scale runner when recorded in its summary; older summaries explicitly
 say when that runner name was not captured.
 
+An optional `supplemental_run_id` lets the same rebuild add a later role-matrix recipe artifact
+without rerunning the scale seed. The supplemental artifact is extracted separately, and its run ID
+and commit appear in the Runs view. The builder rejects missing or malformed recipe evidence.
+
 The report builder reads generated registries and test artifacts, publishes exact source lineage,
 and still builds after a test failure so failed evidence remains inspectable. `make report-site`
 rebuilds the same static dashboard locally. `make report-data-test` verifies absent, observed, and

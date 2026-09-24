@@ -157,6 +157,7 @@ export function DashboardContent() {
         rows={runs} searchable={false} columns={[
           { field: "run", label: "Evidence run" }, { field: "commit", label: "Test commit" },
           { field: "report_commit", label: "Report commit" },
+          { field: "supplemental_run", label: "Supplemental run" },
           { field: "generated_at", label: "Generated at" }, { field: "runner", label: "Runner" },
           { field: "runner_image", label: "Runner image" },
           { field: "registry_functions", label: "Registry union" },

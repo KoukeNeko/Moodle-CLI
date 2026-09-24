@@ -56,6 +56,10 @@ Report build 遇到重複巢狀的 `test/reports/reports/` 會失敗。
 run 的數字 `evidence_run_id`。它下載該次去敏 artifact，分別顯示測試 commit 與報告 commit，不重跑
 50k seed。`runner` 欄使用 scale summary 記錄的測試 runner；舊版 summary 未記錄名稱時會明確標示。
 
+可選的 `supplemental_run_id` 能把後續 role-matrix recipe artifact 加入同一份報告，不必重跑 scale
+seed。補充 artifact 會分開解壓，Runs view 會列出其 run ID 與 commit；缺漏或錯誤的 recipe 證據會
+使建置失敗。
+
 Report builder 讀取產生式 registry 與測試 artifact，附上精確來源 lineage；測試失敗後仍要建置報告，
 讓失敗 evidence 可查。`make report-site` 可在本機重建同一份靜態 dashboard；CI 以
 `make report-data-test` 驗證缺少、已觀測及非法／no-skip evidence 的行為。

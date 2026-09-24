@@ -217,9 +217,12 @@ if role_matrix_path.exists() or "MOODLE_ROLE_MATRIX_REPORT" in os.environ:
                   for row in load_jsonl(role_matrix_path)]
     role_source_paths = [role_matrix_path] if role_matrix_path.exists() else []
 else:
-    role_matrix_dir = pathlib.Path(os.environ.get(
-        "MOODLE_ROLE_MATRIX_DIR", preflight_dir))
-    fragments = sorted(role_matrix_dir.glob("role-matrix-*.jsonl"))
+    role_matrix_dirs = [preflight_dir]
+    supplemental_dir = os.environ.get("MOODLE_ROLE_MATRIX_DIR")
+    if supplemental_dir and pathlib.Path(supplemental_dir) != preflight_dir:
+        role_matrix_dirs.append(pathlib.Path(supplemental_dir))
+    fragments = sorted(path for directory in role_matrix_dirs
+                       for path in directory.glob("role-matrix-*.jsonl"))
     role_source_paths = [path for path in preflight_paths.values() if path.exists()] + fragments
     role_cells = [cell for version, path in preflight_paths.items()
                   for cell in load_role_preflight(path, version)]
@@ -427,6 +430,8 @@ runs = [{
     "run": os.environ.get("MOODLE_EVIDENCE_RUN_ID", os.environ.get("GITHUB_RUN_ID", "local-observation")),
     "commit": os.environ.get("MOODLE_EVIDENCE_SHA", os.environ.get("GITHUB_SHA", commit)),
     "report_commit": os.environ.get("GITHUB_SHA", commit),
+    "supplemental_run": os.environ.get("MOODLE_SUPPLEMENTAL_RUN_ID", ""),
+    "supplemental_commit": os.environ.get("MOODLE_SUPPLEMENTAL_SHA", ""),
     "generated_at": generated,
     "runner": (summary.get("runner_name") or "self-hosted (name unrecorded)")
         if summary else os.environ.get("RUNNER_NAME", "local"),

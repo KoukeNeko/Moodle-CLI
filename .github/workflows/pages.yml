@@ -14,6 +14,10 @@ on:
         description: Long-haul Actions run ID whose redacted artifacts should be republished
         required: true
         type: string
+      supplemental_run_id:
+        description: Optional long-haul run with additional role-matrix recipe evidence
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -40,6 +44,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVIDENCE_RUN_ID: ${{ inputs.evidence_run_id }}
+          SUPPLEMENTAL_RUN_ID: ${{ inputs.supplemental_run_id }}
         run: |
           if [[ ! "$EVIDENCE_RUN_ID" =~ ^[0-9]+$ ]]; then
             echo 'evidence_run_id must be numeric' >&2
@@ -52,6 +57,20 @@ jobs:
           fi
           printf 'MOODLE_EVIDENCE_RUN_ID=%s\nMOODLE_EVIDENCE_SHA=%s\n' \
             "$EVIDENCE_RUN_ID" "$evidence_sha" >> "$GITHUB_ENV"
+          if [[ -n "$SUPPLEMENTAL_RUN_ID" ]]; then
+            if [[ ! "$SUPPLEMENTAL_RUN_ID" =~ ^[0-9]+$ ]]; then
+              echo 'supplemental_run_id must be numeric' >&2
+              exit 2
+            fi
+            supplemental_sha=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SUPPLEMENTAL_RUN_ID}" --jq .head_sha)
+            if [[ ! "$supplemental_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo 'supplemental run has no valid head SHA' >&2
+              exit 2
+            fi
+            printf 'MOODLE_SUPPLEMENTAL_RUN_ID=%s\nMOODLE_SUPPLEMENTAL_SHA=%s\n' \
+              "$SUPPLEMENTAL_RUN_ID" "$supplemental_sha" >> "$GITHUB_ENV"
+            printf 'MOODLE_ROLE_MATRIX_DIR=test/supplemental/reports\n' >> "$GITHUB_ENV"
+          fi
       - name: Download selected redacted evidence
         if: github.event_name == 'workflow_dispatch'
         uses: actions/download-artifact@v7.0.0
@@ -61,6 +80,25 @@ jobs:
           pattern: moodle-v*-${{ inputs.evidence_run_id }}
           path: test
           merge-multiple: true
+      - name: Download supplemental role evidence
+        if: github.event_name == 'workflow_dispatch' && inputs.supplemental_run_id != ''
+        uses: actions/download-artifact@v7.0.0
+        with:
+          run-id: ${{ inputs.supplemental_run_id }}
+          github-token: ${{ github.token }}
+          pattern: moodle-v*-${{ inputs.supplemental_run_id }}
+          path: test/supplemental
+          merge-multiple: true
+      - name: Verify supplemental recipe evidence
+        if: github.event_name == 'workflow_dispatch' && inputs.supplemental_run_id != ''
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          rows = list(Path('test/supplemental/reports').glob('role-matrix-*.jsonl'))
+          if not rows or any(path.stat().st_size == 0 for path in rows):
+              raise SystemExit('supplemental run has no non-empty role-matrix recipe artifact')
+          print('supplemental recipe artifacts:', ', '.join(path.name for path in rows))
+          PY
       - name: Build dashboard with selected evidence
         if: github.event_name == 'workflow_dispatch'
         run: make report-site
