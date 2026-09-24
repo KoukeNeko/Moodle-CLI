@@ -41,9 +41,12 @@ The separate `role-matrix-service-<version>.jsonl` fragments contain CLI-confirm
 unavailability for password principals. The builder merges them with preflight cells, rejects
 duplicate role/function pairs, and keeps every remaining cell in `not_run`.
 
-`role-matrix-read-<version>.jsonl` contains executed, curated no-argument reads for the same
-password principals. Before counting a result, the builder checks the function against the
-versioned registry and the checked-in recipe manifest. Only a matching CLI exit and one of
+`role-matrix-read-<version>.jsonl` contains executed, curated reads for the same password
+principals. `mobile-noarg-read` uses no parameters; `mobile-course-read` binds the disposable
+`CS204` course ID from the database-backed runtime-role inventory for course contents, course
+details, and enrolled participants. The latter asserts the administrator actually receives fixture
+data. Before counting a result, the builder checks the function against the versioned registry and
+the checked-in recipe manifests. Only a matching CLI exit and one of
 `passed`, `expected_denied`, or `expected_unavailable` is accepted; response bodies and credentials
 are excluded. Guest, other reads, and writes remain in `not_run` until their own recipes execute.
 

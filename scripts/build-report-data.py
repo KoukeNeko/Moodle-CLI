@@ -141,11 +141,13 @@ def load_matrix_fragment(path: pathlib.Path) -> list[dict]:
         exits = {"passed": 0, "expected_denied": 5, "expected_unavailable": 9}
         for line_number, row in enumerate(rows, 1):
             key = (row.get("version"), row.get("function"))
+            recipe = row.get("recipe")
             if (row.get("version") != version or row.get("role") == "guest"
-                    or row.get("recipe") != "mobile-noarg-read"
+                    or recipe not in ("mobile-noarg-read", "mobile-course-read")
                     or row.get("cli_exit") != exits.get(row.get("outcome"))
-                    or not noarg_read_eligible.get(key, False)):
-                raise SystemExit(f"{path}:{line_number}: invalid mobile no-arg read evidence")
+                    or not (noarg_read_eligible if recipe == "mobile-noarg-read"
+                            else course_read_eligible).get(key, False)):
+                raise SystemExit(f"{path}:{line_number}: invalid mobile read evidence")
     return [{**row, "_source": str(path)} for row in rows]
 
 
@@ -167,12 +169,23 @@ versions = []
 functions = []
 mobile_exposure = {}
 noarg_read_eligible = {}
+course_read_eligible = {}
 read_recipe = load(ROOT / "test/e2e/recipes/mobile-noarg-read.json", {})
 read_recipe_names = read_recipe.get("functions", [])
 if (read_recipe.get("schema_version") != 1 or not isinstance(read_recipe_names, list)
         or not read_recipe_names or any(not isinstance(name, str) for name in read_recipe_names)
         or read_recipe_names != sorted(set(read_recipe_names))):
     raise SystemExit("mobile no-arg read recipe manifest is missing or malformed")
+course_recipe = load(ROOT / "test/e2e/recipes/mobile-course-read.json", {})
+course_recipe_bindings = course_recipe.get("functions")
+if (course_recipe.get("schema_version") != 1
+        or course_recipe.get("fixture_binding") != "runtime-roles.fixture_course_id"
+        or course_recipe_bindings != {
+            "core_course_get_contents": "courseid",
+            "core_course_get_courses": "options.ids",
+            "core_enrol_get_enrolled_users": "courseid",
+        }):
+    raise SystemExit("mobile course read recipe manifest is missing or malformed")
 for key in ("v45", "v51", "v52"):
     path = ROOT / f"internal/wsregistry/data/{key}.json"
     snapshot = load(path, {})
@@ -197,6 +210,16 @@ for key in ("v45", "v51", "v52"):
             and row.get("transports", {}).get("rest")
             and not row.get("parameters", {}).get("required")
             and row.get("returns", {}).get("type") in ("object", "array")
+        )
+        course_read_eligible[(key, row.get("name"))] = (
+            row.get("name") in course_recipe_bindings
+            and row.get("effect") == "read"
+            and not row.get("destructive")
+            and not row.get("credential")
+            and row.get("external_dependency") == "none"
+            and mobile_exposure[(key, row.get("name"))]
+            and row.get("transports", {}).get("rest")
+            and row.get("returns", {}).get("type") == "array"
         )
         functions.append({
             "version": key,

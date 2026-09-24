@@ -36,8 +36,10 @@ role、domain 彙總，所有尚未執行的 role/function cell 仍會列入明�
 unavailable。Builder 會與 preflight cells 合併、拒絕重複的 role/function 配對，其他 cell 仍計入
 `not_run`。
 
-`role-matrix-read-<version>.jsonl` 記錄同一批可登入 principals 實際執行的精選無必要參數讀取。
-Builder 會對照該版 registry 與版控中的 recipe manifest；僅接受結束碼相符的 `passed`、
+`role-matrix-read-<version>.jsonl` 記錄同一批可登入 principals 實際執行的精選唯讀呼叫。
+`mobile-noarg-read` 不帶參數；`mobile-course-read` 使用資料庫產生的 runtime-role inventory 中
+`CS204` 課程 ID，測試課程內容、課程資料與參與者，並斷言管理員確實取得 fixture 資料。
+Builder 會對照該版 registry 與版控中的 recipe manifests；僅接受結束碼相符的 `passed`、
 `expected_denied` 或 `expected_unavailable`。artifact 不含回應內容與憑證；guest、其他讀取與寫入
 仍維持 `not_run`，直到各自的 recipe 實際執行。
 

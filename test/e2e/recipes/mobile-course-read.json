@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "fixture_binding": "runtime-roles.fixture_course_id",
+  "functions": {
+    "core_course_get_contents": "courseid",
+    "core_course_get_courses": "options.ids",
+    "core_enrol_get_enrolled_users": "courseid"
+  }
+}

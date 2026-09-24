@@ -191,8 +191,28 @@ def main() -> int:
             **read_row, "function": "auth_email_get_signup_settings",
         }) + "\n")
         result = build(temp / "invalid-read.json", roles=roles_dir, preflight=preflight_dir)
-        require(result.returncode != 0 and "invalid mobile no-arg read evidence" in result.stderr,
+        require(result.returncode != 0 and "invalid mobile read evidence" in result.stderr,
                 "an unexposed function was accepted as a completed read recipe")
+        course_row = {
+            **read_row, "function": "core_course_get_contents", "recipe": "mobile-course-read",
+        }
+        read_fragment.write_text(json.dumps(course_row) + "\n")
+        result = build(temp / "course-read.json", roles=roles_dir, preflight=preflight_dir)
+        require(result.returncode == 0, result.stderr or result.stdout)
+        course_snapshot = json.loads((temp / "course-read.json").read_text())
+        course_function = next(row for row in course_snapshot["queries"]["functions"]["rows"]
+                               if row["version"] == "v52"
+                               and row["function"] == "core_course_get_contents")
+        require(course_function["recipe"] == "mobile-course-read"
+                and course_function["result"] == "executed",
+                "course-bound read was not attributed to its recipe")
+        read_fragment.write_text(json.dumps({
+            **course_row, "function": "auth_email_get_signup_settings",
+        }) + "\n")
+        result = build(temp / "invalid-course-read.json", roles=roles_dir,
+                       preflight=preflight_dir)
+        require(result.returncode != 0 and "invalid mobile read evidence" in result.stderr,
+                "an unexposed function was accepted as course-bound read evidence")
         read_fragment.unlink()
 
         supplemental_dir = temp / "supplemental"

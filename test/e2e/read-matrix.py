@@ -2,8 +2,9 @@
 """Execute curated, exposed read functions for every password principal.
 
 The allowlist is deliberately narrow: the registry must certify each recipe
-as read-only, REST/mobile-exposed, parameter-free, and independent of external
-systems before a request can reach the disposable Moodle fixture. Results and
+as read-only, REST/mobile-exposed, and independent of external systems before
+a request can reach the disposable Moodle fixture. Required course IDs come
+from the database-backed role inventory, not the CLI under test. Results and
 response bodies are never copied into the artifact.
 """
 from __future__ import annotations
@@ -22,6 +23,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PORTS = {"v45": 8451, "v51": 8511, "v52": 8521}
 RECIPE = ROOT / "test/e2e/recipes/mobile-noarg-read.json"
+COURSE_RECIPE = ROOT / "test/e2e/recipes/mobile-course-read.json"
 PASSWORD = "Student123!"
 
 
@@ -51,7 +53,53 @@ def selected_functions(registry: dict, recipe: dict) -> list[dict]:
     return selected
 
 
-def classify(completed: subprocess.CompletedProcess[str], function: dict, version: str) -> str:
+def selected_course_functions(registry: dict, recipe: dict) -> list[tuple[dict, str]]:
+    if (registry.get("schema_version") != 1 or recipe.get("schema_version") != 1
+            or recipe.get("fixture_binding") != "runtime-roles.fixture_course_id"):
+        raise ValueError("registry or course recipe has an unsupported schema or fixture binding")
+    bindings = recipe.get("functions")
+    expected = {
+        "core_course_get_contents": "courseid",
+        "core_course_get_courses": "options.ids",
+        "core_enrol_get_enrolled_users": "courseid",
+    }
+    if not isinstance(bindings, dict) or bindings != expected:
+        raise ValueError("course recipe contains an unreviewed function or binding")
+    available = {row["name"]: row for row in registry["functions"]}
+    selected = []
+    for name, binding in sorted(bindings.items()):
+        row = available.get(name)
+        properties = row.get("parameters", {}).get("properties", {}) if row else {}
+        if (not row or row.get("effect") != "read" or row.get("destructive")
+                or row.get("credential") or row.get("external_dependency") != "none"
+                or "moodle_mobile_app" not in row.get("services", [])
+                or not row.get("transports", {}).get("rest")
+                or row.get("returns", {}).get("type") != "array"):
+            raise ValueError(f"course recipe {name} is not a safe mobile read")
+        if binding == "courseid":
+            if (row["parameters"].get("required") != ["courseid"]
+                    or "integer" not in properties.get("courseid", {}).get("type", [])):
+                raise ValueError(f"course recipe {name} changed its courseid contract")
+        elif (row["parameters"].get("required")
+              or properties.get("options", {}).get("properties", {}).get("ids", {}).get("type") != "array"
+              or "integer" not in properties["options"]["properties"]["ids"]["items"].get("type", [])):
+            raise ValueError(f"course recipe {name} changed its options.ids contract")
+        selected.append((row, binding))
+    return selected
+
+
+def course_params(binding: str, course_id: int) -> dict:
+    if type(course_id) is not int or course_id <= 1:
+        raise ValueError("runtime inventory has no valid fixture course ID")
+    if binding == "courseid":
+        return {"courseid": course_id}
+    if binding == "options.ids":
+        return {"options": {"ids": [course_id]}}
+    raise ValueError("unreviewed course binding")
+
+
+def classify(completed: subprocess.CompletedProcess[str], function: dict, version: str,
+             *, course_id: int | None = None, role: str | None = None) -> str:
     try:
         document = json.loads(completed.stdout)
     except json.JSONDecodeError as error:
@@ -67,6 +115,13 @@ def classify(completed: subprocess.CompletedProcess[str], function: dict, versio
         expected_type = list if function["returns"]["type"] == "array" else dict
         if not isinstance(data.get("response"), expected_type):
             raise ValueError("typed WS response does not match the registry shape")
+        if course_id is not None and role == "site_administrator":
+            response = data["response"]
+            if function["name"] == "core_course_get_courses":
+                if [row.get("id") for row in response] != [course_id]:
+                    raise ValueError("administrator did not read the fixture course")
+            elif not response:
+                raise ValueError("administrator received no fixture course data")
         return "passed"
     error = document.get("error", {})
     if isinstance(error, dict) and document.get("kind") == "error":
@@ -121,11 +176,15 @@ def main() -> int:
     inventory = json.loads(inventory_path.read_text())
     registry = json.loads((ROOT / f"internal/wsregistry/data/{version}.json").read_text())
     recipe = json.loads(RECIPE.read_text())
+    course_recipe = json.loads(COURSE_RECIPE.read_text())
     if (inventory.get("schema_version") != 1 or
             not inventory.get("moodle", {}).get("release", "").startswith(
                 {"v45": "4.5.", "v51": "5.1.", "v52": "5.2."}[version])):
         raise SystemExit("runtime inventory does not match the selected Moodle version")
     functions = selected_functions(registry, recipe)
+    course_functions = selected_course_functions(registry, course_recipe)
+    course_id = inventory.get("fixture_course_id")
+    course_params("courseid", course_id)
     principals = [row for row in inventory["roles"] if row.get("credential_kind") == "password"]
     guests = [row for row in inventory["roles"] if row.get("credential_kind") == "guest"]
     if (len(guests) != 1 or guests[0].get("shortname") != "guest"
@@ -152,13 +211,19 @@ def main() -> int:
                 role = principal["shortname"]
                 token = token_for(PORTS[version], principal["username"])
                 role_environment = {**environment, "MOODLE_WS_TOKEN": token}
-                for function in functions:
+                for function, recipe_name, parameters, bound_course in (
+                    [(row, "mobile-noarg-read", {}, None) for row in functions]
+                    + [(row, "mobile-course-read", course_params(binding, course_id), course_id)
+                       for row, binding in course_functions]
+                ):
                     completed = subprocess.run([
                         str(binary), "ws", "call", function["name"],
-                        "--params-json", "{}", "--read-only", "--json",
+                        "--params-json", json.dumps(parameters, separators=(",", ":")),
+                        "--read-only", "--json",
                     ], env=role_environment, text=True, capture_output=True, timeout=60)
                     try:
-                        outcome = classify(completed, function, version)
+                        outcome = classify(completed, function, version,
+                                           course_id=bound_course, role=role)
                     except ValueError as error:
                         # Never print the response, stdout, stderr, or token:
                         # Moodle errors can contain user or credential data.
@@ -170,13 +235,14 @@ def main() -> int:
                         "role": role,
                         "function": function["name"],
                         "outcome": outcome,
-                        "recipe": "mobile-noarg-read",
+                        "recipe": recipe_name,
                         "cli_exit": completed.returncode,
                     }, separators=(",", ":")) + "\n")
-                print(f"  ✓ {version}/{role}: {len(functions)} exposed no-arg reads", file=sys.stderr)
+                print(f"  ✓ {version}/{role}: {len(functions) + len(course_functions)} exposed reads",
+                      file=sys.stderr)
         temporary_output.replace(output)
 
-    print(f"  ✓ {len(principals) * len(functions)} executed CLI cells; redacted artifact: {output}")
+    print(f"  ✓ {len(principals) * (len(functions) + len(course_functions))} executed CLI cells; redacted artifact: {output}")
     return 0
 
 
