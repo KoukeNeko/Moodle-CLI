@@ -10,7 +10,60 @@ permissions:
   attestations: write
 
 jobs:
+  verify:
+    # A tag must pass the repository contract before any signing secrets are
+    # exposed to a release build or a public draft is created.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.27.x"
+          cache: true
+      - run: make verify
+
+  moodle-smoke:
+    name: Moodle ${{ matrix.version }} release gate
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [v45, v51, v52]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.27.x"
+          cache: true
+      - name: Provision Moodle
+        run: make moodle-up V=${{ matrix.version }}
+      - name: Verify ten-year fixture
+        run: ./test/e2e/decade-ci.sh ${{ matrix.version }}
+      - name: Verify role-bound reads
+        run: make moodle-read-matrix V=${{ matrix.version }}
+      - name: Preserve redacted role-matrix evidence
+        if: always()
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: release-${{ matrix.version }}-roles-${{ github.run_id }}
+          path: |
+            test/reports/runtime-roles-${{ matrix.version }}.json
+            test/reports/role-preflight-${{ matrix.version }}.jsonl
+            test/reports/role-matrix-read-${{ matrix.version }}.jsonl
+            test/e2e/artifacts/decade-retry-${{ matrix.version }}.txt
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Stop Moodle
+        if: always()
+        run: make moodle-purge V=${{ matrix.version }}
+
   release:
+    needs: [verify, moodle-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -39,6 +92,16 @@ jobs:
           for name in ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_P8_BASE64 MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD; do
             test -n "${!name}" || { echo "::error::$name is required"; exit 1; }
           done
+
+      - name: Require Homebrew token for stable releases
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          test -n "$HOMEBREW_TAP_TOKEN" || {
+            echo '::error::HOMEBREW_TAP_TOKEN is required for stable releases'
+            exit 1
+          }
 
       - name: Build a signed, notarized draft release
         uses: goreleaser/goreleaser-action@v7.2.3

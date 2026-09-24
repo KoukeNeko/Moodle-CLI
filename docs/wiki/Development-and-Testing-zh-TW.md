@@ -51,10 +51,12 @@ Architecture test 會強制 import direction。新行為應加入最小的擁有
 ## CI 與 release
 
 GitHub Actions 會在支援的 Go line 與下一個 line 執行測試、lint、coverage；在 Linux／macOS／Windows
-建置；從編譯後 binary 驗 JSON contract；對三個 Moodle 版本跑十年 Docker 情境；並建置 snapshot
-release package。
+建置；從編譯後 binary 驗 JSON contract；對三個 Moodle 版本跑十年 Docker 情境與已暴露唯讀函式的
+角色矩陣；並建置 snapshot release package。Push 與 PR 測試不會取得發版簽章 secrets。
 
-符合 `v*` 的 tag 會觸發 GoReleaser。Archive 包含 binary、README 與 license，並附 checksum、SBOM
+符合 `v*` 的 tag 必須先通過該 tag 自身的 `make verify` 與三版 Moodle smoke／角色矩陣，才會使用
+Apple 簽章 secrets 啟動 GoReleaser；stable tag 也會在建立 draft 前確認 `HOMEBREW_TAP_TOKEN` 存在。
+Archive 包含 binary、README 與 license，並附 checksum、SBOM
 與 keyless checksum signature。兩個 macOS binary 會先以 Developer ID 簽署、送 Apple notarization，
 再封裝進 archive；另一個 macOS runner 會打開實際下載檔，驗證 `codesign` 與 Gatekeeper，通過後才公開
 draft。Stable release 接著更新 `KoukeNeko/homebrew-tap`。Windows Authenticode 尚未設定。

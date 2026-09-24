@@ -55,9 +55,13 @@ and the ADRs before changing package boundaries.
 
 GitHub Actions runs tests on the supported Go line and the next line, lint and coverage, builds on
 Linux/macOS/Windows, validates the JSON contract from the compiled binary, runs the ten-year Docker
-scenario against all verified Moodle versions, and builds a snapshot release package.
+scenario and exposed read-function role matrix against all verified Moodle versions, and builds a
+snapshot release package. Push and pull-request runs do not receive release-signing secrets.
 
-Tags matching `v*` invoke GoReleaser. Archives contain the binary, README, and license, with
+Before a `v*` tag can invoke GoReleaser, its own `make verify` and three-version Moodle smoke/role
+matrix gates must pass. Apple signing secrets are only used by the subsequent release job; stable
+tags also require `HOMEBREW_TAP_TOKEN` before a draft is created. Archives contain the binary,
+README, and license, with
 checksums, SBOMs, and a keyless checksum signature. Both macOS binaries are Developer ID-signed and
 submitted to Apple before they are archived. A separate macOS runner opens the downloadable archives,
 verifies `codesign` and Gatekeeper acceptance, and only then publishes the draft. Stable releases then
