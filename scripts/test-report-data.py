@@ -187,6 +187,61 @@ def main() -> int:
         require(run["supplemental_run"] == "789" and run["supplemental_commit"] == "b" * 40,
                 "supplemental evidence provenance is missing")
 
+        # A scale run may contain only v52. The supplemental all-version run
+        # must supply the missing v45/v51 inventories and preflight cells,
+        # otherwise its service cells disappear behind fallback role labels.
+        (supplemental_dir / "runtime-roles-v45.json").write_text(json.dumps({
+            "schema_version": 1,
+            "moodle": {"release": "4.5.12", "version": "2024100700"},
+            "runtime_role_count": 11,
+            "principal_count": 12,
+            "roles": discovered,
+        }))
+        (supplemental_dir / "role-preflight-v45.jsonl").write_text(json.dumps({
+            "schema_version": 1, "version": "v45", "role": "student",
+            "credential": "issued", "function": "core_webservice_get_site_info",
+            "outcome": "passed", "cli_exit": 0,
+        }) + "\n")
+        (supplemental_dir / "role-matrix-service-v45.jsonl").write_text(json.dumps({
+            "version": "v45", "role": "student",
+            "function": "auth_email_get_signup_settings",
+            "outcome": "expected_unavailable", "recipe": "mobile-service-boundary",
+            "cli_exit": 9,
+        }) + "\n")
+        cross_version_output = temp / "cross-version.json"
+        result = build(cross_version_output, roles=roles_dir, preflight=preflight_dir,
+                       supplemental_dir=supplemental_dir)
+        require(result.returncode == 0, result.stderr or result.stdout)
+        cross_version = json.loads(cross_version_output.read_text())
+        rows = cross_version["queries"]["roles"]["rows"]
+        require(any(row["version"] == "v45" and row["role"] == "student"
+                    and row["domain"] == "auth_email" and row["expected_unavailable"] == 1
+                    for row in rows),
+                "supplemental v45 service evidence did not use its runtime inventory")
+        require(sum(row["passed"] + row["expected_unavailable"] for row in rows) == 6,
+                "cross-version supplemental preflight cells were not included exactly once")
+        require(cross_version["queries"]["runs"]["rows"][0]["runtime_roles"] ==
+                {"v45": 12, "v52": 12},
+                "cross-version runtime principals were not attributed")
+
+        conflicting = roles_dir / "runtime-roles-v45.json"
+        conflicting.write_text(json.dumps({
+            "schema_version": 1,
+            "moodle": {"release": "4.5.12", "version": "2024100700"},
+            "runtime_role_count": 11,
+            "principal_count": 12,
+            "roles": [
+                {**role, "shortname": "different_plugin_role"}
+                if role["shortname"] == "plugin_reviewer" else role
+                for role in discovered
+            ],
+        }))
+        result = build(temp / "conflict.json", roles=roles_dir,
+                       preflight=preflight_dir, supplemental_dir=supplemental_dir)
+        require(result.returncode != 0 and "runtime principals disagree" in result.stderr,
+                "conflicting primary and supplemental role inventories were merged")
+        conflicting.unlink()
+
         preflight_rows[1]["cli_exit"] = 0
         preflight_file.write_text("".join(json.dumps(row) + "\n" for row in preflight_rows))
         result = build(temp / "bad-preflight.json", roles=roles_dir, preflight=preflight_dir)

@@ -58,7 +58,9 @@ run 的數字 `evidence_run_id`。它下載該次去敏 artifact，分別顯示�
 
 可選的 `supplemental_run_id` 能把後續 role-matrix recipe artifact 加入同一份報告，不必重跑 scale
 seed。補充 artifact 會分開解壓，Runs view 會列出其 run ID 與 commit；缺漏或錯誤的 recipe 證據會
-使建置失敗。
+使建置失敗。每個 Moodle 版本若主 run 沒有 runtime role inventory 或憑證 preflight，會從補充
+run 取得；兩邊都有時保留主 run，若 runtime principals 衝突則拒絕建置。兩個 run 的 recipe fragment
+會合併，重複 cell 也會使建置失敗。
 
 Report builder 讀取產生式 registry 與測試 artifact，附上精確來源 lineage；測試失敗後仍要建置報告，
 讓失敗 evidence 可查。`make report-site` 可在本機重建同一份靜態 dashboard；CI 以

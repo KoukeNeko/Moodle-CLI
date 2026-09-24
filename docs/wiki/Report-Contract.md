@@ -67,7 +67,11 @@ say when that runner name was not captured.
 
 An optional `supplemental_run_id` lets the same rebuild add a later role-matrix recipe artifact
 without rerunning the scale seed. The supplemental artifact is extracted separately, and its run ID
-and commit appear in the Runs view. The builder rejects missing or malformed recipe evidence.
+and commit appear in the Runs view. For each Moodle version, a missing primary runtime-role
+inventory or credential preflight is filled from the supplemental run; a version present in both
+runs keeps the primary evidence, and conflicting runtime principals fail the build. Recipe
+fragments from both runs are combined with duplicate cells rejected. The builder also rejects
+missing or malformed recipe evidence.
 
 The report builder reads generated registries and test artifacts, publishes exact source lineage,
 and still builds after a test failure so failed evidence remains inspectable. `make report-site`

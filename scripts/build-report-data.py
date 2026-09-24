@@ -191,25 +191,44 @@ default_role_names = [
 ]
 runtime_roles_dir = pathlib.Path(os.environ.get(
     "MOODLE_RUNTIME_ROLES_DIR", ROOT / "test/reports"))
+preflight_dir = pathlib.Path(os.environ.get(
+    "MOODLE_ROLE_PREFLIGHT_DIR", ROOT / "test/reports"))
+supplemental_dir_value = os.environ.get("MOODLE_ROLE_MATRIX_DIR")
+supplemental_dir = pathlib.Path(supplemental_dir_value) if supplemental_dir_value else None
+
+
+def evidence_path(primary: pathlib.Path, name: str) -> pathlib.Path:
+    """Prefer the primary run, then fill versions absent from it with supplemental evidence."""
+    candidate = primary / name
+    if candidate.exists() or supplemental_dir is None:
+        return candidate
+    secondary = supplemental_dir / name
+    return secondary if secondary.exists() else candidate
+
+
 misnested_artifact_dir = ROOT / "test/reports/reports"
 if misnested_artifact_dir.exists():
     raise SystemExit(
         f"Moodle evidence was extracted one directory too deep: {misnested_artifact_dir}; "
         "download artifacts to test/ so reports/ maps to test/reports/")
 runtime_role_paths = {
-    version: runtime_roles_dir / f"runtime-roles-{version}.json"
+    version: evidence_path(runtime_roles_dir, f"runtime-roles-{version}.json")
     for version in ("v45", "v51", "v52")
 }
 runtime_roles = {
     version: load_runtime_roles(path)
     for version, path in runtime_role_paths.items()
 }
+if supplemental_dir is not None and supplemental_dir != runtime_roles_dir:
+    for version in runtime_role_paths:
+        primary = runtime_roles_dir / f"runtime-roles-{version}.json"
+        secondary = supplemental_dir / f"runtime-roles-{version}.json"
+        if primary.exists() and secondary.exists() and load_runtime_roles(primary) != load_runtime_roles(secondary):
+            raise SystemExit(f"{primary} and {secondary}: runtime principals disagree")
 role_matrix_path = pathlib.Path(os.environ.get(
     "MOODLE_ROLE_MATRIX_REPORT", ROOT / "test/reports/role-matrix.jsonl"))
-preflight_dir = pathlib.Path(os.environ.get(
-    "MOODLE_ROLE_PREFLIGHT_DIR", ROOT / "test/reports"))
 preflight_paths = {
-    version: preflight_dir / f"role-preflight-{version}.jsonl"
+    version: evidence_path(preflight_dir, f"role-preflight-{version}.jsonl")
     for version in ("v45", "v51", "v52")
 }
 if role_matrix_path.exists() or "MOODLE_ROLE_MATRIX_REPORT" in os.environ:
@@ -218,9 +237,8 @@ if role_matrix_path.exists() or "MOODLE_ROLE_MATRIX_REPORT" in os.environ:
     role_source_paths = [role_matrix_path] if role_matrix_path.exists() else []
 else:
     role_matrix_dirs = [preflight_dir]
-    supplemental_dir = os.environ.get("MOODLE_ROLE_MATRIX_DIR")
-    if supplemental_dir and pathlib.Path(supplemental_dir) != preflight_dir:
-        role_matrix_dirs.append(pathlib.Path(supplemental_dir))
+    if supplemental_dir is not None and supplemental_dir != preflight_dir:
+        role_matrix_dirs.append(supplemental_dir)
     fragments = sorted(path for directory in role_matrix_dirs
                        for path in directory.glob("role-matrix-*.jsonl"))
     role_source_paths = [path for path in preflight_paths.values() if path.exists()] + fragments
