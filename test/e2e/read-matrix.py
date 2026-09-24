@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -74,7 +75,20 @@ def classify(completed: subprocess.CompletedProcess[str], function: dict, versio
         if (completed.returncode == 9 and error.get("code") == "unavailable"
                 and error.get("reason") == "capability"):
             return "expected_unavailable"
-    raise ValueError("typed WS returned an unexpected exit or outcome")
+    # Only closed error identifiers enter CI logs. Moodle's message/hint and
+    # the response body may contain fixture identity or credential material.
+    def safe_code(value: object) -> str:
+        return value if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_./-]{1,80}", value) else "redacted"
+
+    upstream = error.get("upstream", {}) if isinstance(error, dict) else {}
+    if not isinstance(upstream, dict):
+        upstream = {}
+    raise ValueError(
+        "typed WS returned an unexpected exit or outcome "
+        f"(exit={completed.returncode}, code={safe_code(error.get('code') if isinstance(error, dict) else None)}, "
+        f"reason={safe_code(error.get('reason') if isinstance(error, dict) else None)}, "
+        f"upstream_errorcode={safe_code(upstream.get('errorcode'))})"
+    )
 
 
 def token_for(port: int, username: str) -> str:

@@ -65,6 +65,22 @@ def main() -> int:
             else:
                 raise AssertionError(f"{version}: invalid read evidence was accepted")
 
+        secret = "TOKEN=do-not-log-this"
+        unexpected = subprocess.CompletedProcess([], 11, stdout=json.dumps({
+            "schema_version": 1, "kind": "error", "error": {
+                "code": "upstream", "reason": None, "message": secret,
+                "upstream": {"errorcode": "invalidrecord", "message": secret},
+            },
+        }))
+        try:
+            module.classify(unexpected, function, version)
+        except ValueError as error:
+            require("code=upstream" in str(error) and "upstream_errorcode=invalidrecord" in str(error),
+                    f"{version}: safe upstream error identifiers were not retained")
+            require(secret not in str(error), f"{version}: a Moodle error message leaked")
+        else:
+            raise AssertionError(f"{version}: unexpected upstream error was accepted")
+
         mutated = json.loads(json.dumps(registry))
         row = next(row for row in mutated["functions"] if row["name"] == function["name"])
         row["effect"] = "write"
