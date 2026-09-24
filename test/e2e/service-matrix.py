@@ -85,7 +85,8 @@ def main() -> int:
         raise SystemExit("registry unexpectedly contains no unavailable functions")
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="moodle-service-matrix-") as directory:
+    with tempfile.TemporaryDirectory(prefix="moodle-service-matrix-") as directory, \
+            tempfile.TemporaryDirectory(prefix=".moodle-service-matrix-", dir=output.parent) as artifact_dir:
         work = pathlib.Path(directory)
         environment = os.environ.copy()
         environment["MOODLE_CLI_CONFIG"] = str(work / "config.yaml")
@@ -94,7 +95,9 @@ def main() -> int:
             f"http://127.0.0.1:{PORTS[version]}",
         ], env=environment, stdout=subprocess.DEVNULL, check=True, timeout=30)
 
-        temporary_output = work / "role-matrix.jsonl"
+        # The self-hosted runner mounts /tmp and the workspace on different
+        # filesystems. Stage beside the final artifact for a real atomic rename.
+        temporary_output = pathlib.Path(artifact_dir) / output.name
         count = 0
         with temporary_output.open("w") as target:
             for principal in principals:
