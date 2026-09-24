@@ -58,6 +58,10 @@ jobs:
       - name: Run version acceptance
         run: make moodle-matrix V=${{ inputs.version }}
 
+      - name: Exercise unavailable mobile-service function cells
+        timeout-minutes: 60
+        run: make moodle-service-matrix V=${{ inputs.version }}
+
       - name: Capture version-matrix diagnostics
         if: always()
         run: |

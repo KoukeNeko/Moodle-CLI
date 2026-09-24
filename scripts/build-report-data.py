@@ -199,9 +199,14 @@ if role_matrix_path.exists() or "MOODLE_ROLE_MATRIX_REPORT" in os.environ:
                   for row in load_jsonl(role_matrix_path)]
     role_source_paths = [role_matrix_path] if role_matrix_path.exists() else []
 else:
-    role_source_paths = [path for path in preflight_paths.values() if path.exists()]
+    role_matrix_dir = pathlib.Path(os.environ.get(
+        "MOODLE_ROLE_MATRIX_DIR", preflight_dir))
+    fragments = sorted(role_matrix_dir.glob("role-matrix-*.jsonl"))
+    role_source_paths = [path for path in preflight_paths.values() if path.exists()] + fragments
     role_cells = [cell for version, path in preflight_paths.items()
                   for cell in load_role_preflight(path, version)]
+    role_cells += [{**row, "_source": str(path)}
+                   for path in fragments for row in load_jsonl(path)]
 role_outcome_names = ("passed", "expected_denied", "expected_unavailable", "failed")
 allowed_role_outcomes = set(role_outcome_names)
 function_index = {(row["version"], row["function"]): row for row in functions}

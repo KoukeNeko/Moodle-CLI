@@ -37,6 +37,10 @@ Until the full matrix is emitted, each `role-preflight-<version>.jsonl` contribu
 `credential-preflight` and keeps all other function cells in the `not_run` denominator. Malformed
 preflight outcomes or exits fail the report build.
 
+The separate `role-matrix-service-<version>.jsonl` fragments contain CLI-confirmed service
+unavailability for password principals. The builder merges them with preflight cells, rejects
+duplicate role/function pairs, and keeps every remaining cell in `not_run`.
+
 `test/reports/runtime-roles-<version>.json` supplies the denominator before function cells exist. If
 present, dashboard placeholders use the principals discovered from that Moodle runtime, including
 custom/plugin roles, instead of the standard-role fallback. Executed cells must name a principal in

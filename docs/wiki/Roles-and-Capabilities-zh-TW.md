@@ -32,6 +32,11 @@ typed `core_webservice_get_site_info`；guest 必須在明確的無憑證 CLI �
 去敏後的 `test/reports/role-preflight-<version>.jsonl` 不含 token、密碼、username 或 Moodle response。
 它只證明 credential 與 transport 已可供後續 harness 使用，不計為完整 role/function 覆蓋。
 
+長途測試的 `moodle-service-matrix` 階段會讓每個可登入 principal，逐一透過 typed CLI 呼叫
+未暴露於官方 mobile service 的 core function。每個 cell 必須回傳 exit 9 與
+`unavailable/capability`；service gate 在參數驗證或 Moodle 函式呼叫前執行。
+`role-matrix-service-<version>.jsonl` 是部分矩陣證據；guest 與已暴露函式仍列在未執行分母。
+
 ## 三層不同的 gate
 
 1. **Registry 支援**：core function 存在於至少一個受支援 Moodle 版本。

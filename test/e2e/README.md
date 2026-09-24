@@ -162,6 +162,12 @@ token，實際透過 CLI 執行 typed `core_webservice_get_site_info`，並驗�
 去敏結果寫入 `test/reports/role-preflight-<version>.jsonl`，不含 token、密碼、username 或 response。
 這只證明各身分的 credential／transport 可供後續 recipe harness 使用，不代表 780 個函式已覆蓋。
 
+`make moodle-service-matrix V=v52` 在小型 fixture 對每個可登入 principal，逐一呼叫該版 registry
+中未暴露於 `moodle_mobile_app` 的 core function。每筆都必須由 CLI 回傳 exit 9、
+`unavailable/capability`；若 service exposure 改變，測試會失敗，不會把可能的寫入送往 Moodle。
+完整成功後才原子性寫出 `test/reports/role-matrix-service-<version>.jsonl`。此 subset 不涵蓋 guest、
+已暴露的讀取與寫入函式；這些仍在完整 recipe harness 的待辦分母中。
+
 紀錄寫到 `test/e2e/logs/<時間>/`：
 
 - `transcript.log` — 每個命令的完整命令列、stdout、stderr 與結束碼

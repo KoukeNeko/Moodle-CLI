@@ -128,6 +128,27 @@ def main() -> int:
                     for source in preflight_snapshot["queries"]["roles"]["source"]["tables"]),
                 "role evidence lacks the preflight source path")
 
+        service_fragment = preflight_dir / "role-matrix-service-v52.jsonl"
+        service_fragment.write_text(json.dumps({
+            "version": "v52", "role": "student",
+            "function": "auth_email_get_signup_settings",
+            "outcome": "expected_unavailable", "recipe": "mobile-service-boundary",
+            "cli_exit": 9,
+        }) + "\n")
+        fragment_output = temp / "fragments.json"
+        result = build(fragment_output, roles=roles_dir, preflight=preflight_dir)
+        require(result.returncode == 0, result.stderr or result.stdout)
+        fragment_snapshot = json.loads(fragment_output.read_text())
+        require(sum(row["passed"] + row["expected_unavailable"]
+                    for row in fragment_snapshot["queries"]["roles"]["rows"]) == 3,
+                "service-boundary fragment was not merged with preflight evidence")
+        fragment_function = next(row for row in fragment_snapshot["queries"]["functions"]["rows"]
+                                 if row["version"] == "v52"
+                                 and row["function"] == "auth_email_get_signup_settings")
+        require(fragment_function["recipe"] == "mobile-service-boundary"
+                and fragment_function["result"] == "executed",
+                "executed service-boundary recipe was not attributed")
+
         preflight_rows[1]["cli_exit"] = 0
         preflight_file.write_text("".join(json.dumps(row) + "\n" for row in preflight_rows))
         result = build(temp / "bad-preflight.json", roles=roles_dir, preflight=preflight_dir)

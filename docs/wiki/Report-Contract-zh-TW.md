@@ -32,6 +32,10 @@ role、domain 彙總，所有尚未執行的 role/function cell 仍會列入明�
 `core_webservice_get_site_info` CLI cell；dashboard 將 recipe 標成 `credential-preflight`，其餘函式
 仍列在 `not_run` 分母。前置測試的 outcome 或 exit 異常會使 report build 失敗。
 
+另外的 `role-matrix-service-<version>.jsonl` fragment 記錄可登入 principals 經 CLI 證實的 service
+unavailable。Builder 會與 preflight cells 合併、拒絕重複的 role/function 配對，其他 cell 仍計入
+`not_run`。
+
 `test/reports/runtime-roles-<version>.json` 在函式 cell 尚未執行前提供正確分母。檔案存在時，
 dashboard 的 placeholder 會採用該 Moodle runtime 動態發現的 principals（包含 custom/plugin
 roles），而不是標準角色 fallback。已執行 cell 的角色必須存在於同版 inventory；inventory 格式錯誤、

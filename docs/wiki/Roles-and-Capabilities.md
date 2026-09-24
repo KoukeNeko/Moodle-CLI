@@ -37,6 +37,12 @@ explicit no-credential CLI path and must be unavailable. The redacted
 response. It proves credential and transport readiness only; it is not counted as complete
 role/function coverage.
 
+The long-haul `moodle-service-matrix` stage then runs every core function absent from the official
+mobile service through the typed CLI for each password principal. Each call must return
+`unavailable/capability` with exit 9; the service gate runs before argument validation or a Moodle
+function call. Its `role-matrix-service-<version>.jsonl` evidence is a partial matrix. Guest and
+service-exposed functions remain in the explicit not-run denominator until their recipes execute.
+
 ## Three different gates
 
 1. **Registry support** says a core function exists in one of the supported Moodle versions.
