@@ -38,6 +38,10 @@ jobs:
           path: report-site/dist
 
   deploy:
+    # A push builds the UI but has no run artifacts. Publishing its checked-in
+    # placeholder snapshot would erase the latest long-haul scale/role evidence.
+    # Scheduled and manually published long-haul runs own normal deployment.
+    if: github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     environment:

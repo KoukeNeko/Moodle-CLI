@@ -45,6 +45,11 @@ milestone and must not be inferred from the single-row Runs view. Full JSONL, JU
 and container diagnostics are Actions artifacts retained for 90 days. Neither surface may contain
 tokens, cookies, passwords, callback URLs, authorization headers, or unredacted request secrets.
 
+Pushes build the dashboard UI without replacing published long-haul evidence. Scheduled long-haul
+runs and explicit publish dispatches deploy the dashboard after downloading their own redacted
+`test/reports/` artifacts. The report build rejects artifacts extracted under a duplicate
+`test/reports/reports/` directory.
+
 The report builder reads generated registries and test artifacts, publishes exact source lineage,
 and still builds after a test failure so failed evidence remains inspectable. `make report-site`
 rebuilds the same static dashboard locally. `make report-data-test` verifies absent, observed, and

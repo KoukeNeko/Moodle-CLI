@@ -40,6 +40,10 @@ Pages 目前發布最新的合成 snapshot；歷史趨勢累積仍是待完成�
 保存 90 天。兩者都不得包含 token、cookie、password、callback URL、authorization header 或未去敏
 request secret。
 
+Push 只建置 dashboard UI，不以 repository 內的 placeholder snapshot 覆蓋已發布的 long-haul 證據。
+排程 long-haul 與明確要求發布的手動 run 會下載自身去敏後的 `test/reports/` artifact 再部署。
+Report build 遇到重複巢狀的 `test/reports/reports/` 會失敗。
+
 Report builder 讀取產生式 registry 與測試 artifact，附上精確來源 lineage；測試失敗後仍要建置報告，
 讓失敗 evidence 可查。`make report-site` 可在本機重建同一份靜態 dashboard；CI 以
 `make report-data-test` 驗證缺少、已觀測及非法／no-skip evidence 的行為。
