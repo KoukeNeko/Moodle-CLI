@@ -168,6 +168,10 @@ token，實際透過 CLI 執行 typed `core_webservice_get_site_info`，並驗�
 完整成功後才原子性寫出 `test/reports/role-matrix-service-<version>.jsonl`。此 subset 不涵蓋 guest、
 已暴露的讀取與寫入函式；這些仍在完整 recipe harness 的待辦分母中。
 
+Push CI 的 v4.5 SQLite fixture 偶爾在十年 seed 初次寫入時回 `Error writing to database`。
+`decade-ci.sh` 只針對這個訊息重建一次拋棄式容器與 volume；若重試成功，
+`test/e2e/artifacts/decade-retry-v45.txt` 保留這次不穩定事件。其他錯誤與第二次失敗仍讓 CI 失敗。
+
 紀錄寫到 `test/e2e/logs/<時間>/`：
 
 - `transcript.log` — 每個命令的完整命令列、stdout、stderr 與結束碼

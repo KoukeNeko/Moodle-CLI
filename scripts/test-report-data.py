@@ -129,12 +129,13 @@ def main() -> int:
                 "role evidence lacks the preflight source path")
 
         service_fragment = preflight_dir / "role-matrix-service-v52.jsonl"
-        service_fragment.write_text(json.dumps({
+        service_row = {
             "version": "v52", "role": "student",
             "function": "auth_email_get_signup_settings",
             "outcome": "expected_unavailable", "recipe": "mobile-service-boundary",
             "cli_exit": 9,
-        }) + "\n")
+        }
+        service_fragment.write_text(json.dumps(service_row) + "\n")
         fragment_output = temp / "fragments.json"
         result = build(fragment_output, roles=roles_dir, preflight=preflight_dir)
         require(result.returncode == 0, result.stderr or result.stdout)
@@ -148,6 +149,18 @@ def main() -> int:
         require(fragment_function["recipe"] == "mobile-service-boundary"
                 and fragment_function["result"] == "executed",
                 "executed service-boundary recipe was not attributed")
+
+        service_fragment.write_text(json.dumps({
+            "version": "v52", "role": "student",
+            "function": "core_webservice_get_site_info",
+            "outcome": "expected_unavailable", "recipe": "mobile-service-boundary",
+            "cli_exit": 9,
+        }) + "\n")
+        result = build(temp / "invalid-service.json", roles=roles_dir,
+                       preflight=preflight_dir)
+        require(result.returncode != 0 and "invalid mobile-service boundary evidence" in result.stderr,
+                "service fragment claimed an exposed function was unavailable")
+        service_fragment.write_text(json.dumps(service_row) + "\n")
 
         preflight_rows[1]["cli_exit"] = 0
         preflight_file.write_text("".join(json.dumps(row) + "\n" for row in preflight_rows))

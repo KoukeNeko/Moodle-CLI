@@ -123,6 +123,22 @@ def load_role_preflight(path: pathlib.Path, version: str) -> list[dict]:
     return cells
 
 
+def load_matrix_fragment(path: pathlib.Path) -> list[dict]:
+    """Load a recipe fragment and verify its claimed service boundary."""
+    rows = load_jsonl(path)
+    if path.name.startswith("role-matrix-service-"):
+        version = path.name.removeprefix("role-matrix-service-").removesuffix(".jsonl")
+        for line_number, row in enumerate(rows, 1):
+            key = (row.get("version"), row.get("function"))
+            if (row.get("version") != version or row.get("role") == "guest"
+                    or row.get("outcome") != "expected_unavailable"
+                    or row.get("recipe") != "mobile-service-boundary"
+                    or row.get("cli_exit") != 9
+                    or mobile_exposure.get(key) is not False):
+                raise SystemExit(f"{path}:{line_number}: invalid mobile-service boundary evidence")
+    return [{**row, "_source": str(path)} for row in rows]
+
+
 def source(label: str, files: list[str], component_ids: list[str], caveats: list[str] | None = None):
     return {
         "label": label,
@@ -139,6 +155,7 @@ def source(label: str, files: list[str], component_ids: list[str], caveats: list
 
 versions = []
 functions = []
+mobile_exposure = {}
 for key in ("v45", "v51", "v52"):
     path = ROOT / f"internal/wsregistry/data/{key}.json"
     snapshot = load(path, {})
@@ -152,6 +169,7 @@ for key in ("v45", "v51", "v52"):
         "deprecated": sum(bool(row.get("deprecated")) for row in rows),
     })
     for row in rows:
+        mobile_exposure[(key, row.get("name"))] = "moodle_mobile_app" in row.get("services", [])
         functions.append({
             "version": key,
             "function": row.get("name"),
@@ -205,8 +223,7 @@ else:
     role_source_paths = [path for path in preflight_paths.values() if path.exists()] + fragments
     role_cells = [cell for version, path in preflight_paths.items()
                   for cell in load_role_preflight(path, version)]
-    role_cells += [{**row, "_source": str(path)}
-                   for path in fragments for row in load_jsonl(path)]
+    role_cells += [cell for path in fragments for cell in load_matrix_fragment(path)]
 role_outcome_names = ("passed", "expected_denied", "expected_unavailable", "failed")
 allowed_role_outcomes = set(role_outcome_names)
 function_index = {(row["version"], row["function"]): row for row in functions}

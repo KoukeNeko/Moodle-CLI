@@ -14,6 +14,17 @@
 
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
+// Moodle's default CLI exception handler prints only "Error writing to
+// database". Keep a safe cause class/code in synthetic fixture logs so a
+// transient SQLite lock can be distinguished from a deterministic SQL bug.
+set_exception_handler(static function(Throwable $error): void {
+    $cause = $error->getPrevious();
+    fwrite(STDERR, '[seed-masters] ' . get_class($error) .
+        ' code=' . (string)$error->getCode() .
+        ' cause=' . ($cause ? get_class($cause) : 'none') .
+        ' causecode=' . ($cause ? (string)$cause->getCode() : 'none') . PHP_EOL);
+    exit(1);
+});
 require_once($CFG->libdir . '/gradelib.php');
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->dirroot . '/enrol/manual/lib.php');

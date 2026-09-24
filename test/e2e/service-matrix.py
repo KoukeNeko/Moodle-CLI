@@ -104,7 +104,7 @@ def main() -> int:
                 for function in unavailable:
                     completed = subprocess.run([
                         str(binary), "ws", "call", function,
-                        "--params-json", "{}", "--json",
+                        "--params-json", "{}", "--read-only", "--json",
                     ], env=role_environment, text=True, capture_output=True, timeout=30)
                     try:
                         document = json.loads(completed.stdout)

@@ -135,7 +135,7 @@ jobs:
       - name: Provision Moodle
         run: make moodle-up V=${{ matrix.version }}
       - name: Exercise ten academic years
-        run: make moodle-decade V=${{ matrix.version }}
+        run: ./test/e2e/decade-ci.sh ${{ matrix.version }}
       - name: Exercise representative command scenarios
         if: matrix.version == 'v52'
         run: ./test/e2e/full-run.sh --nows
@@ -147,6 +147,7 @@ jobs:
           path: |
             test/reports/runtime-roles-${{ matrix.version }}.json
             test/reports/role-preflight-${{ matrix.version }}.jsonl
+            test/e2e/artifacts/decade-retry-${{ matrix.version }}.txt
           if-no-files-found: warn
           retention-days: 90
       - name: Capture container logs
