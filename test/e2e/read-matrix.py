@@ -118,7 +118,8 @@ def main() -> int:
             or len(principals) + 1 != inventory.get("principal_count")):
         raise SystemExit("one or more runtime principals have unsupported credentials")
     names = [row.get("shortname") for row in principals]
-    if len(names) != len(set(names)) or any(not row.get("username") for row in principals):
+    if (len(names) != len(set(names)) or "site_administrator" not in names
+            or any(not row.get("username") for row in principals)):
         raise SystemExit("runtime principal metadata is incomplete or duplicated")
 
     output.parent.mkdir(parents=True, exist_ok=True)

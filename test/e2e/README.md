@@ -169,7 +169,7 @@ token，實際透過 CLI 執行 typed `core_webservice_get_site_info`，並驗�
 已暴露的讀取與寫入函式；這些仍在完整 recipe harness 的待辦分母中。
 
 `make moodle-read-matrix V=v52` 會對
-`test/e2e/recipes/mobile-noarg-read.json` 列出的五個已暴露唯讀函式，在每個可登入 principal
+`test/e2e/recipes/mobile-noarg-read.json` 列出的已暴露唯讀函式，在每個可登入 principal
 上實際執行 typed CLI。執行前會核對該版 registry 的 `read`、REST/mobile service、無必要參數、
 非憑證操作與無外部依賴；CLI 固定帶 `--read-only`。成功回應須符合 registry 的頂層型別，
 權限拒絕及 token service 不提供的情況各自記錄，站台管理員對每個函式必須成功。

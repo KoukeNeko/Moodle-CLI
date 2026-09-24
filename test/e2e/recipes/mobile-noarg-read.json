@@ -4,8 +4,15 @@
   "functions": [
     "core_calendar_get_calendar_access_information",
     "core_course_get_categories",
+    "core_course_get_courses",
     "core_course_get_recent_courses",
+    "core_filters_get_all_states",
+    "core_tag_get_tag_areas",
+    "core_tag_get_tag_collections",
     "core_user_get_user_preferences",
+    "mod_assign_get_assignments",
+    "mod_forum_get_forums_by_courses",
+    "tool_mobile_get_plugins_supporting_mobile",
     "tool_mobile_get_public_config"
   ]
 }
