@@ -103,7 +103,7 @@ moodle-read-matrix: build
 
 moodle-matrix: build
 	./scripts/moodle-env.sh up $(V)
-	./test/e2e/decade-run.sh $(V)
+	./test/e2e/decade-ci.sh $(V)
 	STD_PORT=$$(case "$(V)" in v45) echo 8451;; v51) echo 8511;; v52) echo 8521;; *) exit 2;; esac); \
 	NOWS_PORT=$$(case "$(V)" in v45) echo 8452;; v51) echo 8512;; v52) echo 8522;; *) exit 2;; esac); \
 	STD_PORT=$$STD_PORT NOWS_PORT=$$NOWS_PORT ./test/e2e/full-run.sh --nows
