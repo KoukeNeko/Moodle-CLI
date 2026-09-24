@@ -27,7 +27,8 @@ drafts, overdue work, cross-role membership, and permission overrides.
 
 The seed is deterministic and convergent. The control plane queries Moodle's PostgreSQL tables
 directly; the CLI is the system under test and does not share the control-plane counting logic.
-Destructive function recipes use disposable small fixtures, never the large site. After bootstrap,
+Destructive function recipes must use disposable small fixtures; the full recipe harness is still
+pending and no destructive matrix runs on the large site. After bootstrap,
 the scale Moodle container is disconnected from public egress.
 
 ## Gates

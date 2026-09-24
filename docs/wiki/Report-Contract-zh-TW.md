@@ -14,6 +14,8 @@ GitHub Pages dashboard 把「函式清冊」與「實際執行 evidence」分開
 
 可依版本、component、effect、結果篩選。`registry-covered`、`passed`、`partial`、`not-run` 是刻意分開
 的狀態。
+`recipe` 欄在具備可執行 fixture binding 與結果斷言前標為 `not-implemented`；只有產生參數 schema
+並不等於已有測試 recipe。
 
 ## 角色矩陣 JSONL
 

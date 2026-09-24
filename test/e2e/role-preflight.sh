@@ -97,7 +97,7 @@ PY
   MOODLE_WS_TOKEN="$TOKEN" \
     "$BIN" ws call core_webservice_get_site_info --params-json '{}' --json \
     > "$WORKDIR/call.json" 2> "$WORKDIR/call.stderr"
-  python3 - "$WORKDIR/call.json" <<'PY'
+  python3 - "$WORKDIR/call.json" "$USERNAME" "$VERSION" <<'PY'
 import json
 import pathlib
 import sys
@@ -108,6 +108,11 @@ if document.get("schema_version") != 1 or document.get("kind") != "ws.call":
 data = document.get("data", {})
 if data.get("function") != "core_webservice_get_site_info" or data.get("dry_run"):
     raise SystemExit("typed WS preflight did not execute core_webservice_get_site_info")
+if data.get("version") != sys.argv[3]:
+    raise SystemExit("typed WS preflight selected the wrong Moodle registry version")
+response = data.get("response")
+if not isinstance(response, dict) or response.get("username") != sys.argv[2]:
+    raise SystemExit("typed WS preflight token does not belong to the fixture identity")
 PY
   emit "$ROLE" "issued" "passed" 0
   unset TOKEN

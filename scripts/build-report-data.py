@@ -127,7 +127,10 @@ for key in ("v45", "v51", "v52"):
             "destructive": bool(row.get("destructive")),
             "transport": ", ".join(name.upper() for name, enabled in row.get("transports", {}).items() if enabled),
             "dependency": row.get("external_dependency", "none"),
-            "recipe": "schema-generated",
+            # A JSON Schema validates arguments but cannot create disposable
+            # Moodle objects, bind fixture IDs, or assert a write's effect.
+            # Until an executable recipe is shipped, say so explicitly.
+            "recipe": "not-implemented",
             "result": "registry-covered",
         })
 

@@ -15,6 +15,8 @@ artifact into a pass.
 
 Filters are available for version, component, effect, and result. `registry-covered`, `passed`,
 `partial`, and `not-run` are deliberately distinct states.
+The `recipe` column says `not-implemented` until an executable fixture binding and assertion exists;
+the generated parameter schema alone is not a test recipe.
 
 ## Role matrix JSONL
 

@@ -25,7 +25,8 @@
 ## 獨立性與隔離
 
 Seed 固定且可重複執行並收斂。Control plane 直接查 Moodle PostgreSQL；CLI 是受測面，兩者不共用計數
-邏輯。破壞性 function recipe 使用小型拋棄式 fixture，不在大型站執行。Bootstrap 後 Moodle scale
+邏輯。破壞性 function recipe 未來必須使用小型拋棄式 fixture；完整 recipe harness 尚未完成，
+大型站也不執行破壞性矩陣。Bootstrap 後 Moodle scale
 container 會與公網 egress 斷線。
 
 ## Gate

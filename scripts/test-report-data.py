@@ -46,6 +46,9 @@ def main() -> int:
         default = json.loads(default_output.read_text())
         require(default["queries"]["runs"]["rows"][0]["role_matrix"] == "not-run",
                 "missing role evidence was not reported as not-run")
+        require(all(row["recipe"] == "not-implemented"
+                    for row in default["queries"]["functions"]["rows"]),
+                "generated parameter schemas were misreported as executable recipes")
         placeholders = default["queries"]["roles"]["rows"]
         require(len(placeholders) == 33 and all(row["status"] == "not-run" for row in placeholders),
                 "the explicit 3-version role placeholders changed")
