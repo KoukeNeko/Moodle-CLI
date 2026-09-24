@@ -30,6 +30,13 @@ assignment used by the test. It also installs two canaries: `matrixteacher`, whi
 cannot be implemented as a hard-coded list of the eight standard shortnames. This inventory is an
 input to the full role/function harness; inventory alone is not reported as function execution.
 
+`make moodle-role-preflight V=v52` then executes the harmless typed
+`core_webservice_get_site_info` read through the CLI for every password principal. Guest executes an
+explicit no-credential CLI path and must be unavailable. The redacted
+`test/reports/role-preflight-<version>.jsonl` contains no token, password, username, or Moodle
+response. It proves credential and transport readiness only; it is not counted as complete
+role/function coverage.
+
 ## Three different gates
 
 1. **Registry support** says a core function exists in one of the supported Moodle versions.

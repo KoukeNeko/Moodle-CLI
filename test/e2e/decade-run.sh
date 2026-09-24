@@ -24,15 +24,18 @@ CONTAINER=$(docker compose --project-name moodle-cli-e2e --file "$COMPOSE" ps -q
 [ -n "$CONTAINER" ] || { echo "$SERVICE 沒有在跑；先執行 make moodle-up V=$VERSION" >&2; exit 2; }
 [ -x "$BIN" ] || { echo "找不到 bin/moodle；先執行 make build" >&2; exit 2; }
 
-echo "==> 1/5 佈建十年情境（$SERVICE）"
+echo "==> 1/6 佈建十年情境（$SERVICE）"
 "$REPO_DIR/test/e2e/seed-masters.sh" "$SERVICE"
 "$REPO_DIR/test/e2e/seed-permissions.sh" apply "$SERVICE"
 "$REPO_DIR/test/e2e/seed-faculty.sh" "$SERVICE"
 
-echo "==> 2/5 動態建立並匯出 runtime-role fixture"
+echo "==> 2/6 動態建立並匯出 runtime-role fixture"
 "$REPO_DIR/test/e2e/role-fixture.sh" "$VERSION"
 
-echo "==> 3/5 由 Moodle 資料庫核對 fixture 真值"
+echo "==> 3/6 逐一驗證 runtime principal 的 typed WS transport"
+"$REPO_DIR/test/e2e/role-preflight.sh" "$VERSION"
+
+echo "==> 4/6 由 Moodle 資料庫核對 fixture 真值"
 TRUTH=$(E2E_CONTAINER="$CONTAINER" \
   "$REPO_DIR/test/e2e/fixture-truth.sh" history prof1 CS1001- | tr -d '\r')
 python3 -c '
@@ -65,7 +68,7 @@ GRAD_TOKEN=$(token_for grad1)
   echo "測試帳號拿不到 token" >&2; exit 1;
 }
 
-echo "==> 4/5 以 CLI 讀回十年資料"
+echo "==> 5/6 以 CLI 讀回十年資料"
 MOODLE_WS_TOKEN="$PROF_TOKEN" "$BIN" course list --json > "$WORKDIR/prof-courses.json"
 MOODLE_WS_TOKEN="$PROF_TOKEN" "$BIN" assignment list --json > "$WORKDIR/prof-assignments.json"
 MOODLE_WS_TOKEN="$GRAD_TOKEN" "$BIN" course list --json > "$WORKDIR/grad-courses.json"
@@ -131,7 +134,7 @@ print("  ✓ CLI 保留 10 門同名課程與 20 份作業的獨立身分")
 print("  ✓ 封存/現行、草稿/交件、提交聲明、零分/未評分語意正確")
 PY
 
-echo "==> 5/5 核對時間視窗與停權歷程"
+echo "==> 6/6 核對時間視窗與停權歷程"
 CAL_TRUTH=$(E2E_CONTAINER="$CONTAINER" \
   "$REPO_DIR/test/e2e/fixture-truth.sh" calendar prof1 30 | tr -d '\r')
 CAL_CLI=$(MOODLE_WS_TOKEN="$PROF_TOKEN" "$BIN" calendar upcoming --json \

@@ -157,6 +157,11 @@ CS1001 看得到別人的繳交，但沒有 `mod/assign:viewownsubmissionsummary
 可指派 context levels、專用 username、fixture assignment 與額外的 site administrator。
 這是完整 role/function recipe harness 的角色輸入；它不會把尚未執行的函式 cell 宣稱為通過。
 
+`make moodle-role-preflight V=v52` 會對 inventory 的每個 password principal 取得一次性 mobile
+token，實際透過 CLI 執行 typed `core_webservice_get_site_info`，並驗證 guest 的無憑證路徑明確失敗。
+去敏結果寫入 `test/reports/role-preflight-<version>.jsonl`，不含 token、密碼、username 或 response。
+這只證明各身分的 credential／transport 可供後續 recipe harness 使用，不代表 780 個函式已覆蓋。
+
 紀錄寫到 `test/e2e/logs/<時間>/`：
 
 - `transcript.log` — 每個命令的完整命令列、stdout、stderr 與結束碼

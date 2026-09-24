@@ -27,6 +27,11 @@ principal、可指派 context levels、credential kind，以及測試實際採�
 `matrixblank`。這能證明後續矩陣不能把八個標準 shortname 寫死。此 inventory 是完整
 role/function harness 的輸入；只有 inventory 不會被宣稱為函式已執行。
 
+接著 `make moodle-role-preflight V=v52` 會替每個 password principal 實際透過 CLI 執行無副作用的
+typed `core_webservice_get_site_info`；guest 必須在明確的無憑證 CLI 路徑得到 unavailable。
+去敏後的 `test/reports/role-preflight-<version>.jsonl` 不含 token、密碼、username 或 Moodle response。
+它只證明 credential 與 transport 已可供後續 harness 使用，不計為完整 role/function 覆蓋。
+
 ## 三層不同的 gate
 
 1. **Registry 支援**：core function 存在於至少一個受支援 Moodle 版本。

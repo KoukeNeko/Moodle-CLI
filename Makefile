@@ -1,4 +1,4 @@
-.PHONY: build install test test-race arch lint verify docs-check report-data-test moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-roles moodle-matrix moodle-scale report-site help
+.PHONY: build install test test-race arch lint verify docs-check report-data-test moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-roles moodle-role-preflight moodle-matrix moodle-scale report-site help
 
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
@@ -32,6 +32,7 @@ help:
 	@echo "  make moodle-status         列出目前的測試站"
 	@echo "  make moodle-decade V=v52   佈建並驗收十年情境"
 	@echo "  make moodle-roles  V=v52   動態建立並匯出 runtime roles"
+	@echo "  make moodle-role-preflight V=v52  逐一驗證角色憑證與 typed WS transport"
 	@echo "  make moodle-matrix V=v52   小型代表性命令與十年正確性矩陣"
 	@echo "  make moodle-scale  V=v52   50k 學生 PostgreSQL 規模測試"
 	@echo "  make report-site           產生可發布的測試 dashboard"
@@ -87,6 +88,9 @@ moodle-decade: build
 
 moodle-roles:
 	./test/e2e/role-fixture.sh $(V)
+
+moodle-role-preflight: build
+	./test/e2e/role-preflight.sh $(V)
 
 moodle-matrix: build
 	./scripts/moodle-env.sh up $(V)
