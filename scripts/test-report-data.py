@@ -15,12 +15,19 @@ BUILDER = ROOT / "scripts/build-report-data.py"
 
 
 def build(output: pathlib.Path, matrix: pathlib.Path | None = None,
-          roles: pathlib.Path | None = None) -> subprocess.CompletedProcess[str]:
+          roles: pathlib.Path | None = None,
+          preflight: pathlib.Path | None = None,
+          evidence_run: str | None = None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     if matrix is not None:
         env["MOODLE_ROLE_MATRIX_REPORT"] = str(matrix)
     if roles is not None:
         env["MOODLE_RUNTIME_ROLES_DIR"] = str(roles)
+    if preflight is not None:
+        env["MOODLE_ROLE_PREFLIGHT_DIR"] = str(preflight)
+    if evidence_run is not None:
+        env["MOODLE_EVIDENCE_RUN_ID"] = evidence_run
+        env["MOODLE_EVIDENCE_SHA"] = "a" * 40
     return subprocess.run(
         [sys.executable, str(BUILDER), str(output)],
         cwd=ROOT,
@@ -84,6 +91,48 @@ def main() -> int:
                 "runtime plugin role is absent from dashboard placeholders")
         require(dynamic["queries"]["runs"]["rows"][0]["runtime_roles"] == {"v52": 12},
                 "run provenance did not record the runtime principal count")
+
+        preflight_dir = temp / "preflight"
+        preflight_dir.mkdir()
+        preflight_rows = [
+            {"schema_version": 1, "version": "v52", "role": "student",
+             "credential": "issued", "function": "core_webservice_get_site_info",
+             "outcome": "passed", "cli_exit": 0},
+            {"schema_version": 1, "version": "v52", "role": "guest",
+             "credential": "unavailable", "function": "core_webservice_get_site_info",
+             "outcome": "expected_unavailable", "cli_exit": 4},
+        ]
+        preflight_file = preflight_dir / "role-preflight-v52.jsonl"
+        preflight_file.write_text("".join(json.dumps(row) + "\n" for row in preflight_rows))
+        preflight_output = temp / "preflight.json"
+        result = build(preflight_output, roles=roles_dir, preflight=preflight_dir,
+                       evidence_run="123456")
+        require(result.returncode == 0, result.stderr or result.stdout)
+        preflight_snapshot = json.loads(preflight_output.read_text())
+        require(preflight_snapshot["queries"]["runs"]["rows"][0]["role_matrix"] == "partial",
+                "credential preflight was misrepresented as complete matrix coverage")
+        run = preflight_snapshot["queries"]["runs"]["rows"][0]
+        require(run["run"] == "123456" and run["commit"] == "a" * 40
+                and run["report_commit"] != "a" * 40,
+                "republication misattributed evidence to the report renderer")
+        require(sum(row["passed"] + row["expected_unavailable"]
+                    for row in preflight_snapshot["queries"]["roles"]["rows"]) == 2,
+                "executed preflight cells were not counted")
+        preflight_function = next(row for row in preflight_snapshot["queries"]["functions"]["rows"]
+                                  if row["version"] == "v52"
+                                  and row["function"] == "core_webservice_get_site_info")
+        require(preflight_function["recipe"] == "credential-preflight"
+                and preflight_function["result"] == "executed",
+                "actual preflight recipe was not attributed to its function")
+        require(any("role-preflight-v52.jsonl" in source
+                    for source in preflight_snapshot["queries"]["roles"]["source"]["tables"]),
+                "role evidence lacks the preflight source path")
+
+        preflight_rows[1]["cli_exit"] = 0
+        preflight_file.write_text("".join(json.dumps(row) + "\n" for row in preflight_rows))
+        result = build(temp / "bad-preflight.json", roles=roles_dir, preflight=preflight_dir)
+        require(result.returncode != 0 and "preflight outcome/exit mismatch" in result.stderr,
+                "malformed credential preflight was accepted as execution evidence")
 
         matrix = temp / "role-matrix.jsonl"
         cells = [

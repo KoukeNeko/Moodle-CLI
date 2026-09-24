@@ -90,6 +90,39 @@ def load_runtime_roles(path: pathlib.Path) -> list[str]:
     return names
 
 
+def load_role_preflight(path: pathlib.Path, version: str) -> list[dict]:
+    """Turn executed, redacted credential checks into partial matrix evidence."""
+    cells = []
+    for line_number, row in enumerate(load_jsonl(path), 1):
+        if row.get("schema_version") != 1 or row.get("version") != version:
+            raise SystemExit(f"{path}:{line_number}: preflight version/schema mismatch")
+        if row.get("function") != "core_webservice_get_site_info":
+            raise SystemExit(f"{path}:{line_number}: unexpected preflight function")
+        expected = (
+            row.get("credential") == "issued"
+            and row.get("outcome") == "passed"
+            and row.get("cli_exit") == 0
+        ) or (
+            row.get("role") == "guest"
+            and row.get("credential") == "unavailable"
+            and row.get("outcome") == "expected_unavailable"
+            and row.get("cli_exit") == 4
+        )
+        if not expected:
+            raise SystemExit(f"{path}:{line_number}: preflight outcome/exit mismatch")
+        if any(key in row for key in ("token", "password", "username", "response")):
+            raise SystemExit(f"{path}:{line_number}: credential material is forbidden")
+        cells.append({
+            "version": version,
+            "role": row.get("role"),
+            "function": row["function"],
+            "outcome": row["outcome"],
+            "recipe": "credential-preflight",
+            "_source": str(path),
+        })
+    return cells
+
+
 def source(label: str, files: list[str], component_ids: list[str], caveats: list[str] | None = None):
     return {
         "label": label,
@@ -155,7 +188,20 @@ runtime_roles = {
 }
 role_matrix_path = pathlib.Path(os.environ.get(
     "MOODLE_ROLE_MATRIX_REPORT", ROOT / "test/reports/role-matrix.jsonl"))
-role_cells = load_jsonl(role_matrix_path)
+preflight_dir = pathlib.Path(os.environ.get(
+    "MOODLE_ROLE_PREFLIGHT_DIR", ROOT / "test/reports"))
+preflight_paths = {
+    version: preflight_dir / f"role-preflight-{version}.jsonl"
+    for version in ("v45", "v51", "v52")
+}
+if role_matrix_path.exists() or "MOODLE_ROLE_MATRIX_REPORT" in os.environ:
+    role_cells = [{**row, "_source": str(role_matrix_path)}
+                  for row in load_jsonl(role_matrix_path)]
+    role_source_paths = [role_matrix_path] if role_matrix_path.exists() else []
+else:
+    role_source_paths = [path for path in preflight_paths.values() if path.exists()]
+    role_cells = [cell for version, path in preflight_paths.items()
+                  for cell in load_role_preflight(path, version)]
 role_outcome_names = ("passed", "expected_denied", "expected_unavailable", "failed")
 allowed_role_outcomes = set(role_outcome_names)
 function_index = {(row["version"], row["function"]): row for row in functions}
@@ -173,31 +219,33 @@ for row in functions:
 
 role_groups = {}
 function_outcomes = {}
+function_recipes = {}
 seen_role_cells = set()
 for line_number, cell in enumerate(role_cells, 1):
+    cell_source = cell.get("_source", str(role_matrix_path))
     missing = [key for key in ("version", "role", "function", "outcome") if not cell.get(key)]
     if missing:
         raise SystemExit(
-            f"{role_matrix_path}:{line_number}: role cell is missing {', '.join(missing)}")
+            f"{cell_source}:{line_number}: role cell is missing {', '.join(missing)}")
     version = cell["version"]
     function = cell["function"]
     outcome = cell["outcome"]
     if runtime_roles.get(version) and cell["role"] not in runtime_roles[version]:
         raise SystemExit(
-            f"{role_matrix_path}:{line_number}: role {cell['role']!r} is not in "
+            f"{cell_source}:{line_number}: role {cell['role']!r} is not in "
             f"{runtime_role_paths[version]}")
     registry_row = function_index.get((version, function))
     if registry_row is None:
         raise SystemExit(
-            f"{role_matrix_path}:{line_number}: {version}/{function} is not in the generated registry")
+            f"{cell_source}:{line_number}: {version}/{function} is not in the generated registry")
     if outcome not in allowed_role_outcomes:
         raise SystemExit(
-            f"{role_matrix_path}:{line_number}: outcome {outcome!r} is not allowed; "
+            f"{cell_source}:{line_number}: outcome {outcome!r} is not allowed; "
             "skip is deliberately not a role-matrix result")
     cell_key = (version, cell["role"], function)
     if cell_key in seen_role_cells:
         raise SystemExit(
-            f"{role_matrix_path}:{line_number}: duplicate role/function cell "
+            f"{cell_source}:{line_number}: duplicate role/function cell "
             f"{version}/{cell['role']}/{function}")
     seen_role_cells.add(cell_key)
     # Moodle records many core functions under the broad "moodle" component.
@@ -212,6 +260,8 @@ for line_number, cell in enumerate(role_cells, 1):
     counts[outcome] += 1
     counts["functions"].add(function)
     function_outcomes.setdefault((version, function), []).append(outcome)
+    function_recipes.setdefault((version, function), set()).add(
+        cell.get("recipe") or "execution-evidence")
 
 if role_cells:
     role_rows = []
@@ -268,6 +318,7 @@ if role_cells:
         outcomes = function_outcomes.get((row["version"], row["function"]), [])
         if outcomes:
             row["result"] = "failed" if "failed" in outcomes else "executed"
+            row["recipe"] = ", ".join(sorted(function_recipes[(row["version"], row["function"])]))
 else:
     role_rows = [{
         "version": version,
@@ -351,11 +402,15 @@ role_matrix_status = (
     "partial" if len(role_cells) < expected_role_cells else "passed"
 )
 runs = [{
-    "run": os.environ.get("GITHUB_RUN_ID", "local-observation"),
-    "commit": os.environ.get("GITHUB_SHA", commit),
+    "run": os.environ.get("MOODLE_EVIDENCE_RUN_ID", os.environ.get("GITHUB_RUN_ID", "local-observation")),
+    "commit": os.environ.get("MOODLE_EVIDENCE_SHA", os.environ.get("GITHUB_SHA", commit)),
+    "report_commit": os.environ.get("GITHUB_SHA", commit),
     "generated_at": generated,
-    "runner": os.environ.get("RUNNER_NAME", "local"),
-    "runner_image": os.environ.get("ImageOS", "self-hosted-linux-x64"),
+    "runner": (summary.get("runner_name") or "self-hosted (name unrecorded)")
+        if summary else os.environ.get("RUNNER_NAME", "local"),
+    "runner_image": (summary.get("runner_image") or "self-hosted-linux-x64")
+        if summary else os.environ.get("ImageOS", "unknown"),
+    "report_runner": os.environ.get("RUNNER_NAME", "local"),
     "registry_functions": len({row["function"] for row in functions}),
     "role_matrix": role_matrix_status,
     "runtime_roles": {
@@ -388,8 +443,8 @@ snapshot = {
         "functions": {"rows": functions, "source": source("Core external-function coverage",
             ["test/e2e/export-ws-registry.php", "internal/wsregistry/data/*.json"], ["function-table"])},
         "roles": {"rows": role_rows, "source": source("Runtime role/function matrix",
-            ([str(role_matrix_path.relative_to(ROOT)) if role_matrix_path.is_relative_to(ROOT)
-              else str(role_matrix_path)] +
+            ([str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+              for path in role_source_paths] +
              [str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
               for path in runtime_role_paths.values() if path.exists()]),
             ["role-summary", "role-table"],

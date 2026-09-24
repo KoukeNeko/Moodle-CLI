@@ -170,10 +170,14 @@ PY
 data_kib=$(docker exec "$POSTGRES" du -sk /var/lib/postgresql/data | awk '{print $1}')
 test "$data_kib" -le $((8 * 1024 * 1024))
 python3 - "$REPORT/scale-summary.json" "$data_kib" <<'PY'
-import json, sys
+import json, os, sys
 path = sys.argv[1]
 doc = json.load(open(path))
 doc["postgres_bytes"] = int(sys.argv[2]) * 1024
+doc["runner_name"] = os.environ.get("RUNNER_NAME", "local")
+doc["runner_image"] = os.environ.get("ImageOS", "self-hosted-linux-x64")
+doc["github_run_id"] = os.environ.get("GITHUB_RUN_ID", "local")
+doc["github_sha"] = os.environ.get("GITHUB_SHA", "unknown")
 open(path, "w").write(json.dumps(doc, indent=2) + "\n")
 PY
 cat "$REPORT/scale-summary.json"

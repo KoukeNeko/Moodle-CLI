@@ -32,6 +32,11 @@ make a whole role look complete. Duplicate cells fail the report build. Matching
 change from `registry-covered` to `executed` or `failed`; expected denial and unavailability remain
 separate authorization results rather than being relabelled as passes.
 
+Until the full matrix is emitted, each `role-preflight-<version>.jsonl` contributes its one executed
+`core_webservice_get_site_info` CLI cell per principal. The dashboard labels its recipe
+`credential-preflight` and keeps all other function cells in the `not_run` denominator. Malformed
+preflight outcomes or exits fail the report build.
+
 `test/reports/runtime-roles-<version>.json` supplies the denominator before function cells exist. If
 present, dashboard placeholders use the principals discovered from that Moodle runtime, including
 custom/plugin roles, instead of the standard-role fallback. Executed cells must name a principal in
@@ -49,6 +54,12 @@ Pushes build the dashboard UI without replacing published long-haul evidence. Sc
 runs and explicit publish dispatches deploy the dashboard after downloading their own redacted
 `test/reports/` artifacts. The report build rejects artifacts extracted under a duplicate
 `test/reports/reports/` directory.
+
+To republish the latest report code against an existing long-haul result, dispatch **Verification
+dashboard** with that run's numeric `evidence_run_id`. It downloads the run's redacted artifacts,
+shows the test commit separately from the report commit, and does not repeat the 50k seed. The
+`runner` column refers to the scale runner when recorded in its summary; older summaries explicitly
+say when that runner name was not captured.
 
 The report builder reads generated registries and test artifacts, publishes exact source lineage,
 and still builds after a test failure so failed evidence remains inspectable. `make report-site`

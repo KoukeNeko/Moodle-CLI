@@ -9,9 +9,15 @@ on:
       - "scripts/build-report-data.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
+    inputs:
+      evidence_run_id:
+        description: Long-haul Actions run ID whose redacted artifacts should be republished
+        required: true
+        type: string
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -29,9 +35,40 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: report-site/package-lock.json
+      - name: Verify the selected evidence run
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVIDENCE_RUN_ID: ${{ inputs.evidence_run_id }}
+        run: |
+          if [[ ! "$EVIDENCE_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo 'evidence_run_id must be numeric' >&2
+            exit 2
+          fi
+          evidence_sha=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${EVIDENCE_RUN_ID}" --jq .head_sha)
+          if [[ ! "$evidence_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'evidence run has no valid head SHA' >&2
+            exit 2
+          fi
+          printf 'MOODLE_EVIDENCE_RUN_ID=%s\nMOODLE_EVIDENCE_SHA=%s\n' \
+            "$EVIDENCE_RUN_ID" "$evidence_sha" >> "$GITHUB_ENV"
+      - name: Download selected redacted evidence
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/download-artifact@v7.0.0
+        with:
+          run-id: ${{ inputs.evidence_run_id }}
+          github-token: ${{ github.token }}
+          pattern: moodle-v*-${{ inputs.evidence_run_id }}
+          path: test
+          merge-multiple: true
+      - name: Build dashboard with selected evidence
+        if: github.event_name == 'workflow_dispatch'
+        run: make report-site
       - run: npm ci
+        if: github.event_name == 'push'
         working-directory: report-site
       - run: npm run build
+        if: github.event_name == 'push'
         working-directory: report-site
       - uses: actions/upload-pages-artifact@v4
         with:

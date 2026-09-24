@@ -155,7 +155,8 @@ export function DashboardContent() {
       <EvidenceTable id="runs-table" queryId="runs" title="Published snapshots"
         description="Commit and runner metadata make dashboard claims traceable to a reproducible run. Secrets and request payloads are excluded."
         rows={runs} searchable={false} columns={[
-          { field: "run", label: "Run" }, { field: "commit", label: "Commit" },
+          { field: "run", label: "Evidence run" }, { field: "commit", label: "Test commit" },
+          { field: "report_commit", label: "Report commit" },
           { field: "generated_at", label: "Generated at" }, { field: "runner", label: "Runner" },
           { field: "runner_image", label: "Runner image" },
           { field: "registry_functions", label: "Registry union" },

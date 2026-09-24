@@ -1,7 +1,7 @@
 {
   "id": "moodle-cli-verification-dashboard",
   "title": "Moodle CLI verification",
-  "generatedAt": "2026-09-24T01:30:01Z",
+  "generatedAt": "2026-09-24T01:51:57Z",
   "status": "observed",
   "surface": "dashboard",
   "buildStatus": "complete",
@@ -25530,9 +25530,7 @@
       ],
       "source": {
         "label": "Runtime role/function matrix",
-        "tables": [
-          "test/reports/role-matrix.jsonl"
-        ],
+        "tables": [],
         "caveats": [
           "No role/function matrix artifact was present in this snapshot; discovered runtime principals are explicitly not-run, never skipped."
         ],
@@ -25546,9 +25544,7 @@
             ],
             "sourceLineage": [
               {
-                "tables": [
-                  "test/reports/role-matrix.jsonl"
-                ]
+                "tables": []
               }
             ]
           }
@@ -25614,10 +25610,12 @@
       "rows": [
         {
           "run": "local-observation",
-          "commit": "2dc14fee92dd",
-          "generated_at": "2026-09-24T01:30:01Z",
-          "runner": "local",
+          "commit": "ff01618458d8",
+          "report_commit": "ff01618458d8",
+          "generated_at": "2026-09-24T01:51:57Z",
+          "runner": "self-hosted (name unrecorded)",
           "runner_image": "self-hosted-linux-x64",
+          "report_runner": "local",
           "registry_functions": 780,
           "role_matrix": "not-run",
           "runtime_roles": {},

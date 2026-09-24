@@ -28,6 +28,10 @@ role、domain 彙總，所有尚未執行的 role/function cell 仍會列入明�
 不會讓整個角色看似已完成；重複 cell 會使 report build 失敗。對應函式會由 `registry-covered` 改為
 `executed` 或 `failed`。預期的權限拒絕與不可用會保留為獨立授權結果，不會被重新包裝成一般 pass。
 
+完整矩陣尚未產生前，各版的 `role-preflight-<version>.jsonl` 會提供每個 principal 一筆實際執行的
+`core_webservice_get_site_info` CLI cell；dashboard 將 recipe 標成 `credential-preflight`，其餘函式
+仍列在 `not_run` 分母。前置測試的 outcome 或 exit 異常會使 report build 失敗。
+
 `test/reports/runtime-roles-<version>.json` 在函式 cell 尚未執行前提供正確分母。檔案存在時，
 dashboard 的 placeholder 會採用該 Moodle runtime 動態發現的 principals（包含 custom/plugin
 roles），而不是標準角色 fallback。已執行 cell 的角色必須存在於同版 inventory；inventory 格式錯誤、
@@ -43,6 +47,10 @@ request secret。
 Push 只建置 dashboard UI，不以 repository 內的 placeholder snapshot 覆蓋已發布的 long-haul 證據。
 排程 long-haul 與明確要求發布的手動 run 會下載自身去敏後的 `test/reports/` artifact 再部署。
 Report build 遇到重複巢狀的 `test/reports/reports/` 會失敗。
+
+若要用較新的報告程式重新發布既有 long-haul 結果，可手動執行 **Verification dashboard**，填入該次
+run 的數字 `evidence_run_id`。它下載該次去敏 artifact，分別顯示測試 commit 與報告 commit，不重跑
+50k seed。`runner` 欄使用 scale summary 記錄的測試 runner；舊版 summary 未記錄名稱時會明確標示。
 
 Report builder 讀取產生式 registry 與測試 artifact，附上精確來源 lineage；測試失敗後仍要建置報告，
 讓失敗 evidence 可查。`make report-site` 可在本機重建同一份靜態 dashboard；CI 以
