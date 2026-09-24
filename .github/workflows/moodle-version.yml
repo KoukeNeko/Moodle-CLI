@@ -58,7 +58,7 @@ jobs:
       - name: Run version acceptance
         run: make moodle-matrix V=${{ inputs.version }}
 
-      - name: Exercise exposed no-argument read function cells
+      - name: Exercise exposed read function cells
         timeout-minutes: 15
         run: make moodle-read-matrix V=${{ inputs.version }}
 

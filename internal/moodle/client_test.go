@@ -325,6 +325,30 @@ func TestACourseTheUserIsNotOnIsAPermissionProblem(t *testing.T) {
 	}
 }
 
+func TestARejectedCourseContextIsAPermissionProblem(t *testing.T) {
+	// core_course_get_contents and core_enrol_get_enrolled_users wrap their
+	// validate_context denial in this webservice-specific Moodle errorcode.
+	server := testmoodle.New()
+	defer server.Close()
+	server.HandleValue("core_course_get_contents", []any{})
+	server.FailException("core_course_get_contents", "moodle_exception",
+		"errorcoursecontextnotvalid", "Course context is not accessible")
+
+	var out []any
+	err := newClient(t, server).Call(context.Background(), "tok",
+		"core_course_get_contents", map[string]any{"courseid": 2}, &out)
+	if err == nil {
+		t.Fatal("an inaccessible course context was treated as readable")
+	}
+	e := errs.From(err)
+	if e.Code != errs.CodePermissionDenied {
+		t.Errorf("code = %q, want permission_denied", e.Code)
+	}
+	if e.Upstream == nil || e.Upstream.ErrorCode != "errorcoursecontextnotvalid" {
+		t.Errorf("Moodle's own errorcode was not preserved: %+v", e.Upstream)
+	}
+}
+
 func TestACapabilityTheUserLacksIsAPermissionProblem(t *testing.T) {
 	// required_capability_exception carries the singular errorcode
 	// "nopermission", which is a different code from the plural

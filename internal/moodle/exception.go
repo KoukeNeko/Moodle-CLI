@@ -88,6 +88,11 @@ var knownErrorCodes = map[string]classification{
 	// 上游錯誤——指向站台，而該做的是換一個帳號或換一門課。
 	"nopermission":                  {errs.CodePermissionDenied, "", "", false},
 	"nopermissiontoviewpage":        {errs.CodePermissionDenied, "", "", false},
+	// Core course/enrol external functions fetch the course record first, then
+	// wrap validate_context's access denial in this webservice errorcode. The
+	// fixture proves the course exists; exposing this as an upstream site fault
+	// hides the real role/capability boundary from callers.
+	"errorcoursecontextnotvalid":   {errs.CodePermissionDenied, "", "", false},
 	"requireloginerror":             {errs.CodePermissionDenied, "", "", false},
 	"required_capability_exception": {errs.CodePermissionDenied, "", "", false},
 	"cannotviewprofile":             {errs.CodePermissionDenied, "", "", false},
