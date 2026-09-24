@@ -4,7 +4,6 @@
   "functions": [
     "core_calendar_get_calendar_access_information",
     "core_course_get_categories",
-    "core_course_get_courses",
     "core_course_get_recent_courses",
     "core_filters_get_all_states",
     "core_tag_get_tag_areas",

@@ -175,6 +175,9 @@ token，實際透過 CLI 執行 typed `core_webservice_get_site_info`，並驗�
 權限拒絕及 token service 不提供的情況各自記錄，站台管理員對每個函式必須成功。
 `role-matrix-read-<version>.jsonl` 只記錄函式、角色、結果及結束碼，不保存 response 或憑證。
 這是已暴露函式的第一個安全 subset，並不宣稱涵蓋其他讀取、寫入或 guest 路徑。
+`core_course_get_courses` 暫不納入無參數 recipe：v4.5 的 `coursecreator` 實測回
+`errorcoursecontextnotvalid`（upstream exit 11），不能誤記為預期權限拒絕；後續需以獨立
+fixture binding 指定課程範圍並驗證各角色行為。
 
 Push CI 的 v4.5 SQLite fixture 偶爾在十年 seed 初次寫入時回 `Error writing to database`。
 `decade-ci.sh` 只針對這個訊息重建一次拋棄式容器與 volume；若重試成功，
