@@ -1,0 +1,38 @@
+name: Check Apple notarization credentials
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate App Store Connect key without publishing artifacts
+        env:
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          for name in ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_P8_BASE64; do
+            test -n "${!name}" || { echo "::error::$name is required"; exit 1; }
+          done
+
+          key_file=$(mktemp "$RUNNER_TEMP/moodle-asc.XXXXXX.p8")
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s' "$ASC_KEY_P8_BASE64" | base64 -D > "$key_file"
+          openssl pkey -in "$key_file" -noout
+
+          # Apple's documented read-only credential test. Do not print the
+          # account's submission history or any secret to public logs.
+          if ! xcrun notarytool history \
+            --key "$key_file" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" \
+            > /dev/null; then
+            echo '::error::Apple rejected the App Store Connect notary credentials. Check that all three secrets belong to the same active Team API Key; Individual keys cannot use notarytool.'
+            exit 1
+          fi
+          echo 'Apple notary credentials accepted.'
