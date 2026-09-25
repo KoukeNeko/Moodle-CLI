@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"text/tabwriter"
 
@@ -28,50 +30,75 @@ import (
 // that nothing else was ever parsed.
 func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 	var (
-		flags      sessionFlags
-		profileDir string
-		cookieName string
-		listOnly   bool
-		store      bool
+		flags       sessionFlags
+		profileDir  string
+		browserName string
+		cookieName  string
+		listOnly    bool
+		store       bool
 	)
 	cmd := &cobra.Command{
 		Use:   "import-browser",
 		Short: "Take this site's session from a browser you are already signed in to",
-		Long: "Reads the Moodle session cookie for one site out of a Firefox or\n" +
-			"Chromium profile, so a site that issues no web service token can be\n" +
-			"used without copying the cookie out of developer tools by hand.\n\n" +
+		Long: "Reads the Moodle session cookie for one site out of a Safari,\n" +
+			"Firefox or Chromium profile, so a site that issues no web service\n" +
+			"token can be used without copying it out of developer tools.\n\n" +
 			"Only the cookie for the site named is returned. A browser keeps\n" +
 			"every site's cookies together, so others are necessarily parsed on\n" +
 			"the way past; none of them is returned, kept or logged.",
 		Args:        cobra.NoArgs,
 		Annotations: map[string]string{annotationKind: "auth.import_browser"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			selectedKind := browser.Kind(strings.ToLower(browserName))
+			switch selectedKind {
+			case browser.Unknown, browser.Firefox, browser.Chromium, browser.Safari:
+			default:
+				return errs.New(errs.CodeUsage, "unknown browser "+browserName).
+					WithHint("choose safari, firefox or chromium")
+			}
+			if selectedKind == browser.Safari && runtime.GOOS != "darwin" && profileDir == "" {
+				return errs.New(errs.CodeUnavailable,
+					"automatic Safari cookie discovery requires macOS").
+					WithHint("name an existing Cookies.binarycookies file with --profile")
+			}
 			home, err := os.UserHomeDir()
 			if err != nil {
 				return errs.Wrap(errs.CodeUnavailable, err, "cannot find your home directory")
 			}
 			configHome := os.Getenv("XDG_CONFIG_HOME")
 
-			// Both families are looked for, because which browser someone
-			// signed in with is their business. They store sessions in
-			// entirely different ways, so each is read by its own code and
-			// the profile remembers which it came from.
+			// Discover only the selected browser when one was named. In
+			// particular, asking for Safari should not open another browser's
+			// profile index, even though no cookies are read during discovery.
 			var profiles []browser.Profile
-			if firefox, err := browser.FirefoxProfiles(home, configHome); err == nil {
-				for _, profile := range firefox {
-					profile.Kind = browser.Firefox
+			if selectedKind == browser.Unknown || selectedKind == browser.Firefox {
+				if firefox, err := browser.FirefoxProfiles(home, configHome); err == nil {
+					for _, profile := range firefox {
+						profile.Kind = browser.Firefox
+						profiles = append(profiles, profile)
+					}
+				}
+			}
+			if selectedKind == browser.Unknown || selectedKind == browser.Chromium {
+				for _, profile := range browser.ChromiumProfiles(home, configHome) {
+					profile.Kind = browser.Chromium
 					profiles = append(profiles, profile)
 				}
 			}
-			for _, profile := range browser.ChromiumProfiles(home, configHome) {
-				profile.Kind = browser.Chromium
-				profiles = append(profiles, profile)
+			if selectedKind == browser.Unknown || selectedKind == browser.Safari {
+				profiles = append(profiles, browser.SafariProfiles(home)...)
 			}
-			if len(profiles) == 0 {
+			if len(profiles) == 0 && selectedKind == browser.Safari && !listOnly && profileDir == "" {
+				// Let the reader distinguish "not present" from "permission denied"
+				// and show the Safari-specific recovery hint.
+				profiles = []browser.Profile{{
+					Name: "Safari", Path: browser.SafariCookiePath(home), Kind: browser.Safari,
+				}}
+			}
+			if len(profiles) == 0 && (profileDir == "" || listOnly) {
 				return errs.New(errs.CodeNotFound,
-					"no Firefox or Chromium profile found on this machine").
-					WithHint("if a browser is installed somewhere unusual, name " +
-						"its profile directory with --profile")
+					"no matching browser profile found on this machine").
+					WithHint("choose a browser with --browser safari|firefox|chromium, or name its cookie store/profile with --profile")
 			}
 			if listOnly {
 				return r.Render(Result{
@@ -79,13 +106,15 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 				})
 			}
 
-			profile := browser.Profile{Path: profileDir, Kind: browser.Unknown}
+			profile := browser.Profile{Path: profileDir, Kind: selectedKind}
 			if profileDir == "" {
 				picked, err := browser.PickProfile(profiles)
 				if err != nil {
 					return err
 				}
 				profile = picked
+			} else if selectedKind == browser.Unknown && filepath.Base(profileDir) == "Cookies.binarycookies" {
+				profile.Kind = browser.Safari
 			}
 
 			file, err := config.Load(deps.ConfigPath)
@@ -128,7 +157,7 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 				// mean keeping a credential nothing has shown to work.
 				return errs.New(errs.CodeAuthentication,
 					"that session was not accepted by "+resolved.SiteName).
-					WithHint("sign in again in Firefox, then import it")
+					WithHint("sign in again in the selected browser, then import it")
 			}
 
 			// A session carries no username, only a numeric id — the page it
@@ -152,15 +181,17 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 			}
 			return r.Render(Result{
 				Human: humanLine(
-					"Stored the Firefox session for %s as account %q (user %s).\n"+
+					"Stored the %s session for %s as account %q (user %s).\n"+
 						"It is the browser's own session, so signing out there ends it here too.",
-					resolved.SiteName, name, capabilities.UserID),
+					describeBrowser(profile.Kind), resolved.SiteName, name, capabilities.UserID),
 			})
 		},
 	}
 	flags.bind(cmd, "import a session for")
 	cmd.Flags().StringVar(&profileDir, "profile", "",
-		"read this browser profile directory instead of the default one")
+		"read this browser profile directory or Safari cookie file")
+	cmd.Flags().StringVar(&browserName, "browser", "",
+		"select safari, firefox or chromium (default: discover profiles)")
 	cmd.Flags().StringVar(&cookieName, "cookie-name", "",
 		"the session cookie's name, if the site has renamed it (default "+
 			browser.SessionCookieName+")")
@@ -178,6 +209,8 @@ func describeBrowser(kind browser.Kind) string {
 		return "Firefox"
 	case browser.Chromium:
 		return "Chromium-family"
+	case browser.Safari:
+		return "Safari"
 	default:
 		// A directory named on the command line: both readers were tried and
 		// one of them worked, and saying which would be a guess.

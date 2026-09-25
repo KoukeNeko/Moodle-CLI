@@ -17,9 +17,10 @@ security boundary is intentionally narrow and visible.
 
 ## Browser access
 
-Browser profile access happens only after `auth import-browser`. The command searches Firefox and
-Chromium-family storage for the requested host. Other cookies may be parsed because browsers store
-them together, but only the matching Moodle session is returned or stored; none are logged.
+Browser profile access happens only after `auth import-browser`. The command searches Safari on
+macOS, Firefox, or Chromium-family storage for the requested host. Other cookies may be parsed
+because browsers store them together, but only the matching Moodle session is returned or stored;
+none are logged. An explicit `--browser safari` does not inspect other browser profiles.
 
 Not finding a cookie means only that it was absent from the readable browser snapshot. It does not
 prove the user is signed out.

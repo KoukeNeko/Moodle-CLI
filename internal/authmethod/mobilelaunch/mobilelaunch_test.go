@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -76,6 +77,29 @@ func TestAnUnreachableSiteLeavesAvailabilityUnknown(t *testing.T) {
 	got := method.Probe(context.Background(), site.Site{}, nil)
 	if got.Availability != auth.Unknown {
 		t.Fatalf("availability = %q, want unknown", got.Availability)
+	}
+}
+
+func TestMissingHandlerHintMatchesThePlatform(t *testing.T) {
+	method := New(testClient, &fakeBroker{})
+	config := &auth.PublicConfig{EnableMobileWebService: 1}
+	got := method.Probe(context.Background(), site.Site{}, config)
+	if got.Availability != auth.Unavailable {
+		t.Fatalf("availability = %q, want unavailable", got.Availability)
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		if !strings.Contains(got.Reason, "--browser safari") || strings.Contains(got.Reason, "register-handler") {
+			t.Fatalf("macOS hint should offer Safari, not an unsupported handler: %q", got.Reason)
+		}
+	case "linux":
+		if !strings.Contains(got.Reason, "register-handler") {
+			t.Fatalf("Linux hint should offer the handler: %q", got.Reason)
+		}
+	default:
+		if strings.Contains(got.Reason, "register-handler") {
+			t.Fatalf("unsupported platform was told to install a handler: %q", got.Reason)
+		}
 	}
 }
 

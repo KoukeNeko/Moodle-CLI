@@ -266,9 +266,10 @@ Take this site's session from a browser you are already signed in to
 | Flag | Meaning |
 | --- | --- |
 | `--account` | account to act as |
+| `--browser` | select safari, firefox or chromium (default: discover profiles) |
 | `--cookie-name` | the session cookie's name, if the site has renamed it (default MoodleSession) |
 | `--list-profiles` | list the browser profiles on this machine and stop |
-| `--profile` | read this browser profile directory instead of the default one |
+| `--profile` | read this browser profile directory or Safari cookie file |
 | `--site` | site to import a session for |
 | `--store` | keep the session in the OS keychain so later commands need no flag |
 

@@ -1,4 +1,22 @@
-# Moodle CLI v0.1.1 — first public release
+# Moodle CLI v0.1.2 — Safari session import on macOS
+
+This release lets macOS users import an existing Safari Moodle session without installing Firefox:
+
+```sh
+moodle auth import-browser --site school --browser safari --store
+```
+
+The command reads only when explicitly requested, selects the named site's session cookie, verifies
+the session with Moodle before storing it in the OS keychain, and reports missing access or an
+unrecognized Safari cookie format clearly. Safari's cookie store is not a public Apple API, so this
+remains best-effort and may require macOS privacy permission. The automatic mobile-launch callback
+handler is still Linux-only; macOS login hints now say so and point to Safari import instead of
+suggesting `register-handler`.
+
+The README and English/Traditional Chinese Wiki describe the new `--browser` selector and its
+limitations. Other browser import methods and the JSON contract are unchanged.
+
+## v0.1.1 — first public release
 
 Moodle CLI is an independent command-line client for learners, educators, administrators, scripts,
 and agents. `v0.1.0` was a failed, unpublished release attempt; `v0.1.1` is the first public release.

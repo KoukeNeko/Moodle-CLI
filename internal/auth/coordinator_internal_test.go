@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
@@ -25,5 +28,20 @@ func TestBrowserSessionAlwaysNeedsAnExplicitCredential(t *testing.T) {
 	}
 	if needsInput(method, Request{SessionCookie: "MoodleSession=value"}) {
 		t.Fatal("an explicitly supplied session was treated as missing")
+	}
+}
+
+func TestNoAutomaticLoginGivesAMacSafariRoute(t *testing.T) {
+	coordinator := &Coordinator{}
+	err := coordinator.nothingToTry([]Candidate{{
+		Method: namedMethod("mobilelaunch"),
+		Probe:  ProbeResult{Availability: Unavailable, Reason: "no handler"},
+	}}, nil)
+	hint := errs.From(err).Hint
+	if runtime.GOOS == "darwin" && !strings.Contains(hint, "--browser safari") {
+		t.Fatalf("macOS hint omitted Safari: %q", hint)
+	}
+	if runtime.GOOS != "darwin" && strings.Contains(hint, "--browser safari") {
+		t.Fatalf("non-macOS hint suggested Safari: %q", hint)
 	}
 }

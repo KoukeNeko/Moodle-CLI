@@ -49,9 +49,14 @@ and the returned token is verified before storage.
 ```sh
 moodle auth import-browser --site school --list-profiles
 moodle auth import-browser --site school --store
+# macOS: keep using Safari; no Firefox installation is needed.
+moodle auth import-browser --site school --browser safari --store
 ```
 
-Firefox session snapshots and Chromium's Linux fallback encryption are supported. Chromium cookies
+Safari on macOS, Firefox session snapshots, and Chromium's Linux fallback encryption are supported.
+Safari's cookie store is an undocumented format and macOS may deny access; the command reports this
+instead of silently switching browsers. If access is denied, consider whether granting your terminal
+app access to browser data is appropriate before changing macOS privacy settings. Chromium cookies
 protected by macOS Keychain, Windows DPAPI, a Linux secret service (`v11`), or app-bound encryption
 (`v20`) are refused rather than bypassed. Import is explicit because a browser profile contains
 credentials for many sites. Only the matching Moodle cookie is returned or stored, but the browser's

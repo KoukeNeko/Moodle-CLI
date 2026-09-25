@@ -45,11 +45,13 @@ envelope，命令提供 JSON Schema，錯誤則有固定 exit code。同一套 u
 
 Moodle CLI 支援既有 token、Moodle 帳密、登入 QR 資料、瀏覽器 session，以及 Moodle mobile launch
 流程。Linux 桌面可以用每位使用者自己的 D-Bus URL handler，開啟平常使用的瀏覽器並自動接回結果；
-學校 SSO、passkey 與 MFA 都留在瀏覽器內完成。macOS 與 Windows 目前使用手動 callback 方式。
+學校 SSO、passkey 與 MFA 都留在瀏覽器內完成。macOS 可明確匯入既有 Safari session；自動 callback
+handler 仍只支援 Linux，Windows 目前使用手動 callback 方式。
 
-匯入瀏覽器 session 必須明確執行：`moodle auth import-browser` 只在 Firefox 或 Chromium 系瀏覽器
-profile 中尋找指定站台的 session，不會成為登入時暗中發生的副作用。
-目前支援 Firefox session snapshot 與 Chromium 的 Linux fallback encryption；由 macOS Keychain、
+匯入瀏覽器 session 必須明確執行：`moodle auth import-browser` 可在 macOS Safari、Firefox 或
+Chromium 系瀏覽器中尋找指定站台的 session，不會成為登入時暗中發生的副作用。Safari 的 cookie 格式
+並非 Apple 公開介面，macOS 也可能拒絕讀取，因此屬於盡力支援；不必為了登入改裝 Firefox。
+目前也支援 Firefox session snapshot 與 Chromium 的 Linux fallback encryption；由 macOS Keychain、
 Windows DPAPI、Linux secret service（`v11`）或 app-bound encryption（`v20`）保管 key 的 Chromium
 cookie 會被明確拒絕，不嘗試繞過瀏覽器保護。
 
@@ -157,6 +159,8 @@ printf '%s' "$PASSWORD" | moodle auth login --site school \
   --method password --username student --password-stdin
 moodle auth import-browser --site school --list-profiles
 moodle auth import-browser --site school --store
+# macOS：匯入已在 Safari 登入的 session
+moodle auth import-browser --site school --browser safari --store
 ```
 
 憑證存在作業系統 keychain；設定檔只保存站台與帳號中繼資料，不保存 token 或 browser session。

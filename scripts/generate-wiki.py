@@ -74,6 +74,11 @@ FLAG_ZH = {
     "course": "限制或指定課程", "version": "指定 registry 的 Moodle 版本",
     "match": "只保留名稱包含此文字的項目", "writes": "只顯示可能變更資料的函式",
     "unreviewed": "只顯示尚未審查的函式", "require-minimum": "未達最低學分時回傳 validation exit code",
+    "browser": "選擇 safari、firefox 或 chromium；未指定時搜尋現有 profile",
+    "profile": "指定瀏覽器 profile 目錄或 Safari cookie 檔案",
+    "cookie-name": "站台若改過 session cookie 名稱，可在此指定（預設 MoodleSession）",
+    "list-profiles": "只列出此電腦找到的瀏覽器 profile",
+    "store": "驗證後將 session 存入作業系統鑰匙圈",
 }
 
 GLOBAL_FLAGS_EN = [

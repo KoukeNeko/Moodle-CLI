@@ -18,6 +18,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -86,6 +87,19 @@ func (m *Method) Probe(_ context.Context, _ site.Site, config *auth.PublicConfig
 		}
 	}
 	if m.broker == nil || !m.broker.Installed() {
+		if runtime.GOOS == "darwin" {
+			return auth.ProbeResult{
+				Availability: auth.Unavailable,
+				Reason: "automatic browser callback is not available on macOS; " +
+					"use `moodle auth import-browser --browser safari --store` after signing in with Safari",
+			}
+		}
+		if runtime.GOOS != "linux" {
+			return auth.ProbeResult{
+				Availability: auth.Unavailable,
+				Reason:       "automatic browser callback is not available on " + runtime.GOOS + "; use `--method manual`",
+			}
+		}
 		return auth.ProbeResult{
 			Availability: auth.Unavailable,
 			Reason:       "no browser handler is installed; run `moodle auth register-handler`",
@@ -96,6 +110,16 @@ func (m *Method) Probe(_ context.Context, _ site.Site, config *auth.PublicConfig
 
 func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Credential, error) {
 	if m.broker == nil || !m.broker.Installed() {
+		if runtime.GOOS == "darwin" {
+			return auth.Credential{}, errs.New(errs.CodeUnavailable,
+				"automatic browser callback is not available on macOS").
+				WithHint("sign in with Safari, then run `moodle auth import-browser --browser safari --store`; or use `--method manual`")
+		}
+		if runtime.GOOS != "linux" {
+			return auth.Credential{}, errs.New(errs.CodeUnavailable,
+				"automatic browser callback is not available on "+runtime.GOOS).
+				WithHint("use `--method manual`")
+		}
 		return auth.Credential{}, errs.New(errs.CodeUnavailable,
 			"no browser handler is installed").
 			WithHint("run `moodle auth register-handler` once, then try again; " +

@@ -48,11 +48,14 @@ same use cases also back an MCP server whose write tools are absent unless expli
 Moodle CLI supports an existing token, Moodle username/password, login QR data, a browser session,
 and Moodle's mobile launch flow. On Linux desktops, the mobile flow can open the normal browser and
 receive the result through a per-user D-Bus URL handler. Institutional SSO, passkeys, and MFA remain
-inside the browser where they belong. macOS and Windows currently use the manual callback method.
+inside the browser where they belong. On macOS, an existing Safari session can be imported explicitly;
+the automatic callback handler is still Linux-only. Windows currently uses the manual callback method.
 
 Browser-session import is explicit: `moodle auth import-browser` looks for the requested site's
-session in Firefox or a Chromium-family profile. It never runs as a hidden side effect of login.
-Firefox session snapshots and Chromium's Linux fallback encryption are supported; Chromium cookies
+session in Safari on macOS, Firefox, or a Chromium-family profile. It never runs as a hidden side
+effect of login. Safari's cookie store is undocumented and access may be denied by macOS; it is a
+best-effort alternative to the manual callback, not a reason to install another browser. Firefox
+session snapshots and Chromium's Linux fallback encryption are supported; Chromium cookies
 whose keys are held by macOS Keychain, Windows DPAPI, a Linux secret service (`v11`), or app-bound
 encryption (`v20`) are refused with an actionable error rather than worked around.
 
@@ -175,6 +178,8 @@ printf '%s' "$PASSWORD" | moodle auth login --site school \
   --method password --username student --password-stdin
 moodle auth import-browser --site school --list-profiles
 moodle auth import-browser --site school --store
+# On macOS, use the Safari session you already signed in with:
+moodle auth import-browser --site school --browser safari --store
 ```
 
 Credentials are kept in the operating-system keychain. Configuration stores site and account

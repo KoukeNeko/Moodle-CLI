@@ -266,11 +266,12 @@
 | Flag | 說明 |
 | --- | --- |
 | `--account` | 指定代為操作的帳號 |
-| `--cookie-name` | the session cookie's name, if the site has renamed it (default MoodleSession) |
-| `--list-profiles` | list the browser profiles on this machine and stop |
-| `--profile` | read this browser profile directory instead of the default one |
+| `--browser` | 選擇 safari、firefox 或 chromium；未指定時搜尋現有 profile |
+| `--cookie-name` | 站台若改過 session cookie 名稱，可在此指定（預設 MoodleSession） |
+| `--list-profiles` | 只列出此電腦找到的瀏覽器 profile |
+| `--profile` | 指定瀏覽器 profile 目錄或 Safari cookie 檔案 |
 | `--site` | 指定 Moodle 站台 |
-| `--store` | keep the session in the OS keychain so later commands need no flag |
+| `--store` | 驗證後將 session 存入作業系統鑰匙圈 |
 
 ### `moodle auth login`
 

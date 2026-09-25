@@ -46,7 +46,11 @@ func ServeCallback(context.Context, string, string, time.Duration) error {
 func Deliver(string, string) error { return unsupported() }
 
 func unsupported() error {
+	hint := "use `moodle auth login --method manual`"
+	if runtime.GOOS == "darwin" {
+		hint = "sign in with Safari, then run `moodle auth import-browser --browser safari --store`; or use `moodle auth login --method manual`"
+	}
 	return errs.New(errs.CodeUnavailable,
 		"automatic browser sign-in is not implemented on "+runtime.GOOS).
-		WithHint("use `moodle auth login --method manual`, which works everywhere")
+		WithHint(hint)
 }

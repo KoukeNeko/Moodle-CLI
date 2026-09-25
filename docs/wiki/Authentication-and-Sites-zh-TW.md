@@ -47,9 +47,13 @@ moodle auth login --site school --method mobilelaunch
 ```sh
 moodle auth import-browser --site school --list-profiles
 moodle auth import-browser --site school --store
+# macOS：沿用 Safari，不需要安裝 Firefox。
+moodle auth import-browser --site school --browser safari --store
 ```
 
-支援 Firefox session snapshot 與 Chromium 的 Linux fallback encryption。由 macOS Keychain、Windows
+支援 macOS Safari、Firefox session snapshot 與 Chromium 的 Linux fallback encryption。Safari 的
+cookie 檔格式並非 Apple 公開介面，macOS 也可能拒絕存取；程式會明確回報，不會暗中換用別的瀏覽器。
+若系統拒絕，請先衡量是否願意讓終端機讀取瀏覽器資料，再調整 macOS 隱私權設定。由 macOS Keychain、Windows
 DPAPI、Linux secret service（`v11`）或 app-bound encryption（`v20`）保護的 Chromium cookie 會被拒絕，
 不嘗試繞過。Browser profile 內含許多站台的憑證，因此匯入必須由使用者明確執行。程式只回傳或保存相符的
 Moodle cookie，但尋找過程必然需要解析瀏覽器儲存內容。關閉瀏覽器或從網頁登出後，該 session 可能立即失效。

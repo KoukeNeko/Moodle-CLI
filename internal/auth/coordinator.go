@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -153,7 +154,10 @@ func (c *Coordinator) nothingToTry(candidates []Candidate, probeErr error) error
 		// A site that cannot be reached is the more useful answer.
 		return errs.From(probeErr)
 	}
-	return errs.New(errs.CodeUsage, message).
-		WithHint("tried — " + strings.Join(lines, "; ") +
-			"\nchoose one explicitly with --method, for example `moodle auth login --method manual`")
+	hint := "tried — " + strings.Join(lines, "; ") +
+		"\nchoose one explicitly with --method, for example `moodle auth login --method manual`"
+	if runtime.GOOS == "darwin" {
+		hint += "\nAlready signed in with Safari? Run `moodle auth import-browser --browser safari --store`."
+	}
+	return errs.New(errs.CodeUsage, message).WithHint(hint)
 }

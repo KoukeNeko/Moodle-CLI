@@ -176,28 +176,33 @@ func hostMatches(cookieHost, want string) bool {
 }
 
 // Kind names which browser family a profile belongs to. They store sessions
-// in entirely different ways — Firefox in a compressed session snapshot,
-// Chromium in an encrypted SQLite database — so this decides which reader
-// runs rather than being decoration.
+// in different ways — Firefox in a compressed snapshot, Chromium in an
+// encrypted SQLite database, Safari in an undocumented binary cookie file —
+// so this decides which reader runs rather than being decoration.
 type Kind string
 
 const (
 	Unknown  Kind = ""
 	Firefox  Kind = "firefox"
 	Chromium Kind = "chromium"
+	Safari   Kind = "safari"
 )
 
 // ReadSession reads one site's session from whichever browser a profile is.
 //
-// An unknown kind — a directory named on the command line — is tried both
-// ways, because the user knows what they pointed at and being told "that is
-// not a Firefox profile" when it is a Chrome one helps nobody.
+// An unknown directory is tried as Firefox and Chromium; an explicitly named
+// Safari cookie file is recognized by its filename.
 func ReadSession(profile Profile, host, cookieName string) (Found, error) {
 	switch profile.Kind {
 	case Firefox:
 		return FirefoxSession(profile.Path, host, cookieName)
 	case Chromium:
 		return ChromiumSession(profile.Path, host, cookieName)
+	case Safari:
+		return SafariSession(profile.Path, host, cookieName)
+	}
+	if filepath.Base(profile.Path) == "Cookies.binarycookies" {
+		return SafariSession(profile.Path, host, cookieName)
 	}
 
 	found, firefoxErr := FirefoxSession(profile.Path, host, cookieName)

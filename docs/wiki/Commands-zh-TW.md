@@ -20,6 +20,7 @@ moodle auth login [--method token|password|qr|mobilelaunch|browser-session|manua
 moodle auth status
 moodle auth logout
 moodle auth import-browser [--list-profiles|--store]
+moodle auth import-browser --browser safari --store   # macOS Safari
 moodle auth register-handler         # 只支援 Linux
 moodle auth handler-status
 moodle auth unregister-handler

@@ -13,9 +13,9 @@ Moodle CLI 會處理認證資料、連線到學校服務，也能交作業，因
 
 ## 瀏覽器存取
 
-只有明確執行 `auth import-browser` 才會讀 browser profile。命令在 Firefox 與 Chromium 系儲存內容中
-尋找指定 host。瀏覽器把各站 cookie 存在一起，所以搜尋時可能需要解析其他 cookie；但只有符合的 Moodle
-session 會被回傳或保存，任何 cookie 都不寫入 log。
+只有明確執行 `auth import-browser` 才會讀 browser profile。命令在 macOS Safari、Firefox 與 Chromium 系
+儲存內容中尋找指定 host。瀏覽器把各站 cookie 存在一起，所以搜尋時可能需要解析其他 cookie；但只有符合的
+Moodle session 會被回傳或保存，任何 cookie 都不寫入 log。指定 `--browser safari` 不會檢查其他瀏覽器的 profile。
 
 找不到 cookie 只代表可讀 snapshot 內沒有，不代表使用者一定未登入。
 
