@@ -13,7 +13,7 @@ This page is generated from `moodle commands --json`; every public command must 
 | `--read-only` | Hide and refuse every command that may mutate Moodle. |
 | `--backend auto|ws-only` | Allow automatic fallback routes, or restrict the run to Web Services. |
 
-## Commands (102)
+## Commands (103)
 
 ### `moodle api`
 
@@ -272,6 +272,21 @@ Take this site's session from a browser you are already signed in to
 | `--profile` | read this browser profile directory or Safari cookie file |
 | `--site` | site to import a session for |
 | `--store` | keep the session in the OS keychain so later commands need no flag |
+
+### `moodle auth import-session`
+
+Verify and store a Moodle session pasted privately from your browser
+
+- Synopsis: `moodle auth import-session [flags]`
+- JSON response kind: `auth.login`
+- Data effect: **read-only**
+
+| Flag | Meaning |
+| --- | --- |
+| `--account` | name for the imported account (default: browser-<user id>) |
+| `--cookie-name` | session cookie name, if the site renamed it |
+| `--site` | site to import the session for |
+| `--stdin` | read the cookie value or name=value from stdin instead of a hidden terminal prompt |
 
 ### `moodle auth login`
 

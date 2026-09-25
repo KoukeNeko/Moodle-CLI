@@ -157,7 +157,7 @@ func (c *Coordinator) nothingToTry(candidates []Candidate, probeErr error) error
 	hint := "tried — " + strings.Join(lines, "; ") +
 		"\nchoose one explicitly with --method, for example `moodle auth login --method manual`"
 	if runtime.GOOS == "darwin" {
-		hint += "\nAlready signed in with Safari? Run `moodle auth import-browser --browser safari --store`."
+		hint += "\nAlready signed in with Safari? Try `moodle auth import-browser --browser safari --store`; if its cookie is absent from disk, use `moodle auth import-session`."
 	}
 	return errs.New(errs.CodeUsage, message).WithHint(hint)
 }

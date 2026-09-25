@@ -25,6 +25,12 @@ none are logged. An explicit `--browser safari` does not inspect other browser p
 Not finding a cookie means only that it was absent from the readable browser snapshot. It does not
 prove the user is signed out.
 
+`auth import-session` does not read any browser profile. It accepts one cookie at a hidden terminal
+prompt, or from an explicitly requested stdin pipe, verifies it with the chosen Moodle site, then
+stores it in the OS keychain. The value is not accepted as a command-line argument or echoed in
+diagnostics. The person running the command must copy the cookie from their own browser; it must
+never be sent in a screenshot, chat, or issue.
+
 ## Linux callback handler
 
 The automatic mobile-launch callback uses per-user desktop and D-Bus service files. D-Bus activation

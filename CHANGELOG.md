@@ -1,4 +1,24 @@
-# Moodle CLI v0.1.2 — Safari session import on macOS
+# Moodle CLI v0.1.3 — Safari session fallback
+
+Safari may show a signed-in Moodle page while its on-disk cookie file contains no
+`MoodleSession`. This release stops treating that snapshot as the only Safari route:
+
+```sh
+moodle auth import-session --site school
+```
+
+Copy only the active `MoodleSession` value from Safari Web Inspector and paste it at the
+hidden terminal prompt. The CLI verifies the session with the selected Moodle site before
+storing it in the OS keychain; the value is never placed in a command argument or echoed.
+`--stdin` is available for a secure pipe. This fallback does not need Full Disk Access or
+another browser. The existing Safari file import remains available when the cookie is
+present there. macOS automatic callback handling is still not implemented.
+
+Login hints, README, and English/Traditional Chinese Wiki now explain this limitation
+and route. Tests cover accepted input, rejection, no secret echo, JSON output, and
+architectural boundaries.
+
+## v0.1.2 — Safari session import on macOS
 
 This release lets macOS users import an existing Safari Moodle session without installing Firefox:
 

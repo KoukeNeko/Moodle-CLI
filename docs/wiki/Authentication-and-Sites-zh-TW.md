@@ -29,7 +29,7 @@ moodle auth methods --site school
 | `qr` | 已解碼 Moodle app 登入 QR code。 |
 | `mobilelaunch` | Linux 已裝 callback handler，且站台開啟 mobile services。 |
 | `browser-session` | 手上有新的 `MoodleSession`，要交換為 token。 |
-| `manual` | 在瀏覽器登入後貼回 callback URL；所有平台可用。 |
+| `manual` | 在瀏覽器登入後，若瀏覽器顯示 callback URL，將它貼回 CLI。 |
 
 ## Linux Browser SSO
 
@@ -53,10 +53,23 @@ moodle auth import-browser --site school --browser safari --store
 
 支援 macOS Safari、Firefox session snapshot 與 Chromium 的 Linux fallback encryption。Safari 的
 cookie 檔格式並非 Apple 公開介面，macOS 也可能拒絕存取；程式會明確回報，不會暗中換用別的瀏覽器。
+Safari 畫面已登入，但目前的 session 不一定會存進磁碟 cookie 檔；找不到 `MoodleSession` 不代表未登入。
 若系統拒絕，請先衡量是否願意讓終端機讀取瀏覽器資料，再調整 macOS 隱私權設定。由 macOS Keychain、Windows
 DPAPI、Linux secret service（`v11`）或 app-bound encryption（`v20`）保護的 Chromium cookie 會被拒絕，
 不嘗試繞過。Browser profile 內含許多站台的憑證，因此匯入必須由使用者明確執行。程式只回傳或保存相符的
 Moodle cookie，但尋找過程必然需要解析瀏覽器儲存內容。關閉瀏覽器或從網頁登出後，該 session 可能立即失效。
+
+如果 Safari 顯示已登入，`import-browser` 卻找不到 `MoodleSession`，不必繼續調整磁碟權限，也不必安裝其他
+瀏覽器。必要時先到 **Safari → 設定 → 進階** 開啟開發者功能，再在 Moodle 分頁選 **開發 → 顯示網頁檢閱器**；
+於 **儲存空間 → Cookie** 選 Moodle 網域，只複製 `MoodleSession` 的 **值**，然後執行：
+
+```sh
+moodle auth import-session --site school
+```
+
+在不顯示輸入內容的提示下貼上值並按 Return。CLI 會先向該站台驗證，再存入系統鑰匙圈，不會印出值。
+透過安全管線輸入時可加 `--stdin`；不要把值放在命令參數、shell 歷史、截圖、聊天室或 issue。
+此方法不需要「完整磁碟存取權」。[Apple 的 Safari 開發者工具說明](https://support.apple.com/en-ca/guide/safari/sfri20948/mac)。
 
 ## 非互動模式
 

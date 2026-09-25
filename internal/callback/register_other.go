@@ -48,7 +48,7 @@ func Deliver(string, string) error { return unsupported() }
 func unsupported() error {
 	hint := "use `moodle auth login --method manual`"
 	if runtime.GOOS == "darwin" {
-		hint = "sign in with Safari, then run `moodle auth import-browser --browser safari --store`; or use `moodle auth login --method manual`"
+		hint = "sign in with Safari, then try `moodle auth import-browser --browser safari --store`; if its cookie is absent from disk, use `moodle auth import-session`"
 	}
 	return errs.New(errs.CodeUnavailable,
 		"automatic browser sign-in is not implemented on "+runtime.GOOS).

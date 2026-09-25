@@ -91,7 +91,7 @@ func (m *Method) Probe(_ context.Context, _ site.Site, config *auth.PublicConfig
 			return auth.ProbeResult{
 				Availability: auth.Unavailable,
 				Reason: "automatic browser callback is not available on macOS; " +
-					"use `moodle auth import-browser --browser safari --store` after signing in with Safari",
+					"try `moodle auth import-browser --browser safari --store` after signing in with Safari, or `moodle auth import-session` if the cookie is absent from disk",
 			}
 		}
 		if runtime.GOOS != "linux" {
@@ -113,7 +113,7 @@ func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Crede
 		if runtime.GOOS == "darwin" {
 			return auth.Credential{}, errs.New(errs.CodeUnavailable,
 				"automatic browser callback is not available on macOS").
-				WithHint("sign in with Safari, then run `moodle auth import-browser --browser safari --store`; or use `--method manual`")
+				WithHint("sign in with Safari, then try `moodle auth import-browser --browser safari --store`; if the cookie is absent from disk, use `moodle auth import-session`")
 		}
 		if runtime.GOOS != "linux" {
 			return auth.Credential{}, errs.New(errs.CodeUnavailable,

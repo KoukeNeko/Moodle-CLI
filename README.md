@@ -164,7 +164,7 @@ moodle auth register-handler
 moodle auth login --site school --method mobilelaunch
 ```
 
-For every platform, the manual callback flow works without a registered desktop handler:
+If the browser exposes the callback URL to copy, the manual flow needs no registered desktop handler:
 
 ```sh
 moodle auth login --site school --method manual
@@ -178,8 +178,11 @@ printf '%s' "$PASSWORD" | moodle auth login --site school \
   --method password --username student --password-stdin
 moodle auth import-browser --site school --list-profiles
 moodle auth import-browser --site school --store
-# On macOS, use the Safari session you already signed in with:
+# On macOS, first try Safari's saved cookie store:
 moodle auth import-browser --site school --browser safari --store
+# If Safari is signed in but its session is absent from that file, use the
+# hidden-input prompt after copying MoodleSession's value in Web Inspector:
+moodle auth import-session --site school
 ```
 
 Credentials are kept in the operating-system keychain. Configuration stores site and account

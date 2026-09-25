@@ -39,6 +39,7 @@ ACTION_ZH = {
     "discussions": "列出討論主題", "download": "下載", "extend": "設定繳交展延期限",
     "favourite": "加入最愛", "functions": "列出帳號可呼叫的函式", "grade": "評分",
     "handler-status": "檢查瀏覽器登入 handler", "import-browser": "匯入既有瀏覽器 session",
+    "import-session": "從隱藏輸入匯入並驗證瀏覽器 session",
     "list": "列出項目", "lock": "鎖定", "login": "登入並安全保存憑證",
     "logout": "刪除本機保存的憑證", "mark": "手動標記完成", "member-add": "加入群組成員",
     "member-remove": "移除群組成員", "methods": "列出可用方法", "overview": "顯示總覽",
@@ -79,6 +80,7 @@ FLAG_ZH = {
     "cookie-name": "站台若改過 session cookie 名稱，可在此指定（預設 MoodleSession）",
     "list-profiles": "只列出此電腦找到的瀏覽器 profile",
     "store": "驗證後將 session 存入作業系統鑰匙圈",
+    "stdin": "從標準輸入讀取單一 session cookie；未指定時使用隱藏輸入提示",
 }
 
 GLOBAL_FLAGS_EN = [

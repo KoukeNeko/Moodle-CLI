@@ -30,7 +30,7 @@ misreported as one that disables every method.
 | `qr` | You decoded a Moodle app login QR code. |
 | `mobilelaunch` | Linux desktop callback handler is installed and the site enables mobile services. |
 | `browser-session` | You have a fresh `MoodleSession` value to exchange for a token. |
-| `manual` | Complete login in a browser, then paste its callback URL. Works on every platform. |
+| `manual` | Complete login in a browser, then paste its callback URL if the browser exposes it. |
 
 ## Browser SSO on Linux
 
@@ -55,13 +55,30 @@ moodle auth import-browser --site school --browser safari --store
 
 Safari on macOS, Firefox session snapshots, and Chromium's Linux fallback encryption are supported.
 Safari's cookie store is an undocumented format and macOS may deny access; the command reports this
-instead of silently switching browsers. If access is denied, consider whether granting your terminal
-app access to browser data is appropriate before changing macOS privacy settings. Chromium cookies
+instead of silently switching browsers. A currently signed-in Safari session may not be in the
+on-disk cookie store at all; "no MoodleSession" does not mean you are signed out. If access is
+denied, consider whether granting your terminal app access to browser data is appropriate before
+changing macOS privacy settings. Chromium cookies
 protected by macOS Keychain, Windows DPAPI, a Linux secret service (`v11`), or app-bound encryption
 (`v20`) are refused rather than bypassed. Import is explicit because a browser profile contains
 credentials for many sites. Only the matching Moodle cookie is returned or stored, but the browser's
 storage necessarily has to be parsed to find it. Closing or signing out of the browser may invalidate
 that session.
+
+If Safari shows you as signed in but `import-browser` cannot find `MoodleSession`, do not keep
+changing permissions or install another browser. In Safari, enable **Safari → Settings → Advanced →
+Show features for web developers** if needed, then open **Develop → Show Web Inspector** on the
+Moodle tab. In **Storage → Cookies**, select the Moodle domain and copy only the `MoodleSession`
+cookie's **Value**. Run:
+
+```sh
+moodle auth import-session --site school
+```
+
+Paste the value at the hidden prompt and press Return. The CLI verifies it with that site before
+storing it in the OS keychain. It never prints the value. For a secure pipe, use `--stdin`; do not
+put the value in a command argument, shell history, screenshot, chat, or issue report. This manual
+fallback does not need Full Disk Access. See [Apple's Safari developer-tools instructions](https://support.apple.com/en-ca/guide/safari/sfri20948/mac).
 
 ## Non-interactive use
 

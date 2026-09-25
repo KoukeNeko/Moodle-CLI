@@ -38,6 +38,7 @@ func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 		newAuthStatusCommand(r, deps),
 		newAuthLogoutCommand(r, deps),
 		newAuthImportBrowserCommand(r, deps),
+		newAuthImportSessionCommand(r, deps),
 		newAuthRegisterHandlerCommand(r, deps.Handler),
 		newAuthUnregisterHandlerCommand(r, deps.Handler),
 		newAuthHandlerStatusCommand(r, deps.Handler),

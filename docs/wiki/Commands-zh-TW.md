@@ -21,6 +21,7 @@ moodle auth status
 moodle auth logout
 moodle auth import-browser [--list-profiles|--store]
 moodle auth import-browser --browser safari --store   # macOS Safari
+moodle auth import-session --site <name>              # Safari 磁碟檔找不到 session 時隱藏輸入貼上
 moodle auth register-handler         # 只支援 Linux
 moodle auth handler-status
 moodle auth unregister-handler

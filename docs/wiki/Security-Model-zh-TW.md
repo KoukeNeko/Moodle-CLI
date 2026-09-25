@@ -19,6 +19,10 @@ Moodle session 會被回傳或保存，任何 cookie 都不寫入 log。指定 `
 
 找不到 cookie 只代表可讀 snapshot 內沒有，不代表使用者一定未登入。
 
+`auth import-session` 不讀取任何 browser profile，而是在隱藏輸入的終端機提示中接收單一 cookie；明確指定
+`--stdin` 時才從管線讀取。CLI 向所選 Moodle 驗證成功後才存入作業系統鑰匙圈。Cookie 值不能放在命令參數，
+錯誤訊息也不會回顯。只能從自己的瀏覽器複製，絕對不要放進截圖、聊天或 issue。
+
 ## Linux callback handler
 
 自動 mobile-launch callback 使用 per-user desktop 與 D-Bus service file。D-Bus activation 讓含 token 的

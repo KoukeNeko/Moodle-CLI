@@ -22,6 +22,7 @@ moodle auth status
 moodle auth logout
 moodle auth import-browser [--list-profiles|--store]
 moodle auth import-browser --browser safari --store   # macOS Safari
+moodle auth import-session --site <name>              # hidden paste prompt when Safari's cookie is absent from disk
 moodle auth register-handler         # Linux only
 moodle auth handler-status
 moodle auth unregister-handler

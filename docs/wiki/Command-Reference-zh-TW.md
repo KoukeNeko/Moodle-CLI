@@ -13,7 +13,7 @@
 | `--read-only` | 隱藏並拒絕所有可能變更 Moodle 的命令。 |
 | `--backend auto|ws-only` | 允許自動 fallback，或將本次執行限制為 Web Services。 |
 
-## 命令 (102)
+## 命令 (103)
 
 ### `moodle api`
 
@@ -272,6 +272,21 @@
 | `--profile` | 指定瀏覽器 profile 目錄或 Safari cookie 檔案 |
 | `--site` | 指定 Moodle 站台 |
 | `--store` | 驗證後將 session 存入作業系統鑰匙圈 |
+
+### `moodle auth import-session`
+
+登入 Moodle、管理憑證並檢查目前身分：從隱藏輸入匯入並驗證瀏覽器 session。
+
+- 用法: `moodle auth import-session [flags]`
+- JSON 輸出 kind: `auth.login`
+- 資料效果: **唯讀**
+
+| Flag | 說明 |
+| --- | --- |
+| `--account` | 指定代為操作的帳號 |
+| `--cookie-name` | 站台若改過 session cookie 名稱，可在此指定（預設 MoodleSession） |
+| `--site` | 指定 Moodle 站台 |
+| `--stdin` | 從標準輸入讀取單一 session cookie；未指定時使用隱藏輸入提示 |
 
 ### `moodle auth login`
 

@@ -111,7 +111,7 @@ func SafariSession(path, host, cookieName string) (Found, error) {
 	}
 	return Found{}, errs.New(errs.CodeNotFound,
 		"no "+cookieName+" for "+host+" in Safari's cookie store").
-		WithHint("the store may be stale or the site may use a different cookie name; this does not prove you are signed out")
+		WithHint("Safari may keep an active session only in memory; this does not mean you are signed out. Use `moodle auth import-session` to enter its cookie privately")
 }
 
 func safariPageCookie(page []byte, source, host, cookieName string, now time.Time) (Found, error) {

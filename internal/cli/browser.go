@@ -14,7 +14,6 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/browser"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
-	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
 // newAuthImportBrowserCommand reads a session out of the user's own browser.
@@ -121,7 +120,7 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			resolved, err := file.Resolve(flags.site, flags.account)
+			resolved, err := file.Resolve(flags.site, "")
 			if err != nil {
 				return err
 			}
@@ -143,47 +142,16 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 				})
 			}
 
-			// Verified before it is kept: a credential that does not work
-			// must never be written to the keychain as though it did. This
-			// also settles whose session it is, which the cookie does not say.
 			cookie := found.Name + "=" + found.Value
-			opened := deps.Auth.OpenWithSession(target, "", cookie)
-			capabilities, err := opened.Capabilities(cmd.Context())
+			name, userID, err := storeImportedSession(cmd.Context(), deps, file, resolved, target, flags.account, cookie, "import-browser")
 			if err != nil {
-				return err
-			}
-			if capabilities.UserID == "" {
-				// The site answered but did not say who for. Storing it would
-				// mean keeping a credential nothing has shown to work.
-				return errs.New(errs.CodeAuthentication,
-					"that session was not accepted by "+resolved.SiteName).
-					WithHint("sign in again in the selected browser, then import it")
-			}
-
-			// A session carries no username, only a numeric id — the page it
-			// was read from says who it is for, not what they are called.
-			name := flags.account
-			if name == "" {
-				name = "browser-" + capabilities.UserID
-			}
-			account := resolved.Site.UpsertAccount(name, config.Account{
-				UserID:         capabilities.UserID,
-				AuthMethod:     "import-browser",
-				CredentialKind: site.CredentialBrowserSession,
-			})
-			if err := deps.Auth.StoreSession(resolved.Site.ID, account.ID, cookie); err != nil {
-				return err
-			}
-			file.Current.Site = resolved.SiteName
-			file.Current.Account = name
-			if err := file.Save(); err != nil {
 				return err
 			}
 			return r.Render(Result{
 				Human: humanLine(
 					"Stored the %s session for %s as account %q (user %s).\n"+
 						"It is the browser's own session, so signing out there ends it here too.",
-					describeBrowser(profile.Kind), resolved.SiteName, name, capabilities.UserID),
+					describeBrowser(profile.Kind), resolved.SiteName, name, userID),
 			})
 		},
 	}
