@@ -217,7 +217,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" --jq .id)
+          # GitHub's releases/tags endpoint returns 404 for an unpublished
+          # draft, even though gh release view can resolve that same draft.
+          release_id=$(gh release view "$GITHUB_REF_NAME" --json databaseId --jq .databaseId)
           prerelease=false
           latest=true
           case "$GITHUB_REF_NAME" in
