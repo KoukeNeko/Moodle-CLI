@@ -110,10 +110,18 @@ func unavailable(cause error, verb string) error {
 	err := errs.Wrap(errs.CodeConfiguration, cause,
 		fmt.Sprintf("cannot %s the OS keychain", verb)).
 		WithReason("keychain_unavailable")
+	const singleRun = "Pass the credential for a single run instead: MOODLE_WS_TOKEN for a token, " +
+		"MOODLE_SESSION for a browser session."
 	if isMissingSecretService(cause) {
 		return err.WithHint(
-			"no keychain is available (headless Linux, SSH or WSL often have none). " +
-				"Pass the credential for a single run with MOODLE_WS_TOKEN instead.")
+			"no keychain is available (headless Linux, SSH or WSL often have none). " + singleRun)
+	}
+	if strings.Contains(strings.ToLower(cause.Error()), "unlock") {
+		// The Secret Service is there but its keyring is locked, and with no
+		// desktop session nothing can ask for the password — what D-Bus
+		// activating gnome-keyring over SSH produces.
+		return err.WithHint(
+			"the keychain is locked and nothing in this session could unlock it. " + singleRun)
 	}
 	return err
 }

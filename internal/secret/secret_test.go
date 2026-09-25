@@ -100,4 +100,9 @@ func TestKeyringReportsUnavailableKeychainActionably(t *testing.T) {
 	if !strings.Contains(e.Hint, "MOODLE_WS_TOKEN") {
 		t.Errorf("hint should offer a way forward, got %q", e.Hint)
 	}
+	// A browser session cannot travel in MOODLE_WS_TOKEN; offering only that
+	// left someone importing a session with no way forward.
+	if !strings.Contains(e.Hint, "MOODLE_SESSION") {
+		t.Errorf("hint should name the session variable too, got %q", e.Hint)
+	}
 }
