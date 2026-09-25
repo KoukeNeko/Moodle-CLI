@@ -2,6 +2,10 @@
 
 [繁體中文](Installation-zh-TW) · [Home](Home)
 
+Check the [Releases page](https://github.com/KoukeNeko/Moodle-CLI/releases) before using a package
+manager: these commands work after the first stable release and package entries are public. If
+there is no published release yet, [build from source](#build-from-source).
+
 ## Homebrew (macOS or Linux)
 
 Use the project's tap; this formula is not in Homebrew Core:

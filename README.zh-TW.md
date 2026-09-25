@@ -99,7 +99,8 @@ non-editing teacher、student、一般 authenticated user 與自訂角色使用�
 
 ## 快速開始
 
-使用你的平台套件管理器安裝已發布版本：
+請先確認 [Releases 頁面](https://github.com/KoukeNeko/Moodle-CLI/releases)已有公開的穩定版，
+再使用你的平台套件管理器安裝；若尚未發布，請依下方步驟從原始碼建置：
 
 ```sh
 # macOS 或 Linux（Homebrew）
@@ -113,7 +114,7 @@ scoop install koukeneko/moodle-cli
 moodle version
 ```
 
-[Releases 頁面](https://github.com/KoukeNeko/Moodle-CLI/releases)另有 Linux、macOS、Windows
+Releases 頁面另有 Linux、macOS、Windows
 的 amd64 與 arm64 下載檔。執行前請以 `checksums.txt` 核對 archive。Stable release 通過 macOS
 簽章與 notarization 驗證後，才更新 Homebrew 與 Scoop；新 tag 可能需要幾分鐘才會出現在套件倉庫。
 詳見[安裝手冊](https://github.com/KoukeNeko/Moodle-CLI/wiki/Installation-zh-TW)。
@@ -257,7 +258,7 @@ adapter；`bootstrap` 只是 composition root；CLI 與 MCP 都不能直接碰 H
 
 ## 專案狀態
 
-專案正在積極開發。Stable tag 會產生 checksum archive 與 SBOM，以 Developer ID 簽署並 notarize
+專案正在積極開發。Release workflow 設定為產生 checksum archive 與 SBOM，以 Developer ID 簽署並 notarize
 兩個 macOS binary，在真正的 macOS runner 驗證後才公開 release，替 checksum 加上 keyless workflow
 signature，並更新公開的 [Homebrew tap](https://github.com/KoukeNeko/homebrew-tap) 與
 [Scoop bucket](https://github.com/KoukeNeko/scoop-bucket)。目前公開版本以

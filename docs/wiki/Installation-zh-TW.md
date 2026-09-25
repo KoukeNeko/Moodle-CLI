@@ -2,6 +2,9 @@
 
 [English](Installation) · [首頁](Home-zh-TW)
 
+使用套件管理器前，請先確認 [Releases 頁面](https://github.com/KoukeNeko/Moodle-CLI/releases)
+已有公開穩定版且套件倉庫已更新。如果尚無公開版本，請先[從原始碼建置](#從原始碼建置)。
+
 ## Homebrew（macOS 或 Linux）
 
 使用本專案的 tap；此 formula 不在 Homebrew Core：

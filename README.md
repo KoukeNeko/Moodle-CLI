@@ -111,7 +111,8 @@ available through the explicitly untyped `api call` escape hatch.
 
 ## Getting started
 
-Install a published release using the package manager for your platform:
+Once a stable version appears on the [Releases page](https://github.com/KoukeNeko/Moodle-CLI/releases),
+install it using the package manager for your platform. Until then, use the source build below:
 
 ```sh
 # macOS or Linux (Homebrew)
@@ -125,7 +126,7 @@ scoop install koukeneko/moodle-cli
 moodle version
 ```
 
-The [Releases page](https://github.com/KoukeNeko/Moodle-CLI/releases) also has direct Linux,
+The Releases page also provides direct Linux,
 macOS, and Windows downloads for amd64 and arm64. Match your archive against `checksums.txt`
 before running it. Homebrew and Scoop entries are updated after a stable release passes its
 macOS signature and notarization checks; a newly published tag may take a few minutes to appear
@@ -284,7 +285,7 @@ MCP never reach into HTTP directly. See [docs/architecture.md](docs/architecture
 
 ## Project status
 
-The project is under active development. Stable tags produce checksummed archives and SBOMs, sign
+The project is under active development. The release workflow is configured to produce checksummed archives and SBOMs, sign
 and notarize both macOS binaries with Developer ID, verify them on a real macOS runner before
 publication, sign the checksums with a keyless workflow signature, and update the public
 [Homebrew tap](https://github.com/KoukeNeko/homebrew-tap) and
@@ -304,4 +305,3 @@ version. Windows Authenticode signing is not configured, so Windows may display 
 
 Moodle CLI is an independent project. It is not affiliated with, endorsed by, or sponsored by Moodle
 or Moodle HQ. “Moodle” is a trademark of Moodle Pty Ltd. No Moodle source code is included.
-
