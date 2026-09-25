@@ -20,12 +20,26 @@ require('/var/www/html/config.php');
 // Moodle's generic CLI exception text hides whether a failed synthetic seed
 // is a transient DB write or a deterministic fixture bug. Log only classes
 // and codes, never SQL, fixture identity, or private response data.
-set_exception_handler(static function(Throwable $error): void {
+$seedphase = 'bootstrap';
+set_exception_handler(static function(Throwable $error) use (&$seedphase): void {
     $cause = $error->getPrevious();
+    $diagnostic = $error->getMessage();
+    if (property_exists($error, 'debuginfo')) {
+        $diagnostic .= ' ' . (string)$error->debuginfo;
+    }
+    $category = 'other';
+    if (preg_match('/database (?:table )?is locked|SQLITE_BUSY/i', $diagnostic)) {
+        $category = 'sqlite_busy';
+    } else if (preg_match('/unique constraint|SQLITE_CONSTRAINT/i', $diagnostic)) {
+        $category = 'sqlite_constraint';
+    } else if (preg_match('/database or disk is full|SQLITE_FULL/i', $diagnostic)) {
+        $category = 'sqlite_full';
+    }
     fwrite(STDERR, '[seed-faculty] ' . get_class($error) .
         ' code=' . (string)$error->getCode() .
         ' cause=' . ($cause ? get_class($cause) : 'none') .
-        ' causecode=' . ($cause ? (string)$cause->getCode() : 'none') . PHP_EOL);
+        ' causecode=' . ($cause ? (string)$cause->getCode() : 'none') .
+        ' phase=' . $seedphase . ' category=' . $category . PHP_EOL);
     exit(1);
 });
 require_once($CFG->libdir . '/gradelib.php');
@@ -180,6 +194,7 @@ function ensure_submission_f(stdClass $assign, stdClass $user, ?float $mark): vo
 }
 
 // ─── 角色 ───────────────────────────────────────────────────────────────
+$seedphase = 'users';
 $prof = $DB->get_record('user', ['username' => 'prof1'], '*', MUST_EXIST);
 // 同事：prof1 讀不到他的課，所以「教師」不等於「看得到全部」。
 $prof2 = ensure_user_f('prof2', 'Hui-Chen', 'Lo');
@@ -187,6 +202,7 @@ $mgr   = $DB->get_record('user', ['username' => 'mgr1'], '*', MUST_EXIST);
 $cc    = $DB->get_record('user', ['username' => 'cc1'], '*', MUST_EXIST);
 
 // ─── 類別 ───────────────────────────────────────────────────────────────
+$seedphase = 'categories';
 $dept    = ensure_category('Computer Science', 'DEPT-CS');
 $archive = ensure_category('Archived years', 'DEPT-CS-ARCHIVE');
 
@@ -197,6 +213,7 @@ $years = [];
 $made = 0;
 for ($offset = 9; $offset >= 0; $offset--) {
     $year = (int) date('Y', $now) - $offset;
+    $seedphase = 'year_course_' . $year;
     // 學年用固定的 9 月 1 日，而不是從「現在」往回減 365 天。後者每次
     // 執行都會讓十年資料微移幾秒，也會在閏年逐漸偏離學期邊界。
     $startdate = make_timestamp($year, 9, 1, 0, 0, 0);
@@ -204,6 +221,7 @@ for ($offset = 9; $offset >= 0; $offset--) {
     $course = ensure_course_f(
         "CS1001-$year", 'Introduction to Programming',
         $startdate, $live ? $dept->id : $archive->id, $live);
+    $seedphase = 'year_enrolments_' . $year;
     ensure_enrolment_f($course, $prof, 'editingteacher');
     $years[$year] = $course;
 
@@ -215,9 +233,11 @@ for ($offset = 9; $offset >= 0; $offset--) {
         $cohort[] = $student;
     }
 
+    $seedphase = 'year_assignments_' . $year;
     $hw = ensure_assign_f($course, 'Exercise 1', $startdate + 30 * DAYSECS);
     $final = ensure_assign_f($course, 'Final Project', $startdate + 100 * DAYSECS);
     $made += 2;
+    $seedphase = 'year_submissions_' . $year;
     foreach ($cohort as $i => $student) {
         // 早年的都改完了；今年的還沒。
         ensure_submission_f($hw, $student, $live && $offset === 0 ? null : 70.0 + $i * 8);
@@ -230,6 +250,7 @@ for ($offset = 9; $offset >= 0; $offset--) {
 // 都收斂到剛好十屆，不會在長壽 volume 裡變成 11、12、…。
 $keptids = array_fill_keys(array_map(
     static fn(stdClass $course): int => (int) $course->id, $years), true);
+$seedphase = 'retired_courses';
 $like = $DB->sql_like('shortname', ':historyprefix', false);
 foreach ($DB->get_records_select('course', $like,
         ['historyprefix' => 'CS1001-%']) as $oldcourse) {
@@ -248,6 +269,7 @@ printf("[faculty] prof1 的十年：%d 門同名課程（%d 門封存），作�
     count($years), 8, $made);
 
 // 同事的課：prof1 不在裡面，所以教師的清單不等於站台上的全部。
+$seedphase = 'colleague_course';
 $other = ensure_course_f('CS3001-' . date('Y', $now), 'Operating Systems',
     $now - 60 * DAYSECS, $dept->id, true);
 ensure_enrolment_f($other, $prof2, 'editingteacher');
@@ -257,6 +279,7 @@ echo "[faculty] 同事 prof2 開了 CS3001，prof1 不在裡面\n";
 //
 // 系統層的 manager 看得到整個站台；類別層的只看得到自己的系。兩者的課程清單
 // 都是空的，成因卻完全不同——而空清單長得一模一樣。
+$seedphase = 'category_roles';
 foreach ([[$mgr, 'manager'], [$cc, 'coursecreator']] as [$user, $roleshort]) {
     $role = $DB->get_record('role', ['shortname' => $roleshort], '*', MUST_EXIST);
     $context = context_coursecat::instance($dept->id);
@@ -267,6 +290,7 @@ foreach ([[$mgr, 'manager'], [$cc, 'coursecreator']] as [$user, $roleshort]) {
 }
 echo "[faculty] mgr1 與 cc1 改掛在 Computer Science 類別上（系統層的保留）\n";
 
+$seedphase = 'purge_caches';
 purge_all_caches();
 printf("[faculty] 完成：課程 %d 門、作業 %d 份、使用者 %d 個\n",
     $DB->count_records('course') - 1, $DB->count_records('assign'),
