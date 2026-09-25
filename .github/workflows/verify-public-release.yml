@@ -1,0 +1,52 @@
+name: Verify public release downloads
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published stable tag such as v0.1.1
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: sigstore/cosign-installer@v4.1.0
+      - name: Download and verify every published platform archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version || github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo '::error::Only published stable semver tags can be verified'
+            exit 2
+          }
+          test "$(gh release view "$VERSION" --json isDraft,isPrerelease \
+            --jq '.isDraft or .isPrerelease')" = false
+
+          release_dir="$RUNNER_TEMP/public-release"
+          mkdir -p "$release_dir"
+          gh release download "$VERSION" --dir "$release_dir" \
+            --pattern checksums.txt \
+            --pattern checksums.txt.sigstore.json \
+            --pattern 'moodle-cli_*_linux_*.tar.gz' \
+            --pattern 'moodle-cli_*_darwin_*.tar.gz' \
+            --pattern 'moodle-cli_*_windows_*.zip'
+          cd "$release_dir"
+          test "$(find . -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' \) | wc -l | tr -d ' ')" = 6
+
+          cosign verify-blob \
+            --bundle checksums.txt.sigstore.json \
+            --certificate-identity "https://github.com/$GH_REPO/.github/workflows/release.yml@refs/tags/$VERSION" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            checksums.txt
+          sha256sum --check --ignore-missing checksums.txt
+          echo 'All six public archives match the signed checksums.'
