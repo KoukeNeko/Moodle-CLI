@@ -31,7 +31,8 @@ for ATTEMPT in 1 2; do
   # seed-faculty deliberately redacts Moodle's exception message, so its
   # dml_write_exception class is the only safe signature available in CI.
   # Retrying once is bounded; a deterministic schema/fixture bug still fails.
-  if [ "$ATTEMPT" -ne 1 ] || ! rg -q \
+  # Hosted runners need not have ripgrep; grep is available in the base image.
+  if [ "$ATTEMPT" -ne 1 ] || ! grep -Eq \
       '!!! Error writing to database !!!|\[seed-faculty\] dml_write_exception code=0 cause=none causecode=none' \
       "$LOG"; then
     exit 1
