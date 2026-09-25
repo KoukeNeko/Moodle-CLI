@@ -78,7 +78,7 @@ Set submission extension dates
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_save_user_extensions` |
-| `--site` | site to Set submission extension dates |
+| `--site` | site to call mod_assign_save_user_extensions on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle assignment grade`
@@ -95,7 +95,7 @@ Grade one assignment submission
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_save_grade` |
-| `--site` | site to Grade one assignment submission |
+| `--site` | site to call mod_assign_save_grade on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle assignment list`
@@ -126,7 +126,7 @@ Lock selected submissions
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_lock_submissions` |
-| `--site` | site to Lock selected submissions |
+| `--site` | site to call mod_assign_lock_submissions on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle assignment reveal-identities`
@@ -143,7 +143,7 @@ Reveal identities for blind marking
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_reveal_identities` |
-| `--site` | site to Reveal identities for blind marking |
+| `--site` | site to call mod_assign_reveal_identities on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle assignment revert`
@@ -160,7 +160,7 @@ Revert selected submissions to draft
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_revert_submissions_to_draft` |
-| `--site` | site to Revert selected submissions to draft |
+| `--site` | site to call mod_assign_revert_submissions_to_draft on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle assignment show`
@@ -203,7 +203,7 @@ List assignment submissions
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_get_submissions` |
-| `--site` | site to List assignment submissions |
+| `--site` | site to call mod_assign_get_submissions on |
 
 ### `moodle assignment submit`
 
@@ -236,7 +236,7 @@ Unlock selected submissions
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_unlock_submissions` |
-| `--site` | site to Unlock selected submissions |
+| `--site` | site to call mod_assign_unlock_submissions on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle auth`
@@ -386,7 +386,7 @@ Create calendar events
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_calendar_create_calendar_events` |
-| `--site` | site to Create calendar events |
+| `--site` | site to call core_calendar_create_calendar_events on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle calendar delete`
@@ -403,7 +403,7 @@ Delete calendar events
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_calendar_delete_calendar_events` |
-| `--site` | site to Delete calendar events |
+| `--site` | site to call core_calendar_delete_calendar_events on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle calendar upcoming`
@@ -435,7 +435,7 @@ Update a calendar event through Moodle's event form
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_calendar_submit_create_update_form` |
-| `--site` | site to Update a calendar event through Moodle's event form |
+| `--site` | site to call core_calendar_submit_create_update_form on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle commands`
@@ -471,7 +471,7 @@ Show activity completion in a course
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_completion_get_activities_completion_status` |
-| `--site` | site to Show activity completion in a course |
+| `--site` | site to call core_completion_get_activities_completion_status on |
 
 ### `moodle completion course`
 
@@ -487,7 +487,7 @@ Show course completion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_completion_get_course_completion_status` |
-| `--site` | site to Show course completion |
+| `--site` | site to call core_completion_get_course_completion_status on |
 
 ### `moodle completion mark`
 
@@ -503,7 +503,7 @@ Manually mark activity completion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_completion_update_activity_completion_status_manually` |
-| `--site` | site to Manually mark activity completion |
+| `--site` | site to call core_completion_update_activity_completion_status_manually on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle course`
@@ -528,7 +528,7 @@ Show sections, activities and files in a course
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_course_get_contents` |
-| `--site` | site to Show sections, activities and files in a course |
+| `--site` | site to call core_course_get_contents on |
 
 ### `moodle course create`
 
@@ -544,7 +544,7 @@ Create one or more courses
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_course_create_courses` |
-| `--site` | site to Create one or more courses |
+| `--site` | site to call core_course_create_courses on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle course delete`
@@ -561,7 +561,7 @@ Delete disposable courses
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_course_delete_courses` |
-| `--site` | site to Delete disposable courses |
+| `--site` | site to call core_course_delete_courses on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle course list`
@@ -593,7 +593,7 @@ Search courses the account may discover
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_course_search_courses` |
-| `--site` | site to Search courses the account may discover |
+| `--site` | site to call core_course_search_courses on |
 
 ### `moodle course show`
 
@@ -609,7 +609,7 @@ Show a course by id, shortname or idnumber
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_course_get_courses_by_field` |
-| `--site` | site to Show a course by id, shortname or idnumber |
+| `--site` | site to call core_course_get_courses_by_field on |
 
 ### `moodle course update`
 
@@ -625,7 +625,7 @@ Update one or more courses
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_course_update_courses` |
-| `--site` | site to Update one or more courses |
+| `--site` | site to call core_course_update_courses on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle doctor`
@@ -663,7 +663,7 @@ Manually enrol users in courses
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe enrol_manual_enrol_users` |
-| `--site` | site to Manually enrol users in courses |
+| `--site` | site to call enrol_manual_enrol_users on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle enrolment methods`
@@ -680,7 +680,7 @@ List enrolment methods available in a course
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_enrol_get_course_enrolment_methods` |
-| `--site` | site to List enrolment methods available in a course |
+| `--site` | site to call core_enrol_get_course_enrolment_methods on |
 
 ### `moodle enrolment remove`
 
@@ -696,7 +696,7 @@ Remove one user enrolment from a course
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_enrol_unenrol_user_enrolment` |
-| `--site` | site to Remove one user enrolment from a course |
+| `--site` | site to call core_enrol_unenrol_user_enrolment on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle enrolment update`
@@ -713,7 +713,7 @@ Update one user enrolment through Moodle's enrolment form
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_enrol_submit_user_enrolment_form` |
-| `--site` | site to Update one user enrolment through Moodle's enrolment form |
+| `--site` | site to call core_enrol_submit_user_enrolment_form on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle file`
@@ -762,7 +762,7 @@ Create a forum discussion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_add_discussion` |
-| `--site` | site to Create a forum discussion |
+| `--site` | site to call mod_forum_add_discussion on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum delete`
@@ -779,7 +779,7 @@ Delete a discussion post
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_delete_post` |
-| `--site` | site to Delete a discussion post |
+| `--site` | site to call mod_forum_delete_post on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum discussions`
@@ -809,7 +809,7 @@ Edit a discussion post
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_update_discussion_post` |
-| `--site` | site to Edit a discussion post |
+| `--site` | site to call mod_forum_update_discussion_post on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum favourite`
@@ -826,7 +826,7 @@ Favourite a discussion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_toggle_favourite_state` |
-| `--site` | site to Favourite a discussion |
+| `--site` | site to call mod_forum_toggle_favourite_state on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum list`
@@ -857,7 +857,7 @@ Lock a discussion at a timestamp
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_set_lock_state` |
-| `--site` | site to Lock a discussion at a timestamp |
+| `--site` | site to call mod_forum_set_lock_state on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum pin`
@@ -874,7 +874,7 @@ Pin a discussion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_set_pin_state` |
-| `--site` | site to Pin a discussion |
+| `--site` | site to call mod_forum_set_pin_state on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum read`
@@ -904,7 +904,7 @@ Reply to a forum discussion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_add_discussion_post` |
-| `--site` | site to Reply to a forum discussion |
+| `--site` | site to call mod_forum_add_discussion_post on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum subscribe`
@@ -921,7 +921,7 @@ Subscribe to a forum
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_set_forum_subscription` |
-| `--site` | site to Subscribe to a forum |
+| `--site` | site to call mod_forum_set_forum_subscription on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum unfavourite`
@@ -938,7 +938,7 @@ Remove a discussion from favourites
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_toggle_favourite_state` |
-| `--site` | site to Remove a discussion from favourites |
+| `--site` | site to call mod_forum_toggle_favourite_state on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum unlock`
@@ -955,7 +955,7 @@ Unlock a discussion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_set_lock_state` |
-| `--site` | site to Unlock a discussion |
+| `--site` | site to call mod_forum_set_lock_state on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum unpin`
@@ -972,7 +972,7 @@ Unpin a discussion
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_set_pin_state` |
-| `--site` | site to Unpin a discussion |
+| `--site` | site to call mod_forum_set_pin_state on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle forum unsubscribe`
@@ -989,7 +989,7 @@ Unsubscribe from a forum
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_forum_set_forum_subscription` |
-| `--site` | site to Unsubscribe from a forum |
+| `--site` | site to call mod_forum_set_forum_subscription on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle grade`
@@ -1014,7 +1014,7 @@ Create gradebook categories
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_grades_create_gradecategories` |
-| `--site` | site to Create gradebook categories |
+| `--site` | site to call core_grades_create_gradecategories on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle grade list`
@@ -1058,7 +1058,7 @@ Update grades for a component
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_grades_update_grades` |
-| `--site` | site to Update grades for a component |
+| `--site` | site to call core_grades_update_grades on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle group`
@@ -1083,7 +1083,7 @@ Create groups
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_group_create_groups` |
-| `--site` | site to Create groups |
+| `--site` | site to call core_group_create_groups on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle group delete`
@@ -1100,7 +1100,7 @@ Delete groups
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_group_delete_groups` |
-| `--site` | site to Delete groups |
+| `--site` | site to call core_group_delete_groups on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle group list`
@@ -1117,7 +1117,7 @@ List groups in a course
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_group_get_course_groups` |
-| `--site` | site to List groups in a course |
+| `--site` | site to call core_group_get_course_groups on |
 
 ### `moodle group member-add`
 
@@ -1133,7 +1133,7 @@ Add members to groups
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_group_add_group_members` |
-| `--site` | site to Add members to groups |
+| `--site` | site to call core_group_add_group_members on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle group member-remove`
@@ -1150,7 +1150,7 @@ Remove members from groups
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_group_delete_group_members` |
-| `--site` | site to Remove members from groups |
+| `--site` | site to call core_group_delete_group_members on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle group update`
@@ -1167,7 +1167,7 @@ Update groups
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_group_update_groups` |
-| `--site` | site to Update groups |
+| `--site` | site to call core_group_update_groups on |
 | `--yes` | confirm this Moodle write |
 
 ### `moodle mcp`
@@ -1214,7 +1214,7 @@ List participants enrolled in a course
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_enrol_get_enrolled_users` |
-| `--site` | site to List participants enrolled in a course |
+| `--site` | site to call core_enrol_get_enrolled_users on |
 
 ### `moodle participant search`
 
@@ -1230,7 +1230,7 @@ Search users eligible for course enrolment
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_enrol_search_users` |
-| `--site` | site to Search users eligible for course enrolment |
+| `--site` | site to call core_enrol_search_users on |
 
 ### `moodle participant show`
 
@@ -1246,7 +1246,7 @@ Show course-scoped user profiles
 | `--dry-run` | validate and show the operation without sending it |
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_user_get_course_user_profiles` |
-| `--site` | site to Show course-scoped user profiles |
+| `--site` | site to call core_user_get_course_user_profiles on |
 
 ### `moodle resolve`
 

@@ -118,3 +118,22 @@ func TestLinksThatAreNotActivitiesAreIgnored(t *testing.T) {
 		t.Errorf("got %v, want only the activity", activities)
 	}
 }
+
+func TestAnActivityLinkedFromABlockIsNotTheCourses(t *testing.T) {
+	// A side block linking the site's FAQ forum put that forum in every
+	// course's listing, attributed to each course in turn.
+	page := `<html><body>` +
+		`<section class="block_html block card" data-block="html">` +
+		`<a href="/mod/forum/view.php?id=57247">FAQ</a></section>` +
+		`<ul><li class="activity forum modtype_forum"><div class="activityname">` +
+		`<a href="/mod/forum/view.php?id=9"><span class="instancename">Announcements</span></a>` +
+		`</div></li></ul></body></html>`
+
+	activities, err := webread.ParseCourseActivities(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(activities) != 1 || activities[0].CMID != "9" {
+		t.Errorf("got %v, want only the course's own forum", activities)
+	}
+}

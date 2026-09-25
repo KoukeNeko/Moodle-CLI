@@ -127,6 +127,10 @@ type Detail struct {
 	IdentitiesRevealed bool
 	// Attachments are the files the teacher attached to the description.
 	Attachments []file.Ref
+	// Provenance says which fields the route could not read. It may be left
+	// zero by a route that reads everything; the submission state beside it
+	// carries the source.
+	Provenance site.Provenance
 }
 
 // Attempt is one earlier submission, kept apart from the current one because

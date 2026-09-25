@@ -73,3 +73,24 @@ func TestImportSessionJSONUsesLoginContractWithoutSecret(t *testing.T) {
 		t.Fatalf("wrong login contract: %s", stdout)
 	}
 }
+
+func TestSiteInspectWithABrowserSessionIsNotReportedAsExpired(t *testing.T) {
+	// A browser session has no token. Inspect opened a token session with an
+	// empty one, and the site's invalidtoken came back as "sign in again"
+	// for a session that was perfectly valid.
+	f := newFixture(t)
+	if _, stderr, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatalf("site add: %s", stderr)
+	}
+	if _, stderr, code := f.runWithStdin("MoodleSession=private-test-value\n",
+		"auth", "import-session", "--stdin"); code != v1.ExitOK {
+		t.Fatalf("import: %s", stderr)
+	}
+	stdout, stderr, code := f.run("site", "inspect")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "browser session") {
+		t.Errorf("inspect should say what a browser session can tell it:\n%s", stdout)
+	}
+}

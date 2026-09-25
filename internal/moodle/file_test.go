@@ -193,3 +193,65 @@ func TestAFileTheAccountMayNotReadIsNotBlamedOnTheSiteURL(t *testing.T) {
 		t.Errorf("the hint does not name the other possibility: %q", failure.Hint)
 	}
 }
+
+func sessionFetcher(t *testing.T, server *httptest.Server) *moodle.FileFetcher {
+	t.Helper()
+	base, err := site.ParseBaseURL(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := moodle.NewClient(site.Site{Name: "school", BaseURL: base})
+	return moodle.NewFileFetcher(client, "", site.NewCapabilities()).
+		WithSession(moodle.SessionCookie{Value: "session-value"})
+}
+
+func TestABrowserSessionDownloadsTheWayItsBrowserDoes(t *testing.T) {
+	// Without a token the links a page carries still open: pluginfile.php
+	// serves the session the same file it serves the browser. An empty token
+	// in the query is a credential that was never meant to be sent.
+	var path, cookie string
+	var query url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path, query = r.URL.Path, r.URL.Query()
+		if c, err := r.Cookie("MoodleSession"); err == nil {
+			cookie = c.Value
+		}
+		servePDF(w, r)
+	}))
+	defer server.Close()
+
+	body, err := sessionFetcher(t, server).Fetch(context.Background(),
+		server.URL+"/webservice/pluginfile.php/1/mod_assign/introattachment/0/report.pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer body.Content.Close()
+	if cookie != "session-value" {
+		t.Errorf("the session did not travel with the request: %q", cookie)
+	}
+	if query.Has("token") {
+		t.Errorf("a token parameter was sent without a token: %v", query)
+	}
+	if path != "/pluginfile.php/1/mod_assign/introattachment/0/report.pdf" {
+		t.Errorf("path = %q; a session is served at the plain route", path)
+	}
+}
+
+func TestTheLoginPageIsNotSavedAsTheFile(t *testing.T) {
+	// A session Moodle no longer accepts gets the sign-in form with HTTP 200.
+	// Saving it under report.pdf would look like a download that worked.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = io.WriteString(w, `<html><body><form id="login"><input name="logintoken"></form></body></html>`)
+	}))
+	defer server.Close()
+
+	_, err := sessionFetcher(t, server).Fetch(context.Background(),
+		server.URL+"/pluginfile.php/1/a/b/report.pdf")
+	if err == nil {
+		t.Fatal("the login page was handed over as the file")
+	}
+	if errs.From(err).Code != errs.CodeAuthentication {
+		t.Errorf("code = %q, want authentication", errs.From(err).Code)
+	}
+}

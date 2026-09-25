@@ -94,6 +94,23 @@ func TestTypedReadCallsTheTransport(t *testing.T) {
 	}
 }
 
+func TestTypedCallOverABrowserSessionSaysATokenIsNeeded(t *testing.T) {
+	// A browser session reports no release. The refusal used to be about a
+	// registry snapshot for Moodle "", which pointed at the wrong problem.
+	transport := &caller{}
+	service := wsregistry.NewService(load(t), transport, safety.Mode{}, false)
+	session := site.NewCapabilities()
+	session.Credential = site.CredentialBrowserSession
+	_, err := service.Call(context.Background(), session,
+		"", "core_course_get_contents", map[string]any{"courseid": 2}, false)
+	if err == nil || !strings.Contains(err.Error(), "web service token") {
+		t.Fatalf("err = %v, want a refusal naming the missing token", err)
+	}
+	if transport.called != 0 {
+		t.Fatal("the call reached Moodle")
+	}
+}
+
 func TestTypedWriteRequiresExplicitPermissionAndDryRunSendsNothing(t *testing.T) {
 	transport := &caller{}
 	service := wsregistry.NewService(load(t), transport, safety.Mode{}, false)

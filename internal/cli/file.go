@@ -10,6 +10,7 @@ import (
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/file"
+	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
 func newFileCommand(r *Renderer, deps Deps) *cobra.Command {
@@ -54,7 +55,11 @@ func newFileDownloadCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !capabilities.CanDownload {
+			// The flag is the web service's answer about token downloads. A
+			// browser session downloads the way the browser it came from does,
+			// and the site never reports the flag to it.
+			if !capabilities.CanDownload &&
+				capabilities.Credential != site.CredentialBrowserSession {
 				return errs.New(errs.CodePermissionDenied,
 					"this site does not allow file downloads for your account").
 					WithReason(errs.ReasonCapability)

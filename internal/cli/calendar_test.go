@@ -82,6 +82,9 @@ func TestOverdueWorkIsListedAndSaidPlainly(t *testing.T) {
 	if !strings.Contains(human, "OVERDUE") {
 		t.Errorf("the human output does not call out overdue work:\n%s", human)
 	}
+	if !strings.Contains(human, "A3 statement") || strings.Contains(human, "is due") {
+		t.Errorf("the table should name the activity, not Moodle's sentence:\n%s", human)
+	}
 	if !strings.Contains(human, "past their deadline") {
 		t.Errorf("the human output does not count the overdue work:\n%s", human)
 	}

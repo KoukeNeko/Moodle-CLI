@@ -47,8 +47,16 @@ type AssignStatus struct {
 	Graded bool
 	// Locked reports that Moodle will not accept changes.
 	Locked bool
-	// Files are the names of the submitted files, where the page lists them.
-	Files []string
+	// Files are the submitted files, where the page lists them.
+	Files []FileLink
+}
+
+// FileLink is a file a page links to.
+type FileLink struct {
+	Name string
+	// URL is the page's own link into pluginfile.php, which a browser session
+	// can download.
+	URL string
 }
 
 // ParseAssignStatus reads mod/assign/view.php.
@@ -92,26 +100,101 @@ func ParseAssignStatus(markup string) (AssignStatus, error) {
 	return status, nil
 }
 
-// submittedFiles reads the names of the files attached to the submission.
+// submittedFiles reads the files attached to the submission.
 //
 // Moodle renders them as links into the plugin file area, which is the one
 // part of the path that is stable; the link text is the filename the student
 // chose and may be anything.
-func submittedFiles(table node) []string {
-	var files []string
+func submittedFiles(table node) []FileLink {
+	return fileLinks(table, "assignsubmission_file")
+}
+
+// fileLinks reads the links into one file area under a node.
+func fileLinks(under node, area string) []FileLink {
+	var files []FileLink
 	seen := map[string]bool{}
-	for _, link := range table.findAll(byTag("a")) {
+	for _, link := range under.findAll(byTag("a")) {
 		href := link.attr("href")
-		if !strings.Contains(href, "/pluginfile.php/") ||
-			!strings.Contains(href, "assignsubmission_file") {
+		if !strings.Contains(href, "/pluginfile.php/") || !strings.Contains(href, area) {
 			continue
 		}
 		name := strings.TrimSpace(link.text())
-		if name == "" || seen[name] {
+		if name == "" || seen[href] {
 			continue
 		}
-		seen[name] = true
-		files = append(files, name)
+		seen[href] = true
+		files = append(files, FileLink{Name: name, URL: href})
 	}
 	return files
+}
+
+// Anchors for the assignment itself.
+const (
+	// attrActivityName carries the activity's name on its information block.
+	// Moodle writes it from the database for scripts to read, so it holds
+	// whatever the theme does with the visible heading.
+	attrActivityName = "data-activityname"
+	// prefixCourse is the body class naming the course, as in "course-36728".
+	prefixCourse = "course-"
+	// idIntro wraps the description and the teacher's attachments.
+	idIntro = "intro"
+	// classNoOverflow wraps the description's own markup inside the intro.
+	classNoOverflow = "no-overflow"
+	// areaIntroAttachment is the file area of the teacher's attachments.
+	areaIntroAttachment = "mod_assign/introattachment"
+)
+
+// AssignPage is what an assignment page says about the assignment itself.
+//
+// The dates are on the page too, but only as prose the site formatted in its
+// own language; they are left to the calendar, which states them as numbers.
+type AssignPage struct {
+	// Name is empty when the page does not carry the attribute.
+	Name string
+	// CourseID is empty when the body carries no course class.
+	CourseID string
+	// Description is the description's markup, unchanged. Empty both for an
+	// assignment without one and for a page that hides it from students
+	// until the assignment opens.
+	Description string
+	Attachments []FileLink
+}
+
+// ParseAssignPage reads the assignment's own details off mod/assign/view.php.
+func ParseAssignPage(markup string) (AssignPage, error) {
+	document, err := parse(markup)
+	if err != nil {
+		return AssignPage{}, errs.Wrap(errs.CodeUpstream, err,
+			"cannot read the assignment page").
+			WithReason(errs.ReasonProtocolDrift)
+	}
+
+	var page AssignPage
+	if info, ok := document.find(func(n node) bool { return n.attr(attrActivityName) != "" }); ok {
+		page.Name = strings.TrimSpace(info.attr(attrActivityName))
+	}
+	if body, ok := document.find(byTag("body")); ok {
+		if id := body.classWithPrefix(prefixCourse); isDigits(id) {
+			page.CourseID = id
+		}
+	}
+	if intro, ok := document.find(byID(idIntro)); ok {
+		if content, ok := intro.find(byClass(classNoOverflow)); ok {
+			page.Description = content.innerHTML()
+		}
+		page.Attachments = fileLinks(intro, areaIntroAttachment)
+	}
+	return page, nil
+}
+
+func isDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -105,7 +106,9 @@ func newForumDiscussionsCommand(r *Renderer, deps Deps) *cobra.Command {
 			discussions, _ := envelope.Data.([]v1.Discussion)
 			return r.Render(Result{
 				Envelope: envelope,
-				Human:    func(w io.Writer) error { return writeDiscussionTable(w, discussions) },
+				Human: func(w io.Writer) error {
+					return writeDiscussionTable(w, discussions, !slices.Contains(envelope.Meta.Missing, "replies"))
+				},
 			})
 		},
 	}
@@ -198,7 +201,7 @@ func writeForumTable(w io.Writer, forums []v1.Forum, named bool) error {
 	return table.Flush()
 }
 
-func writeDiscussionTable(w io.Writer, discussions []v1.Discussion) error {
+func writeDiscussionTable(w io.Writer, discussions []v1.Discussion, repliesKnown bool) error {
 	if len(discussions) == 0 {
 		// mod_forum_get_forum_discussions applies can_view_discussion and the
 		// forum's group mode before it answers, and skips what fails with a
@@ -217,8 +220,13 @@ func writeDiscussionTable(w io.Writer, discussions []v1.Discussion) error {
 		if item.Locked {
 			name = "[locked] " + name
 		}
-		fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\n",
-			item.ID, name, item.Author, item.Replies, date(item.ModifiedAt))
+		// A route that cannot count replies must not print a zero.
+		replies := "-"
+		if repliesKnown {
+			replies = strconv.Itoa(item.Replies)
+		}
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n",
+			item.ID, name, item.Author, replies, date(item.ModifiedAt))
 	}
 	return table.Flush()
 }

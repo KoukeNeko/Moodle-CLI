@@ -75,6 +75,8 @@ var registry = map[string]Policy{
 		Why: "reads calendar events"},
 	"mod_forum_get_forums_by_courses": {Retry: RetrySafe, Session: true,
 		Why: "reads forum definitions"},
+	"core_calendar_get_calendar_monthly_view": {Retry: RetrySafe, Session: true,
+		Why: "renders the calendar's month; reads events, records nothing"},
 
 	// Reads that are not reads. These are the reason this registry is a list
 	// and not a naming convention.

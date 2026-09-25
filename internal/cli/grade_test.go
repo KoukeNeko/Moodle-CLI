@@ -247,6 +247,31 @@ func TestGradeOverviewAcrossCourses(t *testing.T) {
 	}
 }
 
+func TestGradeOverviewNamesCoursesInTheTable(t *testing.T) {
+	// A bare course id means nothing to the person reading the table.
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.withCourses(map[string]any{"id": 2, "shortname": "CS204", "fullname": "OS", "visible": 1})
+	f.server.HandleValue(moodle.FunctionCourseGrades, map[string]any{
+		"grades": []any{
+			map[string]any{"courseid": 2, "grade": "85.00", "rawgrade": 85},
+			map[string]any{"courseid": 3, "grade": "70.00", "rawgrade": 70},
+		},
+	})
+
+	human, stderr, code := f.run("grade", "overview")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d, %s", code, stderr)
+	}
+	if !strings.Contains(human, "CS204") {
+		t.Errorf("the course should be named:\n%s", human)
+	}
+	// A course the listing does not know keeps its id rather than vanishing.
+	if !strings.Contains(human, "3 ") {
+		t.Errorf("an unnamed course should fall back to its id:\n%s", human)
+	}
+}
+
 func TestGradesAskForTheCallersOwnId(t *testing.T) {
 	// Without it Moodle reads the call as a request for everyone's grades and
 	// refuses it as "View grades of other users" — which reads like a problem

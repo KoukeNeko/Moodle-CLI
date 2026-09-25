@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -64,9 +65,18 @@ func (r Renderer) Render(res Result) error {
 	if err := res.Human(r.Streams.Out); err != nil {
 		return err
 	}
-	if res.Envelope.Meta.Partial {
-		fmt.Fprintln(r.Streams.Err,
-			"Note: the site left something out of this answer, so it is incomplete.")
+	if meta := res.Envelope.Meta; meta.Partial {
+		if len(meta.Missing) > 0 {
+			// Naming the fields is what makes the note useful: a blank due
+			// date means something else once the reader knows the route could
+			// not see due dates at all.
+			fmt.Fprintf(r.Streams.Err,
+				"Note: this answer is incomplete; the route that answered (%s) cannot see: %s.\n",
+				meta.Source, strings.Join(meta.Missing, ", "))
+		} else {
+			fmt.Fprintln(r.Streams.Err,
+				"Note: the site left something out of this answer, so it is incomplete.")
+		}
 	}
 	return nil
 }

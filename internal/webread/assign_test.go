@@ -44,8 +44,11 @@ func TestStatusIsReadFromRealPages(t *testing.T) {
 				t.Fatalf("files = %v, want %v", got.Files, want.files)
 			}
 			for i, file := range want.files {
-				if got.Files[i] != file {
-					t.Errorf("file %d = %q, want %q", i, got.Files[i], file)
+				if got.Files[i].Name != file {
+					t.Errorf("file %d = %q, want %q", i, got.Files[i].Name, file)
+				}
+				if !strings.Contains(got.Files[i].URL, "/pluginfile.php/") {
+					t.Errorf("file %d has no link to download it by: %q", i, got.Files[i].URL)
 				}
 			}
 		})
@@ -148,5 +151,41 @@ func TestGradedAndLockedAreReadWhenPresent(t *testing.T) {
 	}
 	if got.Status != "submitted" || !got.Graded || !got.Locked {
 		t.Errorf("got %+v", got)
+	}
+}
+
+func TestTheAssignmentItselfIsReadFromItsPage(t *testing.T) {
+	// The shape of a Moodle 4.5 page in Traditional Chinese. The name, course
+	// and description come from what Moodle generates from data; the dates
+	// beside them are prose in the site's language and are not read here.
+	got, err := webread.ParseAssignPage(fixture(t, "page"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "Practice #1" {
+		t.Errorf("name = %q", got.Name)
+	}
+	if got.CourseID != "36728" {
+		t.Errorf("course = %q", got.CourseID)
+	}
+	if !strings.Contains(got.Description, "<li>Practice: gprof</li>") ||
+		strings.Contains(got.Description, "gprof_paper.pdf") {
+		t.Errorf("description should be the intro's own markup:\n%s", got.Description)
+	}
+	// Only the teacher's attachments: the page also links the site manual.
+	if len(got.Attachments) != 1 || got.Attachments[0].Name != "gprof_paper.pdf" {
+		t.Fatalf("attachments = %+v", got.Attachments)
+	}
+}
+
+func TestAPageWithoutTheAnchorsLeavesThemEmpty(t *testing.T) {
+	got, err := webread.ParseAssignPage(fixture(t, "none"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The fragment carries no body class; an empty course is the honest
+	// answer, not the first number on the page.
+	if got.CourseID != "" {
+		t.Errorf("course = %q from a page that does not name one", got.CourseID)
 	}
 }

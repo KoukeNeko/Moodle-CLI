@@ -121,12 +121,10 @@ func newSiteInspectCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			target, err := targetSite(resolved.SiteName, resolved.Site)
-			if err != nil {
-				return err
-			}
-			capabilities, err := deps.Auth.
-				OpenWithToken(target, resolved.Account.ID, token).
+			// Through openSessionFor, like every other command: a browser
+			// session has no token, and opening a token session with an empty
+			// one reported a valid session as expired.
+			capabilities, err := openSessionFor(deps, resolved, token).
 				Capabilities(cmd.Context())
 			if err != nil {
 				return err
@@ -150,6 +148,15 @@ func newSiteInspectCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func writeInspect(w io.Writer, payload v1.SiteCapabilities, capabilities *site.Capabilities) error {
 	table := newTable(w)
+	if capabilities.Credential == site.CredentialBrowserSession {
+		// Everything below comes from core_webservice_get_site_info, which a
+		// browser session cannot call. Printing its empty answer read as a
+		// site with no name, no version and nothing on offer.
+		fmt.Fprintf(table, "URL\t%s\n", payload.SiteURL)
+		fmt.Fprintf(table, "Account\tuser %s, signed in with a browser session\n", capabilities.UserID)
+		fmt.Fprintf(table, "Site details\tnot reported to a browser session; see `moodle doctor`\n")
+		return table.Flush()
+	}
 	fmt.Fprintf(table, "Site\t%s\n", payload.SiteName)
 	fmt.Fprintf(table, "URL\t%s\n", payload.SiteURL)
 	fmt.Fprintf(table, "Moodle\t%s\n", payload.Release)

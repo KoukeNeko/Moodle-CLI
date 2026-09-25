@@ -175,8 +175,14 @@ func AssignmentShow(detail assignment.Detail, state assignment.State, siteName, 
 		attempts := detail.MaxAttempts
 		payload.MaxAttempts = &attempts
 	}
+	// Both halves come from the same route, and either can be short of
+	// fields: the reader needs to hear about the gaps in each.
+	provenance := state.Provenance
+	provenance.Partial = provenance.Partial || detail.Provenance.Partial
+	provenance.Missing = append(append([]string{}, detail.Provenance.Missing...),
+		state.Provenance.Missing...)
 	return NewEnvelope("assignment.show", payload,
-		MetaFrom(state.Provenance, siteName, accountName))
+		MetaFrom(provenance, siteName, accountName))
 }
 
 // SubmissionState is the assignment.status payload.

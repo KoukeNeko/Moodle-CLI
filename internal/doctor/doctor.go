@@ -191,8 +191,18 @@ func Run(ctx context.Context, in Input) Report {
 	}
 
 	report.Checks = append(report.Checks, versionCheck(capabilities.Release, session))
-	report.Checks = append(report.Checks,
-		fileCheck("File download", capabilities.CanDownload, session))
+	if session {
+		// Not the web service's flag, which a session is never told: the
+		// files a page links to are served to the session the way they are
+		// to the browser it came from, and `file download` uses exactly that.
+		report.Checks = append(report.Checks, Check{
+			Name: "File download", Status: StatusOK,
+			Detail: "through the browser session, for files the site's pages link to",
+		})
+	} else {
+		report.Checks = append(report.Checks,
+			fileCheck("File download", capabilities.CanDownload, session))
+	}
 	report.Checks = append(report.Checks,
 		fileCheck("File upload", capabilities.CanUpload, session))
 

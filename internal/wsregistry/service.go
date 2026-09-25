@@ -53,6 +53,15 @@ func (s *Service) Call(ctx context.Context, capabilities *site.Capabilities, rel
 			fmt.Sprintf("%s is not a core function in the Moodle 4.5, 5.1 or 5.2 registry", name)).
 			WithHint("use `moodle api call` for third-party plugin functions")
 	}
+	if capabilities != nil && capabilities.Credential == site.CredentialBrowserSession {
+		// Typed calls go to the REST endpoint, which only a token opens. A
+		// browser session also learns no release, and the missing snapshot
+		// for Moodle "" was reported instead of the reason that mattered.
+		return CallResult{}, errs.New(errs.CodeUnavailable,
+			fmt.Sprintf("%s needs a web service token; this account signed in with a browser session", name)).
+			WithReason(errs.ReasonCapability).
+			WithHint("sign in with a token, for example `moodle auth login --method qr`")
+	}
 	variant, version, supported := s.registry.VariantForRelease(name, release)
 	if !supported {
 		if version == "" {

@@ -161,6 +161,30 @@ func (n node) textExcept(skip ...string) string {
 	return strings.Join(strings.Fields(b.String()), " ")
 }
 
+// inside reports whether any ancestor matches.
+func (n node) inside(match func(node) bool) bool {
+	for parent := n.Parent; parent != nil; parent = parent.Parent {
+		if parent.Type == html.ElementNode && match(node{parent}) {
+			return true
+		}
+	}
+	return false
+}
+
+// innerHTML renders the element's children back to markup.
+func (n node) innerHTML() string {
+	if n.Node == nil {
+		return ""
+	}
+	var b strings.Builder
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		if err := html.Render(&b, child); err != nil {
+			return ""
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
 // attr returns an attribute value.
 func (n node) attr(name string) string {
 	if n.Node == nil {

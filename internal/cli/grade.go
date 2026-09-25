@@ -9,6 +9,7 @@ import (
 
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
+	"github.com/KoukeNeko/moodle-cli/internal/course"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
@@ -44,7 +45,7 @@ func openGrades(cmd *cobra.Command, deps Deps, flags sessionFlags) (
 		return nil, nil, err
 	}
 	return deps.Grades(session, capabilities),
-		&resolvedSession{resolved: resolved, capabilities: capabilities}, nil
+		&resolvedSession{resolved: resolved, capabilities: capabilities, session: session}, nil
 }
 
 func newGradeListCommand(r *Renderer, deps Deps) *cobra.Command {
@@ -105,7 +106,20 @@ func newGradeOverviewCommand(r *Renderer, deps Deps) *cobra.Command {
 			totals, _ := envelope.Data.([]v1.CourseTotal)
 			return r.Render(Result{
 				Envelope: envelope,
-				Human:    func(w io.Writer) error { return writeOverviewTable(w, totals) },
+				Human: func(w io.Writer) error {
+					// A course id means nothing to the person reading. Names
+					// cost one more call, so only the table asks for them, and
+					// the ids stand in if that call fails.
+					names := map[string]string{}
+					courses, err := deps.Courses(session.session, session.capabilities).
+						List(cmd.Context(), session.capabilities, course.ListQuery{})
+					if err == nil {
+						for _, item := range courses.Courses {
+							names[item.ID] = item.ShortName
+						}
+					}
+					return writeOverviewTable(w, totals, names)
+				},
 			})
 		},
 	}
@@ -199,7 +213,7 @@ func outOf(item v1.Grade) string {
 	return strconv.FormatFloat(*item.Max, 'f', -1, 64)
 }
 
-func writeOverviewTable(w io.Writer, totals []v1.CourseTotal) error {
+func writeOverviewTable(w io.Writer, totals []v1.CourseTotal, names map[string]string) error {
 	if len(totals) == 0 {
 		// gradereport_overview answers with the courses this account is graded
 		// on, that show grades, and that it can still see — a shorter list
@@ -221,7 +235,11 @@ func writeOverviewTable(w io.Writer, totals []v1.CourseTotal) error {
 		if value == "" || value == "-" {
 			value = "not graded yet"
 		}
-		fmt.Fprintf(table, "%s\t%s\n", total.CourseID, value)
+		name := total.CourseID
+		if short := names[total.CourseID]; short != "" {
+			name = short
+		}
+		fmt.Fprintf(table, "%s\t%s\n", name, value)
 	}
 	return table.Flush()
 }

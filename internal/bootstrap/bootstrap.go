@@ -121,9 +121,10 @@ func Run(ctx context.Context, build Build, args []string) int {
 			if cookie := session.Cookie(); cookie.Value != "" {
 				ajax := moodle.NewAjaxSession(session.Client(), cookie)
 				backends = append(backends, moodle.NewAssignHTMLBackend(
-					moodle.NewPageReader(session.Client(), cookie),
-					func(ctx context.Context) ([]string, error) {
-						return courseIDs(ctx, capabilities, ajax)
+					moodle.NewPageReader(session.Client(), cookie), ajax,
+					func(ctx context.Context) ([]course.Summary, error) {
+						result, err := moodle.NewCourseAjaxBackend(ajax).List(ctx, course.ListQuery{})
+						return result.Courses, err
 					}))
 			}
 			return assignment.NewService(
@@ -175,7 +176,8 @@ func Run(ctx context.Context, build Build, args []string) int {
 		},
 		Files: func(session *auth.Session, capabilities *site.Capabilities) *file.Downloader {
 			return file.NewDownloader(
-				moodle.NewFileFetcher(session.Client(), session.Token(), capabilities),
+				moodle.NewFileFetcher(session.Client(), session.Token(), capabilities).
+					WithSession(session.Cookie()),
 			)
 		},
 		API: func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service {

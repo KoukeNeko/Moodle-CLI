@@ -2,6 +2,7 @@ package moodle
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
@@ -83,21 +84,71 @@ func (b *ForumHTMLBackend) List(ctx context.Context, courseIDs []string) (forum.
 			})
 		}
 	}
+	result.Provenance.Partial = true
+	result.Provenance.Missing = []string{"kind", "discussions", "description"}
 	return result, nil
 }
 
-// Discussions and Thread have no page route here.
+// PathForumView is the page listing a forum's threads.
+const PathForumView = "/mod/forum/view.php"
+
+// Discussions reads the thread list off the forum's page.
 //
-// They could be read from the forum's own pages, but nothing in this project
-// needs them yet on a site without web services, and a parser with no fixture
-// behind it is a guess. Refusing says which route was missing; returning an
-// empty list would say the forum has no threads.
-func (b *ForumHTMLBackend) Discussions(_ context.Context, _ string) (forum.DiscussionsResult, error) {
-	return forum.DiscussionsResult{}, errs.New(errs.CodeUnavailable,
-		"reading pages cannot list a forum's discussions").
-		WithReason(errs.ReasonCapability)
+// The forum id on this route is the course module id, as List reports it,
+// which is also what the page's address takes. The reply counts sit in a cell
+// with no marker of their own, and the rest are this account's standing in
+// the thread, which the page does not state in a form worth reading; they are
+// reported as missing rather than as zero.
+func (b *ForumHTMLBackend) Discussions(ctx context.Context, forumID string) (forum.DiscussionsResult, error) {
+	result := forum.DiscussionsResult{
+		ForumID:     forumID,
+		Discussions: []forum.Discussion{},
+		Provenance:  site.NewProvenance(site.BackendHTML),
+	}
+	seen := map[string]bool{}
+	// A forum shows a hundred threads a page by default. Past that the page
+	// carries a paging bar, and view.php takes the page number as p; reading
+	// stops at the first page that adds nothing new.
+	for pageNumber := 0; pageNumber < maxForumPages; pageNumber++ {
+		markup, err := b.pages.Get(ctx, PathForumView,
+			map[string]string{"id": forumID, "p": strconv.Itoa(pageNumber)})
+		if err != nil {
+			return forum.DiscussionsResult{}, err
+		}
+		page, err := webread.ParseForumPage(markup)
+		if err != nil {
+			return forum.DiscussionsResult{}, err
+		}
+		added := 0
+		for _, row := range page.Discussions {
+			if seen[row.ID] {
+				continue
+			}
+			seen[row.ID] = true
+			added++
+			result.Discussions = append(result.Discussions, forum.Discussion{
+				ID: row.ID, Name: row.Name, ForumID: forumID,
+				Author: row.Author, LastAuthor: row.LastAuthor,
+				CreatedAt: row.CreatedAt, ModifiedAt: row.ModifiedAt,
+				Pinned: row.Pinned, Locked: row.Locked,
+			})
+		}
+		if !page.MorePages || added == 0 {
+			break
+		}
+	}
+	result.Provenance.Partial = true
+	result.Provenance.Missing = []string{"replies", "unread", "can_reply"}
+	return result, nil
 }
 
+// maxForumPages bounds one listing, at a hundred threads a page.
+const maxForumPages = 20
+
+// Thread has no page route: the AJAX endpoint offers
+// mod_forum_get_discussion_posts to a browser session, and that route comes
+// first. Refusing says which route was missing; returning nothing would say
+// the thread is empty.
 func (b *ForumHTMLBackend) Thread(_ context.Context, _ string) (forum.ThreadResult, error) {
 	return forum.ThreadResult{}, errs.New(errs.CodeUnavailable,
 		"reading pages cannot read a discussion").

@@ -3,6 +3,7 @@ package moodle_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -709,5 +710,39 @@ func TestWithoutASourceNothingIsReRead(t *testing.T) {
 	}
 	if len(calls) != 1 {
 		t.Errorf("calls = %v; want one", calls)
+	}
+}
+
+func TestMoodlesOwnRefusalPageIsNotBlamedOnTheSiteURL(t *testing.T) {
+	// Moodle serves "you may not see this" as a 404 with its own error page —
+	// measured: a course that hides the grade report from students. Telling
+	// the reader to check the site URL sent them after a problem they did not
+	// have, while the one page that failed named its reason.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, `<!DOCTYPE html><html><body><div class="box errorbox">`+
+			`<p class="errormessage">Sorry, but you do not currently have permissions to do that (View your own grade report).</p>`+
+			`<p class="errorcode"><a href="http://docs.moodle.org/405/en/error/moodle/nopermissions">More information about this error</a></p>`+
+			`</div></body></html>`)
+	}))
+	defer server.Close()
+	base, err := site.ParseBaseURL(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages := moodle.NewPageReader(moodle.NewClient(site.Site{BaseURL: base}),
+		moodle.SessionCookie{Value: "s"})
+
+	_, err = pages.Get(context.Background(), "/grade/report/user/index.php", map[string]string{"id": "2"})
+	e := errs.From(err)
+	if e.Code != errs.CodePermissionDenied {
+		t.Errorf("code = %q, want permission_denied", e.Code)
+	}
+	if strings.Contains(e.Hint, "site URL") {
+		t.Errorf("hint blames the site URL: %q", e.Hint)
+	}
+	if !strings.Contains(e.Message, "View your own grade report") ||
+		!strings.Contains(e.Message, "moodle/nopermissions") {
+		t.Errorf("Moodle's own reason was dropped: %q", e.Message)
 	}
 }

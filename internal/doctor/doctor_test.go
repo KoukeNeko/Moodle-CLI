@@ -108,7 +108,7 @@ func TestWhatWasNeverAskedIsNotReportedAsNo(t *testing.T) {
 	// refused. Rendering that as a refusal tells a student they may not
 	// download their own coursework.
 	report := run(t, noWebServices(), browserSession())
-	for _, name := range []string{"File download", "File upload", "Moodle version"} {
+	for _, name := range []string{"File upload", "Moodle version"} {
 		check := find(t, report, name)
 		if check.Status != doctor.StatusSkipped {
 			t.Errorf("%s: status = %q, want skipped — the question was never put",
@@ -117,6 +117,15 @@ func TestWhatWasNeverAskedIsNotReportedAsNo(t *testing.T) {
 		if strings.Contains(check.Detail, "not allowed") {
 			t.Errorf("%s: %q reads as a refusal", name, check.Detail)
 		}
+	}
+}
+
+func TestABrowserSessionDownloadsWhatPagesLinkTo(t *testing.T) {
+	// The session fetches pluginfile.php the way its browser does, so the
+	// download row is an answer here, not a question never put.
+	report := run(t, noWebServices(), browserSession())
+	if check := find(t, report, "File download"); check.Status != doctor.StatusOK {
+		t.Errorf("File download: status = %q, want ok (%s)", check.Status, check.Detail)
 	}
 }
 

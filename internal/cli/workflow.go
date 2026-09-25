@@ -92,7 +92,7 @@ func newWorkflowCommand(r *Renderer, deps Deps, mode *safety.Mode, spec workflow
 			})
 		},
 	}
-	flags.bind(cmd, spec.Short)
+	flags.bind(cmd, "call "+spec.Function+" on")
 	cmd.Flags().StringArrayVar(&params, "param", nil, "a top-level parameter as name=value, repeatable")
 	cmd.Flags().StringVar(&paramsJSON, "params-json", "", "structured parameters as a JSON object; see `moodle ws describe "+spec.Function+"`")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "validate and show the operation without sending it")

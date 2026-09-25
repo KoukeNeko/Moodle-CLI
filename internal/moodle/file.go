@@ -22,7 +22,25 @@ type FileFetcher struct {
 	// siteURL is the root the site builds its own links from, which is not
 	// necessarily the address the user typed.
 	siteURL string
+	// cookie is a browser session, used when there is no token. The files a
+	// page links to are served to that session the way they are to the
+	// browser it came from.
+	cookie SessionCookie
 }
+
+// WithSession lets the fetcher download with a browser session when it has no
+// token.
+func (f *FileFetcher) WithSession(cookie SessionCookie) *FileFetcher {
+	if strings.TrimSpace(cookie.Name) == "" {
+		cookie.Name = DefaultSessionCookieName
+	}
+	f.cookie = cookie
+	return f
+}
+
+// pathWebServiceFile is the token route to a file. A session is not accepted
+// there; the same file sits at the plain route without the prefix.
+const pathWebServiceFile = "/webservice/pluginfile.php/"
 
 // NewFileFetcher builds the downloader's transport.
 // PathPluginFile names the file endpoint in diagnostics. It is not a web
@@ -57,12 +75,21 @@ func (f *FileFetcher) Fetch(ctx context.Context, rawURL string) (*file.Body, err
 	// Any token already in the link is replaced rather than added to: a link
 	// that arrived with someone else's token must not be used with it.
 	query := parsed.Query()
-	query.Set("token", f.token)
+	bySession := f.token == "" && f.cookie.Value != ""
+	if bySession {
+		query.Del("token")
+		parsed.Path = strings.Replace(parsed.Path, pathWebServiceFile, "/pluginfile.php/", 1)
+	} else {
+		query.Set("token", f.token)
+	}
 	parsed.RawQuery = query.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
 	if err != nil {
 		return nil, errs.Wrap(errs.CodeInternal, err, "cannot build the download request")
+	}
+	if bySession {
+		request.AddCookie(&http.Cookie{Name: f.cookie.Name, Value: f.cookie.Value})
 	}
 
 	response, err := f.client.stream(request, PathPluginFile)
@@ -73,6 +100,12 @@ func (f *FileFetcher) Fetch(ctx context.Context, rawURL string) (*file.Body, err
 	if err := rejectErrorPayload(response); err != nil {
 		response.Body.Close()
 		return nil, err
+	}
+	if bySession {
+		if err := rejectLoginPage(response); err != nil {
+			response.Body.Close()
+			return nil, err
+		}
 	}
 
 	return &file.Body{
@@ -125,6 +158,33 @@ func contentType(header string) string {
 		return strings.TrimSpace(strings.SplitN(header, ";", 2)[0])
 	}
 	return parsed
+}
+
+// rejectLoginPage refuses the sign-in form served in place of a file.
+//
+// Moodle answers a session it no longer accepts with the login page and HTTP
+// 200, which would otherwise be saved under the file's name and look like a
+// download that worked.
+func rejectLoginPage(response *http.Response) error {
+	if contentType(response.Header.Get("Content-Type")) != "text/html" {
+		return nil
+	}
+	const maxPage = 512 << 10
+	head, err := io.ReadAll(io.LimitReader(response.Body, maxPage))
+	if err != nil {
+		return errs.Wrap(errs.CodeUpstream, err, "the site sent an unreadable reply")
+	}
+	if isLoginPage(string(head)) {
+		return errs.New(errs.CodeAuthentication,
+			"the site did not accept that browser session").
+			WithReason(errs.ReasonTokenExpired).
+			WithHint("the session may have expired; sign in again in your browser and copy it")
+	}
+	response.Body = struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(bytes.NewReader(head), response.Body), response.Body}
+	return nil
 }
 
 // belongsToSite refuses a URL that is not this Moodle's.

@@ -10,10 +10,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -508,6 +510,15 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 	case response.StatusCode == http.StatusNotFound:
 		code = errs.CodeNotFound
 		hint = "check the site URL points at a Moodle installation"
+		if errorCode, _ := moodleErrorPage(body); errorCode != "" {
+			// Moodle itself answered, with its own error page. It serves a
+			// refusal as a 404 too — measured: a course that does not show
+			// students their grade report — and the site URL is plainly fine.
+			hint = "Moodle refused this page to this account; the course may not offer it to you"
+			if errorCode == "moodle/nopermissions" {
+				code = errs.CodePermissionDenied
+			}
+		}
 		if function == PathPluginFile {
 			// Moodle answers a file this account may not read with the same
 			// 404 as one that does not exist — deliberately, so that a listing
@@ -547,6 +558,30 @@ func httpStatusError(response *http.Response, body []byte, function string) erro
 	return err
 }
 
+// Moodle's error page links the error's documentation as
+// .../error/<component>/<code>, and prints the reason in p.errormessage. Both
+// come from print_error, whatever the theme or language.
+var (
+	moodleErrorLink    = regexp.MustCompile(`/error/([a-z0-9_]+)/([a-z0-9_]+)"`)
+	moodleErrorMessage = regexp.MustCompile(`(?s)<p class="errormessage">(.*?)</p>`)
+	markupTag          = regexp.MustCompile(`<[^>]*>`)
+)
+
+// moodleErrorPage reads the error code, as component/code, and the reason off
+// one of Moodle's own error pages. The code is empty for any other page.
+func moodleErrorPage(body []byte) (errorCode, message string) {
+	link := moodleErrorLink.FindSubmatch(body)
+	if link == nil {
+		return "", ""
+	}
+	errorCode = string(link[1]) + "/" + string(link[2])
+	if found := moodleErrorMessage.FindSubmatch(body); found != nil {
+		text := markupTag.ReplaceAllString(string(found[1]), "")
+		message = strings.Join(strings.Fields(html.UnescapeString(text)), " ")
+	}
+	return errorCode, message
+}
+
 // waitAdvice turns Retry-After into something a person can act on.
 func waitAdvice(response *http.Response) string {
 	delay, named := retryAfter(response.Header, time.Now())
@@ -570,6 +605,14 @@ func describeErrorBody(body []byte) string {
 		}
 	}
 	if strings.HasPrefix(strings.ToLower(trimmed), "<") {
+		// Moodle's own error page is the exception: it states the reason
+		// and names the error, which is worth more than the status code.
+		if errorCode, message := moodleErrorPage(body); errorCode != "" {
+			if message == "" {
+				return errorCode
+			}
+			return message + " (" + errorCode + ")"
+		}
 		return ""
 	}
 	const limit = 160

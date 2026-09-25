@@ -9,6 +9,8 @@ import (
 
 // Anchors on a course page.
 const (
+	// attrBlock marks a side block.
+	attrBlock = "data-block"
 	// classActivityName wraps the link to an activity.
 	classActivityName = "activityname"
 	// prefixModType carries the activity's type, as in "modtype_assign".
@@ -44,9 +46,20 @@ func ParseCourseActivities(markup string) ([]Activity, error) {
 			WithReason(errs.ReasonProtocolDrift)
 	}
 
+	// Side blocks link activities that are not the course's — measured: a
+	// site-wide FAQ forum in an HTML block showed up in every course,
+	// attributed to each in turn — so what sits inside a block is skipped.
+	// Moodle marks every block with data-block, whatever the theme.
+	var links []node
+	for _, link := range document.findAll(byTag("a")) {
+		if !link.inside(func(n node) bool { return n.attr(attrBlock) != "" }) {
+			links = append(links, link)
+		}
+	}
+
 	var activities []Activity
 	seen := map[string]bool{}
-	for _, link := range document.findAll(byTag("a")) {
+	for _, link := range links {
 		module, cmid := moduleLink(link.attr("href"))
 		if module == "" || seen[cmid] {
 			continue

@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
+	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -38,6 +39,9 @@ func newAssignmentCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Comm
 type resolvedSession struct {
 	resolved     config.Resolved
 	capabilities *site.Capabilities
+	// session is the open connection, for a command that needs a second use
+	// case besides its own — a course listing to name or filter courses.
+	session *auth.Session
 }
 
 // sessionFlags are the two flags every site-bound command carries.
@@ -68,7 +72,7 @@ func openAssignments(cmd *cobra.Command, deps Deps, flags sessionFlags, mode saf
 		return nil, nil, err
 	}
 	return deps.Assignments(session, capabilities, mode),
-		&resolvedSession{resolved: resolved, capabilities: capabilities}, nil
+		&resolvedSession{resolved: resolved, capabilities: capabilities, session: session}, nil
 }
 
 func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
@@ -309,10 +313,9 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment, named bool) error 
 		if item.CourseShortName != nil {
 			course = *item.CourseShortName
 		}
-		due := "-"
-		if item.DueDate != nil {
-			due = date(item.DueDate)
-		}
+		// With the time: a deadline at 00:00 is the evening before in
+		// practice, and one at 23:59 is not.
+		due := when(item.DueDate)
 		// Spelling this out is the point: on these assignments, saving work is
 		// not submitting it. When the route could not see the setting, say so
 		// rather than pick the reassuring answer.
@@ -341,11 +344,11 @@ func writeAssignmentDetail(w io.Writer, detail v1.AssignmentDetail) error {
 			fmt.Fprintf(table, "%s\t%s\n", label, value)
 		}
 	}
-	row("Opens", date(detail.AllowFrom))
-	row("Due", date(detail.DueDate))
+	row("Opens", moment(detail.AllowFrom))
+	row("Due", moment(detail.DueDate))
 	// The cut-off is the one that actually stops you: after the due date work
 	// is merely late, after the cut-off Moodle refuses it.
-	row("Cut-off", date(detail.CutOff))
+	row("Cut-off", moment(detail.CutOff))
 	if detail.MaxGrade != nil {
 		row("Marked out of", strconv.FormatFloat(*detail.MaxGrade, 'f', -1, 64))
 	}
@@ -386,9 +389,29 @@ func writeAssignmentDetail(w io.Writer, detail v1.AssignmentDetail) error {
 	if err := table.Flush(); err != nil {
 		return err
 	}
+	if len(detail.Attachments) > 0 {
+		// The teacher's handouts are often the assignment itself; the link
+		// is what `moodle file download` takes.
+		fmt.Fprintln(w, "\nAttachments:")
+		files := newTable(w)
+		for _, attachment := range detail.Attachments {
+			fmt.Fprintf(files, "  %s\t%s\n", attachment.Name, attachment.URL)
+		}
+		if err := files.Flush(); err != nil {
+			return err
+		}
+	}
 
 	fmt.Fprintln(w)
 	return writeStatus(w, detail.Submission)
+}
+
+// moment is when() for a row that is left out when there is no value.
+func moment(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return when(value)
 }
 
 // date renders a timestamp as the reader's local date. The contract carries
@@ -440,6 +463,15 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 		fmt.Fprintf(w, "Modified:  %s\n", *state.ModifiedAt)
 	}
 	fmt.Fprintf(w, "Files:     %d\n", state.FileCount)
+	// What Moodle holds, by name and link, so the reader can check it is
+	// what they meant to hand in.
+	for _, held := range state.Files {
+		if held.URL == "" {
+			fmt.Fprintf(w, "           %s\n", held.Name)
+			continue
+		}
+		fmt.Fprintf(w, "           %s  %s\n", held.Name, held.URL)
+	}
 	if state.GradingStatus != nil {
 		fmt.Fprintf(w, "Grading:   %s\n", *state.GradingStatus)
 	}
@@ -498,7 +530,7 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 		// the submission is open, not into the dates it publishes. Without
 		// this line the reader sees only the date they appear to have missed.
 		fmt.Fprintf(w, "Extension: %s — this account may submit until then\n",
-			date(state.ExtensionDueDate))
+			when(state.ExtensionDueDate))
 	}
 	if !state.CanEdit {
 		// Moodle's canedit is one flag over several causes: a submission window

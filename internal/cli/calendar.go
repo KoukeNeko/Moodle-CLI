@@ -111,7 +111,7 @@ func writeCalendarTable(w io.Writer, events []v1.CalendarEvent) error {
 			status = "closed"
 		}
 		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n",
-			when(event.DueAt), event.CourseShortName, event.Title, status)
+			when(event.DueAt), event.CourseShortName, eventWhat(event), status)
 	}
 	if err := table.Flush(); err != nil {
 		return err
@@ -120,6 +120,20 @@ func writeCalendarTable(w io.Writer, events []v1.CalendarEvent) error {
 		fmt.Fprintf(w, "\n%d item(s) are past their deadline.\n", overdue)
 	}
 	return nil
+}
+
+// eventWhat names an event for the table. Moodle's own sentence is built for
+// English — in Traditional Chinese "Essay 1 is due" comes out as
+// "Essay 1在最近到期" — so the activity is named, with the kind of event when it
+// is not the deadline the WHEN column already implies. The JSON keeps both.
+func eventWhat(event v1.CalendarEvent) string {
+	if event.Activity == "" {
+		return event.Title
+	}
+	if event.Kind == "" || event.Kind == "due" {
+		return event.Activity
+	}
+	return event.Activity + " (" + event.Kind + ")"
 }
 
 // when renders a timestamp for a person, keeping the time of day: a deadline
