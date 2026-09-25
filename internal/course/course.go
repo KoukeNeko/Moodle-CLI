@@ -40,6 +40,23 @@ type ListQuery struct {
 	Limit int
 	// Cursor continues a previous listing. It is opaque to callers.
 	Cursor string
+	// Current keeps only the courses running now. A student's enrolments
+	// span every term they have taken, and the question they usually have is
+	// about this one.
+	Current bool
+}
+
+// Running reports whether a course is running at the given moment: started,
+// and not yet ended. A course that sets neither date is taken as running,
+// since nothing says it is over.
+func (s Summary) Running(now time.Time) bool {
+	if s.StartDate != nil && s.StartDate.After(now) {
+		return false
+	}
+	if s.EndDate != nil && !s.EndDate.After(now) {
+		return false
+	}
+	return true
 }
 
 // ListResult is a listing plus how it was obtained.

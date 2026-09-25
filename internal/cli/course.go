@@ -9,6 +9,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/config"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/course"
+	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 )
 
@@ -28,6 +29,7 @@ func newCourseListCommand(r *Renderer, deps Deps) *cobra.Command {
 		accountFlag string
 		limit       int
 		cursor      string
+		current     bool
 	)
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -50,7 +52,7 @@ func newCourseListCommand(r *Renderer, deps Deps) *cobra.Command {
 			}
 
 			result, err := deps.Courses(session, capabilities).
-				List(cmd.Context(), capabilities, course.ListQuery{Limit: limit, Cursor: cursor})
+				List(cmd.Context(), capabilities, course.ListQuery{Limit: limit, Cursor: cursor, Current: current})
 			if err != nil {
 				return err
 			}
@@ -68,7 +70,39 @@ func newCourseListCommand(r *Renderer, deps Deps) *cobra.Command {
 	cmd.Flags().StringVar(&accountFlag, "account", "", "account to list courses for")
 	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of courses to return")
 	cmd.Flags().StringVar(&cursor, "cursor", "", "continue a previous listing")
+	cmd.Flags().BoolVar(&current, "current", false, currentFlagUsage)
 	return cmd
+}
+
+// currentFlagUsage is shared so every listing describes --current alike.
+const currentFlagUsage = "only courses running now: started, and not yet past their end date"
+
+// scopeCourses turns --current into the course ids to ask about. With
+// neither flag the answer is nil, which every listing reads as "all of them".
+func scopeCourses(cmd *cobra.Command, deps Deps, rs *resolvedSession, named []string, current bool) ([]string, error) {
+	if !current {
+		return named, nil
+	}
+	if len(named) > 0 {
+		return nil, errs.New(errs.CodeUsage, "--current and --course both choose the courses").
+			WithHint("pass one of them")
+	}
+	result, err := deps.Courses(rs.session, rs.capabilities).
+		List(cmd.Context(), rs.capabilities, course.ListQuery{Current: true})
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(result.Courses))
+	for _, item := range result.Courses {
+		ids = append(ids, item.ID)
+	}
+	if len(ids) == 0 {
+		// Passing an empty list on would ask about every course, the
+		// opposite of what was asked.
+		return nil, errs.New(errs.CodeNotFound, "no course is running now").
+			WithHint("drop --current to list every course")
+	}
+	return ids, nil
 }
 
 func writeCourseTable(w io.Writer, courses []v1.Course, nextCursor string) error {

@@ -110,6 +110,7 @@
 | --- | --- |
 | `--account` | 指定代為操作的帳號 |
 | `--course` | 限制或指定課程 |
+| `--current` | only courses running now: started, and not yet past their end date |
 | `--site` | 指定 Moodle 站台 |
 
 ### `moodle assignment lock`
@@ -575,6 +576,7 @@
 | Flag | 說明 |
 | --- | --- |
 | `--account` | 指定代為操作的帳號 |
+| `--current` | only courses running now: started, and not yet past their end date |
 | `--cursor` | continue a previous listing |
 | `--limit` | maximum number of courses to return |
 | `--site` | 指定 Moodle 站台 |
@@ -1268,6 +1270,7 @@ quiz：列出項目。
 | --- | --- |
 | `--account` | 指定代為操作的帳號 |
 | `--course` | 限制或指定課程 |
+| `--current` | only courses running now: started, and not yet past their end date |
 | `--site` | 指定 Moodle 站台 |
 
 ### `moodle quiz show`

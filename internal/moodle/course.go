@@ -102,8 +102,19 @@ func unixTime(seconds int64) *time.Time {
 	return &t
 }
 
-// window applies limit and cursor to a full listing.
+// window applies the query's filter, limit and cursor to a full listing. The
+// filter comes first, so a cursor counts the same courses on every page.
 func window(all []course.Summary, q course.ListQuery) ([]course.Summary, string) {
+	if q.Current {
+		now := time.Now()
+		running := make([]course.Summary, 0, len(all))
+		for _, item := range all {
+			if item.Running(now) {
+				running = append(running, item)
+			}
+		}
+		all = running
+	}
 	offset := decodeCursor(q.Cursor)
 	if offset > len(all) {
 		offset = len(all)

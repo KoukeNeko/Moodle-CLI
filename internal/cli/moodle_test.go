@@ -527,6 +527,48 @@ func TestCourseListAlignsWideCharacters(t *testing.T) {
 	}
 }
 
+func TestCourseListCurrentKeepsOnlyRunningCourses(t *testing.T) {
+	// A student's enrolments span every term they have taken; "this term"
+	// is the question they usually have.
+	now := time.Now()
+	f := newFixture(t)
+	f.withCourses(
+		map[string]any{"id": 1, "shortname": "PAST", "fullname": "Last year",
+			"startdate": now.AddDate(-1, 0, 0).Unix(), "enddate": now.AddDate(0, -6, 0).Unix(), "visible": 1},
+		map[string]any{"id": 2, "shortname": "NOW", "fullname": "This term",
+			"startdate": now.AddDate(0, -1, 0).Unix(), "enddate": now.AddDate(0, 4, 0).Unix(), "visible": 1},
+		map[string]any{"id": 3, "shortname": "OPEN", "fullname": "No end date",
+			"startdate": now.AddDate(0, -1, 0).Unix(), "enddate": 0, "visible": 1},
+		map[string]any{"id": 4, "shortname": "NEXT", "fullname": "Next term",
+			"startdate": now.AddDate(0, 3, 0).Unix(), "enddate": now.AddDate(0, 8, 0).Unix(), "visible": 1},
+	)
+	f.addSiteAndLogin()
+
+	stdout, stderr, code := f.run("course", "list", "--current")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	for _, want := range []string{"NOW", "OPEN"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("%s is running and missing:\n%s", want, stdout)
+		}
+	}
+	for _, unwanted := range []string{"PAST", "NEXT"} {
+		if strings.Contains(stdout, unwanted) {
+			t.Errorf("%s is not running and was listed:\n%s", unwanted, stdout)
+		}
+	}
+}
+
+func TestCurrentAndCourseTogetherAreRefused(t *testing.T) {
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	_, stderr, code := f.run("assignment", "list", "--current", "--course", "2")
+	if code != v1.ExitUsage {
+		t.Fatalf("exit %d, want usage: %s", code, stderr)
+	}
+}
+
 func TestCourseListReportsWhichBackendAnswered(t *testing.T) {
 	// An agent has to be able to tell a web service answer from a scraped one.
 	f := newFixture(t)

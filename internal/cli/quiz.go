@@ -45,6 +45,7 @@ func newQuizListCommand(r *Renderer, deps Deps) *cobra.Command {
 	var (
 		flags     sessionFlags
 		courseIDs []string
+		current   bool
 	)
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -56,7 +57,11 @@ func newQuizListCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			result, err := service.List(cmd.Context(), session.capabilities, courseIDs)
+			scope, err := scopeCourses(cmd, deps, session, courseIDs, current)
+			if err != nil {
+				return err
+			}
+			result, err := service.List(cmd.Context(), session.capabilities, scope)
 			if err != nil {
 				return err
 			}
@@ -64,13 +69,14 @@ func newQuizListCommand(r *Renderer, deps Deps) *cobra.Command {
 			quizzes, _ := envelope.Data.([]v1.Quiz)
 			return r.Render(Result{
 				Envelope: envelope,
-				Human:    func(w io.Writer) error { return writeQuizTable(w, quizzes, len(courseIDs) > 0) },
+				Human:    func(w io.Writer) error { return writeQuizTable(w, quizzes, len(scope) > 0) },
 			})
 		},
 	}
 	flags.bind(cmd, "list quizzes from")
 	cmd.Flags().StringSliceVar(&courseIDs, "course", nil,
 		"limit to these course ids (repeatable); every course by default")
+	cmd.Flags().BoolVar(&current, "current", false, currentFlagUsage)
 	return cmd
 }
 

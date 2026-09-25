@@ -110,6 +110,7 @@ List your assignments
 | --- | --- |
 | `--account` | account to act as |
 | `--course` | limit to these course ids (repeatable); every course by default |
+| `--current` | only courses running now: started, and not yet past their end date |
 | `--site` | site to list assignments from |
 
 ### `moodle assignment lock`
@@ -575,6 +576,7 @@ List your courses
 | Flag | Meaning |
 | --- | --- |
 | `--account` | account to list courses for |
+| `--current` | only courses running now: started, and not yet past their end date |
 | `--cursor` | continue a previous listing |
 | `--limit` | maximum number of courses to return |
 | `--site` | site to list courses from |
@@ -1268,6 +1270,7 @@ List the quizzes in your courses, with when they open and close
 | --- | --- |
 | `--account` | account to act as |
 | `--course` | limit to these course ids (repeatable); every course by default |
+| `--current` | only courses running now: started, and not yet past their end date |
 | `--site` | site to list quizzes from |
 
 ### `moodle quiz show`

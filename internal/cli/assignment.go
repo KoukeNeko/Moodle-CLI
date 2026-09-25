@@ -79,6 +79,7 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 	var (
 		flags     sessionFlags
 		courseIDs []string
+		current   bool
 	)
 	cmd := &cobra.Command{
 		Use:         "list",
@@ -90,7 +91,11 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			result, err := service.List(cmd.Context(), session.capabilities, courseIDs)
+			scope, err := scopeCourses(cmd, deps, session, courseIDs, current)
+			if err != nil {
+				return err
+			}
+			result, err := service.List(cmd.Context(), session.capabilities, scope)
 			if err != nil {
 				return err
 			}
@@ -100,7 +105,7 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 			return r.Render(Result{
 				Envelope: envelope,
 				Human: func(w io.Writer) error {
-					return writeAssignmentTable(w, items, len(courseIDs) > 0)
+					return writeAssignmentTable(w, items, len(scope) > 0)
 				},
 			})
 		},
@@ -108,6 +113,7 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 	flags.bind(cmd, "list assignments from")
 	cmd.Flags().StringSliceVar(&courseIDs, "course", nil,
 		"limit to these course ids (repeatable); every course by default")
+	cmd.Flags().BoolVar(&current, "current", false, currentFlagUsage)
 	return cmd
 }
 
