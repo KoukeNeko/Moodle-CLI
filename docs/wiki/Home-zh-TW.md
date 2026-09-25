@@ -1,13 +1,13 @@
 # Moodle CLI 使用手冊
 
-Moodle CLI 是給學生、script 與 agent 使用的獨立命令列客戶端。它優先走 Moodle 官方 Web Service API；
+Moodle CLI 是給學習者、教職員、管理者、script 與 agent 使用的獨立命令列客戶端。它優先走 Moodle 官方 Web Service API；
 站台沒有開放足夠函式時，使用唯讀 fallback；交作業則會確認 Moodle 最終狀態。
 
 [English](Home)
 
 ## 從這裡開始
 
-1. [安裝目前原始碼](Installation-zh-TW)。
+1. [安裝已發布版本或從原始碼建置](Installation-zh-TW)。
 2. 新增站台並選擇[登入方式](Authentication-and-Sites-zh-TW)。
 3. 查看[命令指南](Commands-zh-TW)。
 4. 自動化前閱讀 [JSON contract](JSON-Contract-zh-TW)。

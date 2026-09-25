@@ -111,7 +111,27 @@ available through the explicitly untyped `api call` escape hatch.
 
 ## Getting started
 
-No release has been published yet. Build the current source with Go 1.26 or newer:
+Install a published release using the package manager for your platform:
+
+```sh
+# macOS or Linux (Homebrew)
+brew tap KoukeNeko/tap
+brew install koukeneko/tap/moodle-cli
+
+# Windows (Scoop)
+scoop bucket add koukeneko https://github.com/KoukeNeko/scoop-bucket
+scoop install koukeneko/moodle-cli
+
+moodle version
+```
+
+The [Releases page](https://github.com/KoukeNeko/Moodle-CLI/releases) also has direct Linux,
+macOS, and Windows downloads for amd64 and arm64. Match your archive against `checksums.txt`
+before running it. Homebrew and Scoop entries are updated after a stable release passes its
+macOS signature and notarization checks; a newly published tag may take a few minutes to appear
+in the package repositories. See [installation details](https://github.com/KoukeNeko/Moodle-CLI/wiki/Installation).
+
+To build the current source instead, use Go 1.26 or newer:
 
 ```sh
 git clone https://github.com/KoukeNeko/Moodle-CLI.git
@@ -264,13 +284,13 @@ MCP never reach into HTTP directly. See [docs/architecture.md](docs/architecture
 
 ## Project status
 
-The project is under active development and has not made its first public release. Source builds and
-the tested command surface above are usable. The tagged release workflow is prepared to produce
-checksummed archives and SBOMs, sign and notarize both macOS binaries with Developer ID, verify them
-on a real macOS runner before publication, apply a keyless workflow signature to the checksums, and
-update `KoukeNeko/homebrew-tap` for stable versions. Windows Authenticode signing is not configured.
-The first tagged artifact remains the point at which the Apple distribution credentials are proven
-end to end; until it exists, do not treat the pipeline configuration as a shipped release.
+The project is under active development. Stable tags produce checksummed archives and SBOMs, sign
+and notarize both macOS binaries with Developer ID, verify them on a real macOS runner before
+publication, sign the checksums with a keyless workflow signature, and update the public
+[Homebrew tap](https://github.com/KoukeNeko/homebrew-tap) and
+[Scoop bucket](https://github.com/KoukeNeko/scoop-bucket). Check the
+[release history](https://github.com/KoukeNeko/Moodle-CLI/releases) for the latest published
+version. Windows Authenticode signing is not configured, so Windows may display a SmartScreen warning.
 
 <p>
   <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
@@ -284,5 +304,4 @@ end to end; until it exists, do not treat the pipeline configuration as a shippe
 
 Moodle CLI is an independent project. It is not affiliated with, endorsed by, or sponsored by Moodle
 or Moodle HQ. “Moodle” is a trademark of Moodle Pty Ltd. No Moodle source code is included.
-
 

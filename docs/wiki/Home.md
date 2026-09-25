@@ -1,6 +1,7 @@
 # Moodle CLI handbook
 
-Moodle CLI is an independent command-line client for students, scripts, and agents. It prefers
+Moodle CLI is an independent command-line client for learners, educators, administrators, scripts,
+and agents. It prefers
 Moodle's official Web Service API, uses read-only fallbacks when a site exposes fewer functions, and
 verifies the final state of assignment submissions.
 
@@ -8,7 +9,7 @@ verifies the final state of assignment submissions.
 
 ## Start here
 
-1. [Install the current source](Installation).
+1. [Install a release or build from source](Installation).
 2. Add a site and choose an [authentication method](Authentication-and-Sites).
 3. Explore the [command guide](Commands).
 4. For automation, read the [JSON contract](JSON-Contract).

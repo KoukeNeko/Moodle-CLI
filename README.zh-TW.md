@@ -99,7 +99,26 @@ non-editing teacher、student、一般 authenticated user 與自訂角色使用�
 
 ## 快速開始
 
-目前還沒有正式 release。請用 Go 1.26 以上版本從原始碼建置：
+使用你的平台套件管理器安裝已發布版本：
+
+```sh
+# macOS 或 Linux（Homebrew）
+brew tap KoukeNeko/tap
+brew install koukeneko/tap/moodle-cli
+
+# Windows（Scoop）
+scoop bucket add koukeneko https://github.com/KoukeNeko/scoop-bucket
+scoop install koukeneko/moodle-cli
+
+moodle version
+```
+
+[Releases 頁面](https://github.com/KoukeNeko/Moodle-CLI/releases)另有 Linux、macOS、Windows
+的 amd64 與 arm64 下載檔。執行前請以 `checksums.txt` 核對 archive。Stable release 通過 macOS
+簽章與 notarization 驗證後，才更新 Homebrew 與 Scoop；新 tag 可能需要幾分鐘才會出現在套件倉庫。
+詳見[安裝手冊](https://github.com/KoukeNeko/Moodle-CLI/wiki/Installation-zh-TW)。
+
+如果要從目前原始碼建置，請使用 Go 1.26 以上版本：
 
 ```sh
 git clone https://github.com/KoukeNeko/Moodle-CLI.git
@@ -238,11 +257,12 @@ adapter；`bootstrap` 只是 composition root；CLI 與 MCP 都不能直接碰 H
 
 ## 專案狀態
 
-專案正在積極開發，尚未發布第一個正式版本。上述 source build 與已測命令可使用。Tag release workflow
-已準備產生 checksum archive 與 SBOM，以 Developer ID 簽署並 notarize 兩個 macOS binary，在真正的
-macOS runner 驗證後才公開 release，替 checksum 加上 keyless workflow signature，並在 stable version
-更新 `KoukeNeko/homebrew-tap`。Windows Authenticode 尚未設定。Apple distribution credential 必須等
-第一個 tag artifact 才能完成端到端證明；在那以前，pipeline 設定不等於已經發布 release。
+專案正在積極開發。Stable tag 會產生 checksum archive 與 SBOM，以 Developer ID 簽署並 notarize
+兩個 macOS binary，在真正的 macOS runner 驗證後才公開 release，替 checksum 加上 keyless workflow
+signature，並更新公開的 [Homebrew tap](https://github.com/KoukeNeko/homebrew-tap) 與
+[Scoop bucket](https://github.com/KoukeNeko/scoop-bucket)。目前公開版本以
+[release 紀錄](https://github.com/KoukeNeko/Moodle-CLI/releases)為準。Windows Authenticode 尚未設定，
+因此 Windows 可能顯示 SmartScreen 警告。
 
 <p>
   <a href="https://github.com/KoukeNeko/Moodle-CLI/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/KoukeNeko/Moodle-CLI/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
