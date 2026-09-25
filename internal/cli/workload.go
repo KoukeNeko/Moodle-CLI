@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -94,7 +93,7 @@ func writeWorkload(w io.Writer, result workload.Result) error {
 		_, err := fmt.Fprintln(w, "No enrolled courses with academic workload metadata were returned.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "TERM\tLEVEL\tCREDITS\tMINIMUM\tRESULT\tCOURSES")
 	for _, group := range result.Groups {
 		status := "meets"

@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -178,7 +177,7 @@ func writeSiteTable(w io.Writer, summaries []siteSummary) error {
 		_, err := fmt.Fprintln(w, "No sites configured. Add one with `moodle site add <name> <url>`.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "  NAME\tURL\tACCOUNTS")
 	for _, summary := range summaries {
 		marker := " "

@@ -5,7 +5,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -171,7 +170,7 @@ func writeForumTable(w io.Writer, forums []v1.Forum, named bool) error {
 				"name it with --course to look there.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	// Every course carries a forum called Announcements, so without this
 	// column a listing across courses is rows of one repeated word —
 	// measured on a teacher of 31 courses: six leading rows reading
@@ -208,7 +207,7 @@ func writeDiscussionTable(w io.Writer, discussions []v1.Discussion) error {
 		_, err := fmt.Fprintln(w, "No discussions visible to this account in this forum.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "ID\tTHREAD\tSTARTED BY\tREPLIES\tLAST ACTIVITY")
 	for _, item := range discussions {
 		name := item.Name

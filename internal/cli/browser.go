@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -187,7 +186,7 @@ func describeBrowser(kind browser.Kind) string {
 }
 
 func writeProfiles(w io.Writer, profiles []browser.Profile) error {
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "NAME\tDEFAULT\tPATH")
 	for _, profile := range profiles {
 		mark := ""

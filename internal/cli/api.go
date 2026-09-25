@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -200,7 +199,7 @@ func writeFunctionTable(w io.Writer, functions []v1.APIFunction, total int) erro
 			"No matching functions (%d are offered to this account).\n", total)
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "FUNCTION\tEFFECT\tRETRY\tREVIEWED")
 	for _, item := range functions {
 		effect := "read"

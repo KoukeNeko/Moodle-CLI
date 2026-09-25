@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -75,7 +74,7 @@ func newDoctorCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func writeReport(w io.Writer, report doctor.Report) error {
 	fmt.Fprintf(w, "%s  %s\n\n", report.SiteName, report.SiteURL)
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	for _, check := range report.Checks {
 		fmt.Fprintf(table, "%s  %s\t%s\n", marker(check.Status), check.Name, check.Detail)
 	}
@@ -150,7 +149,7 @@ func newSiteInspectCommand(r *Renderer, deps Deps) *cobra.Command {
 }
 
 func writeInspect(w io.Writer, payload v1.SiteCapabilities, capabilities *site.Capabilities) error {
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintf(table, "Site\t%s\n", payload.SiteName)
 	fmt.Fprintf(table, "URL\t%s\n", payload.SiteURL)
 	fmt.Fprintf(table, "Moodle\t%s\n", payload.Release)

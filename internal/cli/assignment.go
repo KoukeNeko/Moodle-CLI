@@ -6,7 +6,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -298,7 +297,7 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment, named bool) error 
 			"No assignments in the courses this account is enrolled on.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	// COURSE earns its width on the accounts that need it most: measured on a
 	// teacher of 31 courses, this listing held two rows called "Problem Set 6"
 	// five years apart, eight called "Exercise 1" and eight "Final Project".
@@ -312,7 +311,7 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment, named bool) error 
 		}
 		due := "-"
 		if item.DueDate != nil {
-			due = (*item.DueDate)[:10]
+			due = date(item.DueDate)
 		}
 		// Spelling this out is the point: on these assignments, saving work is
 		// not submitting it. When the route could not see the setting, say so
@@ -336,7 +335,7 @@ func writeAssignmentDetail(w io.Writer, detail v1.AssignmentDetail) error {
 		fmt.Fprintf(w, "%s\n\n", text)
 	}
 
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	row := func(label, value string) {
 		if value != "" {
 			fmt.Fprintf(table, "%s\t%s\n", label, value)
@@ -392,11 +391,18 @@ func writeAssignmentDetail(w io.Writer, detail v1.AssignmentDetail) error {
 	return writeStatus(w, detail.Submission)
 }
 
+// date renders a timestamp as the reader's local date. The contract carries
+// UTC, and slicing its date off named the wrong day for anything between local
+// midnight and the UTC one: a Taiwanese term starting on 1 August read 31 July.
 func date(value *string) string {
 	if value == nil {
 		return ""
 	}
-	return (*value)[:10]
+	parsed, err := time.Parse(time.RFC3339, *value)
+	if err != nil {
+		return *value
+	}
+	return parsed.Local().Format("2006-01-02")
 }
 
 // plainText makes Moodle's HTML readable in a terminal. It is deliberately
@@ -466,7 +472,7 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 			line += fmt.Sprintf(" with %d %s", earlier.FileCount, file)
 		}
 		if earlier.SavedAt != nil {
-			line += " on " + (*earlier.SavedAt)[:10]
+			line += " on " + date(earlier.SavedAt)
 		}
 		fmt.Fprintln(w, line)
 	}
@@ -492,7 +498,7 @@ func writeStatus(w io.Writer, state v1.SubmissionState) error {
 		// the submission is open, not into the dates it publishes. Without
 		// this line the reader sees only the date they appear to have missed.
 		fmt.Fprintf(w, "Extension: %s — this account may submit until then\n",
-			(*state.ExtensionDueDate)[:10])
+			date(state.ExtensionDueDate))
 	}
 	if !state.CanEdit {
 		// Moodle's canedit is one flag over several causes: a submission window
@@ -528,7 +534,7 @@ func writeSubmitReport(w io.Writer, report v1.SubmitReport) error {
 	} else {
 		fmt.Fprintf(w, "%s\n\n", report.Assignment.Name)
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	for _, step := range report.Steps {
 		detail := ""
 		if step.Detail != nil {

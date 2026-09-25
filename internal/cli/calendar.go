@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -94,7 +93,7 @@ func writeCalendarTable(w io.Writer, events []v1.CalendarEvent) error {
 				"and nothing outstanding.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "WHEN\tCOURSE\tWHAT\tSTATUS")
 	overdue := 0
 	for _, event := range events {

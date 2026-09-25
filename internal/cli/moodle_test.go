@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/KoukeNeko/moodle-cli/internal/api"
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
@@ -452,6 +453,68 @@ func TestCourseListPagination(t *testing.T) {
 	}
 	if rest.Meta.NextCursor != nil {
 		t.Errorf("the last page should report no further cursor, got %q", *rest.Meta.NextCursor)
+	}
+}
+
+func TestCourseListShowsTheStartDateInLocalTime(t *testing.T) {
+	// A Taiwanese term starts at local midnight on 1 August, which is still
+	// 31 July in UTC. The JSON stays UTC; the table is read by a person.
+	previous := time.Local
+	time.Local = time.FixedZone("CST", 8*60*60)
+	t.Cleanup(func() { time.Local = previous })
+
+	f := newFixture(t)
+	f.withCourses(map[string]any{"id": 31988, "shortname": "114_1_4104072_01",
+		"fullname": "巨量資料運算導論", "startdate": 1753977600, "visible": 1})
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("course", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, stdout)
+	}
+	if !strings.Contains(stdout, "2025-08-01") || strings.Contains(stdout, "2025-07-31") {
+		t.Errorf("the start date should be the local date:\n%s", stdout)
+	}
+}
+
+func TestCourseListAlignsWideCharacters(t *testing.T) {
+	// A CJK character takes two terminal columns. Counting it as one pushed
+	// every later column out of line on a site with Chinese course names.
+	f := newFixture(t)
+	f.withCourses(
+		map[string]any{"id": 1, "shortname": "A", "fullname": "巨量資料運算導論",
+			"startdate": 1753977600, "visible": 1},
+		map[string]any{"id": 2, "shortname": "B", "fullname": "電腦網路",
+			"startdate": 1753977600, "visible": 1},
+		map[string]any{"id": 3, "shortname": "C", "fullname": "Networks",
+			"startdate": 1753977600, "visible": 1},
+	)
+	f.addSiteAndLogin()
+
+	stdout, _, code := f.run("course", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, stdout)
+	}
+	lines := strings.Split(strings.TrimRight(stdout, "\n"), "\n")
+	column := -1
+	for _, line := range lines {
+		index := strings.Index(line, "20")
+		if strings.HasPrefix(line, "ID") {
+			index = strings.Index(line, "STARTS")
+		}
+		// Terminal columns before the date: a wide rune counts twice.
+		before := 0
+		for _, r := range line[:index] {
+			before++
+			if r >= 0x3000 {
+				before++
+			}
+		}
+		if column == -1 {
+			column = before
+		} else if before != column {
+			t.Fatalf("STARTS is not one column:\n%s", stdout)
+		}
 	}
 }
 

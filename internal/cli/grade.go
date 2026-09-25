@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -132,7 +131,7 @@ func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 		// measured. The sentence is what the listing can honestly claim.
 		fmt.Fprintln(w, "No grade items are visible to this account.")
 	} else {
-		table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		table := newTable(w)
 		fmt.Fprintln(table, "ITEM\tGRADE\tOUT OF\tMARKED")
 		for _, item := range report.Items {
 			fmt.Fprintf(table, "%s\t%s\t%s\t%s\n",
@@ -215,7 +214,7 @@ func writeOverviewTable(w io.Writer, totals []v1.CourseTotal) error {
 			"and that are still open to you.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "COURSE\tTOTAL")
 	for _, total := range totals {
 		value := total.Display

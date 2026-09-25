@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -96,12 +95,12 @@ func writeCourseTable(w io.Writer, courses []v1.Course, nextCursor string) error
 			"hidden, finished, suspended, or reachable without an enrolment is not here.")
 		return err
 	}
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "ID\tSHORT NAME\tFULL NAME\tSTARTS")
 	for _, item := range courses {
 		starts := "-"
 		if item.StartDate != nil {
-			starts = (*item.StartDate)[:10]
+			starts = date(item.StartDate)
 		}
 		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", item.ID, item.ShortName, item.FullName, starts)
 	}

@@ -6,7 +6,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -214,7 +213,7 @@ func contains(items []string, wanted string) bool {
 }
 
 func writeWSList(w io.Writer, functions []wsregistry.Function, total int, digest string) error {
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "FUNCTION\tCOMPONENT\tVERSIONS\tEFFECT\tFLAGS")
 	for _, function := range functions {
 		flags := []string{}

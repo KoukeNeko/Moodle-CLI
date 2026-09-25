@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -242,7 +241,7 @@ func newAuthMethodsCommand(r *Renderer, deps Deps) *cobra.Command {
 }
 
 func writeMethods(w io.Writer, infos []methodInfo) error {
-	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	table := newTable(w)
 	fmt.Fprintln(table, "METHOD\tSTATUS\tDESCRIPTION")
 	for _, info := range infos {
 		status := info.Availability
