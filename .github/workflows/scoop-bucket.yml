@@ -1,0 +1,64 @@
+name: Check or update Scoop bucket
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Published stable tag such as v0.1.0; empty only checks token access"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Verify bucket access
+        env:
+          GH_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "::error::SCOOP_BUCKET_TOKEN is required"; exit 1; }
+          permission=$(gh api repos/KoukeNeko/scoop-bucket --jq '.permissions.push')
+          test "$permission" = true || {
+            echo "::error::SCOOP_BUCKET_TOKEN needs Contents: Read and write on KoukeNeko/scoop-bucket"
+            exit 1
+          }
+          echo "The bucket token can push to KoukeNeko/scoop-bucket."
+      - name: Validate the requested release
+        if: ${{ inputs.version != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(gh release view "$VERSION" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease')" = false
+          gh release download "$VERSION" --pattern checksums.txt --dir "$RUNNER_TEMP"
+          ./scripts/render-scoop-manifest.sh \
+            "$VERSION" "$RUNNER_TEMP/checksums.txt" \
+            > "$RUNNER_TEMP/moodle-cli.json"
+          python3 -m json.tool "$RUNNER_TEMP/moodle-cli.json" >/dev/null
+      - name: Push the manifest
+        if: ${{ inputs.version != '' }}
+        env:
+          BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          bucket="$RUNNER_TEMP/scoop-bucket"
+          git clone --depth 1 \
+            "https://x-access-token:$BUCKET_TOKEN@github.com/KoukeNeko/scoop-bucket.git" \
+            "$bucket" 2>/dev/null
+          mkdir -p "$bucket/bucket"
+          cp "$RUNNER_TEMP/moodle-cli.json" "$bucket/bucket/moodle-cli.json"
+          cd "$bucket"
+          git add bucket/moodle-cli.json
+          if git diff --cached --quiet; then
+            echo "The Scoop bucket already carries this manifest."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "moodle-cli $VERSION"
+          git push

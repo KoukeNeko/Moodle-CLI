@@ -1,4 +1,4 @@
-.PHONY: build install test test-race arch lint verify docs-check report-data-test moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-roles moodle-role-preflight moodle-service-matrix moodle-read-matrix moodle-matrix moodle-scale report-site help
+.PHONY: build install test test-race arch lint verify docs-check report-data-test package-test moodle-up moodle-down moodle-purge moodle-status moodle-decade moodle-roles moodle-role-preflight moodle-service-matrix moodle-read-matrix moodle-matrix moodle-scale report-site help
 
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
@@ -65,7 +65,7 @@ lint:
 	fi
 	go vet ./...
 
-verify: test test-race lint build docs-check report-data-test
+verify: test test-race lint build docs-check report-data-test package-test
 
 docs-check: build
 	./scripts/generate-wiki.py --binary ./bin/moodle --check
@@ -73,6 +73,9 @@ docs-check: build
 report-data-test:
 	python3 ./scripts/test-report-data.py
 	python3 ./scripts/test-read-matrix.py
+
+package-test:
+	python3 ./scripts/test-package-renderers.py
 
 moodle-up:
 	./scripts/moodle-env.sh up $(V)

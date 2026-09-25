@@ -3,44 +3,21 @@
 set -eu
 
 repository_url="https://github.com/KoukeNeko/Moodle-CLI"
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+. "$script_dir/release-artifacts.sh"
 
-[ "$#" -eq 2 ] || {
-    printf '%s\n' "usage: $0 <version-tag> <checksums-file>" >&2
-    exit 2
-}
-tag=$1
-checksums=$2
+release_inputs "$@"
+tag=$RELEASE_TAG
+version=$RELEASE_VERSION
 
-case "$tag" in
-    v*) version=${tag#v} ;;
-    *) printf '%s\n' "version tag $tag must start with v" >&2; exit 2 ;;
-esac
-case "$version" in
-    *-*) printf '%s\n' "refusing to render a pre-release formula" >&2; exit 2 ;;
-esac
-[ -f "$checksums" ] || {
-    printf '%s\n' "no such checksum file: $checksums" >&2
-    exit 2
-}
-
-digest_for() {
-    archive="moodle-cli_${version}_$1.tar.gz"
-    digest=$(awk -v name="$archive" '$2 == name { print $1 }' "$checksums")
-    [ -n "$digest" ] || {
-        printf '%s\n' "no digest for $archive" >&2
-        exit 1
-    }
-    printf '%s' "$digest"
-}
-
-darwin_arm64=$(digest_for darwin_arm64)
-darwin_amd64=$(digest_for darwin_amd64)
-linux_arm64=$(digest_for linux_arm64)
-linux_amd64=$(digest_for linux_amd64)
+darwin_arm64=$(release_digest "moodle-cli_${version}_darwin_arm64.tar.gz")
+darwin_amd64=$(release_digest "moodle-cli_${version}_darwin_amd64.tar.gz")
+linux_arm64=$(release_digest "moodle-cli_${version}_linux_arm64.tar.gz")
+linux_amd64=$(release_digest "moodle-cli_${version}_linux_amd64.tar.gz")
 
 cat <<FORMULA
 class MoodleCli < Formula
-  desc "Independent Moodle command-line client for students"
+  desc "Independent Moodle command-line client for learners and educators"
   homepage "$repository_url"
   version "$version"
   license "MIT"

@@ -93,15 +93,24 @@ jobs:
             test -n "${!name}" || { echo "::error::$name is required"; exit 1; }
           done
 
-      - name: Require Homebrew token for stable releases
+      - name: Require writable package-repository tokens for stable releases
         if: ${{ !contains(github.ref_name, '-') }}
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
         run: |
-          test -n "$HOMEBREW_TAP_TOKEN" || {
-            echo '::error::HOMEBREW_TAP_TOKEN is required for stable releases'
-            exit 1
-          }
+          set -euo pipefail
+          for spec in \
+            "HOMEBREW_TAP_TOKEN:KoukeNeko/homebrew-tap:$HOMEBREW_TAP_TOKEN" \
+            "SCOOP_BUCKET_TOKEN:KoukeNeko/scoop-bucket:$SCOOP_BUCKET_TOKEN"; do
+            IFS=: read -r name repository token <<< "$spec"
+            test -n "$token" || { echo "::error::$name is required"; exit 1; }
+            permission=$(GH_TOKEN="$token" gh api "repos/$repository" --jq '.permissions.push')
+            test "$permission" = true || {
+              echo "::error::$name needs Contents: Read and write on $repository"
+              exit 1
+            }
+          done
 
       - name: Build a signed, notarized draft release
         uses: goreleaser/goreleaser-action@v7.2.3
@@ -153,6 +162,7 @@ jobs:
     needs: release
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v7.0.1
       - name: Download the draft macOS archives
         env:
           GH_TOKEN: ${{ github.token }}
@@ -187,6 +197,21 @@ jobs:
             done
             test "$accepted" = true
           done
+
+      - name: Validate stable package manifests against draft checksums
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" --pattern checksums.txt --dir "$RUNNER_TEMP"
+          ./scripts/render-homebrew-formula.sh \
+            "$GITHUB_REF_NAME" "$RUNNER_TEMP/checksums.txt" > "$RUNNER_TEMP/moodle-cli.rb"
+          ruby -c "$RUNNER_TEMP/moodle-cli.rb"
+          ./scripts/render-scoop-manifest.sh \
+            "$GITHUB_REF_NAME" "$RUNNER_TEMP/checksums.txt" > "$RUNNER_TEMP/moodle-cli.json"
+          python3 -m json.tool "$RUNNER_TEMP/moodle-cli.json" >/dev/null
 
       - name: Publish the verified draft
         env:
@@ -234,6 +259,44 @@ jobs:
           git add Formula/moodle-cli.rb
           if git diff --cached --quiet; then
             echo "The tap already carries this formula."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "moodle-cli $GITHUB_REF_NAME"
+          git push
+
+  scoop:
+    needs: verify-macos
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Render the manifest from the published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --pattern checksums.txt --dir "$RUNNER_TEMP"
+          ./scripts/render-scoop-manifest.sh \
+            "$GITHUB_REF_NAME" "$RUNNER_TEMP/checksums.txt" \
+            > "$RUNNER_TEMP/moodle-cli.json"
+          python3 -m json.tool "$RUNNER_TEMP/moodle-cli.json" >/dev/null
+      - name: Update KoukeNeko/scoop-bucket
+        env:
+          BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$BUCKET_TOKEN" || { echo "::error::SCOOP_BUCKET_TOKEN is required"; exit 1; }
+          bucket="$RUNNER_TEMP/scoop-bucket"
+          git clone --depth 1 \
+            "https://x-access-token:$BUCKET_TOKEN@github.com/KoukeNeko/scoop-bucket.git" \
+            "$bucket" 2>/dev/null
+          mkdir -p "$bucket/bucket"
+          cp "$RUNNER_TEMP/moodle-cli.json" "$bucket/bucket/moodle-cli.json"
+          cd "$bucket"
+          git add bucket/moodle-cli.json
+          if git diff --cached --quiet; then
+            echo "The Scoop bucket already carries this manifest."
             exit 0
           fi
           git -c user.name='github-actions[bot]' \
