@@ -31,6 +31,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/mcp"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
+	"github.com/KoukeNeko/moodle-cli/internal/quiz"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
@@ -173,6 +174,24 @@ func Run(ctx context.Context, build Build, args []string) int {
 					}))
 			}
 			return forum.NewService(backends...)
+		},
+		Quizzes: func(session *auth.Session, capabilities *site.Capabilities) *quiz.Service {
+			backends := []quiz.Backend{
+				moodle.NewQuizBackend(session.Client(), session.Token(), capabilities),
+			}
+			if cookie := session.Cookie(); cookie.Value != "" {
+				// The quiz functions are not offered over AJAX, so without a
+				// token the course and quiz pages are what is left, with the
+				// calendar for the dates they print only as prose.
+				ajax := moodle.NewAjaxSession(session.Client(), cookie)
+				backends = append(backends, moodle.NewQuizHTMLBackend(
+					moodle.NewPageReader(session.Client(), cookie), ajax,
+					func(ctx context.Context) ([]course.Summary, error) {
+						result, err := moodle.NewCourseAjaxBackend(ajax).List(ctx, course.ListQuery{})
+						return result.Courses, err
+					}))
+			}
+			return quiz.NewService(backends...)
 		},
 		Files: func(session *auth.Session, capabilities *site.Capabilities) *file.Downloader {
 			return file.NewDownloader(

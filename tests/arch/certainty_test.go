@@ -44,6 +44,16 @@ var optionalFields = map[string][]string{
 		// VALUE_OPTIONAL in Moodle's own declaration; zero reads as empty.
 		"Forum.Discussions",
 	},
+	"internal/quiz/quiz.go": {
+		// Zero is a real setting for each — no limit, unlimited attempts —
+		// and the page route cannot see any of them.
+		"Quiz.TimeLimit",
+		"Quiz.MaxAttempts",
+		"Quiz.MaxGrade",
+		// Null while unfinished or unmarked; zero would be a failing mark.
+		"Attempt.Grade",
+		"Detail.BestGrade",
+	},
 }
 
 func TestAFieldThatCanBeUnknownSaysSo(t *testing.T) {

@@ -132,6 +132,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newGradeCommand(renderer, deps, mode),
 		newCalendarCommand(renderer, deps, mode),
 		newForumCommand(renderer, deps, mode),
+		newQuizCommand(renderer, deps),
 		newParticipantCommand(renderer, deps, mode),
 		newEnrolmentCommand(renderer, deps, mode),
 		newGroupCommand(renderer, deps, mode),

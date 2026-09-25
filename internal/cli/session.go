@@ -12,6 +12,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/file"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
+	"github.com/KoukeNeko/moodle-cli/internal/quiz"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/internal/workload"
@@ -55,6 +56,8 @@ type Deps struct {
 	Calendar func(*auth.Session, *site.Capabilities) *calendar.Service
 	// Forums assembles the discussion use case.
 	Forums func(*auth.Session, *site.Capabilities) *forum.Service
+	// Quizzes assembles the quiz use case.
+	Quizzes func(*auth.Session, *site.Capabilities) *quiz.Service
 	// Files assembles the download use case.
 	Files func(*auth.Session, *site.Capabilities) *file.Downloader
 	// API assembles the direct-call escape hatch. The safety mode and the

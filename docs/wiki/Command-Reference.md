@@ -13,7 +13,7 @@ This page is generated from `moodle commands --json`; every public command must 
 | `--read-only` | Hide and refuse every command that may mutate Moodle. |
 | `--backend auto|ws-only` | Allow automatic fallback routes, or restrict the run to Web Services. |
 
-## Commands (103)
+## Commands (106)
 
 ### `moodle api`
 
@@ -1247,6 +1247,41 @@ Show course-scoped user profiles
 | `--param` | a top-level parameter as name=value, repeatable |
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe core_user_get_course_user_profiles` |
 | `--site` | site to call core_user_get_course_user_profiles on |
+
+### `moodle quiz`
+
+See your quizzes and how your attempts went
+
+- Synopsis: `moodle quiz [command]`
+- Type: command group; select a subcommand
+- Data effect: **read-only**
+
+### `moodle quiz list`
+
+List the quizzes in your courses, with when they open and close
+
+- Synopsis: `moodle quiz list [flags]`
+- JSON response kind: `quiz.list`
+- Data effect: **read-only**
+
+| Flag | Meaning |
+| --- | --- |
+| `--account` | account to act as |
+| `--course` | limit to these course ids (repeatable); every course by default |
+| `--site` | site to list quizzes from |
+
+### `moodle quiz show`
+
+Show one quiz and your attempts at it
+
+- Synopsis: `moodle quiz show <quiz-id|url> [flags]`
+- JSON response kind: `quiz.show`
+- Data effect: **read-only**
+
+| Flag | Meaning |
+| --- | --- |
+| `--account` | account to act as |
+| `--site` | site to read the quiz from |
 
 ### `moodle resolve`
 

@@ -95,6 +95,7 @@ var featureChecks = []struct {
 		"core_calendar_get_action_events_by_timesort",
 	}, site.BackendAJAX},
 	{"Forums", []string{"mod_forum_get_forums_by_courses"}, site.BackendHTML},
+	{"Quizzes", []string{"mod_quiz_get_quizzes_by_courses"}, site.BackendHTML},
 }
 
 // Run performs the diagnosis. It never returns an error for a site problem:

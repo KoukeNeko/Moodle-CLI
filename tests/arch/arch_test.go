@@ -27,6 +27,7 @@ var forbidden = map[string][]string{
 	"internal/grade":        {"internal/moodle...", "internal/webread", "internal/cli", "internal/mcp", "internal/contract..."},
 	"internal/calendar":     {"internal/moodle...", "internal/webread", "internal/cli", "internal/mcp", "internal/contract..."},
 	"internal/forum":        {"internal/moodle...", "internal/webread", "internal/cli", "internal/mcp", "internal/contract..."},
+	"internal/quiz":         {"internal/moodle...", "internal/webread", "internal/cli", "internal/mcp", "internal/contract..."},
 	"internal/workload":     {"internal/moodle...", "internal/webread", "internal/cli", "internal/mcp", "internal/contract..."},
 	"internal/wsregistry":   {"internal/moodle...", "internal/webread", "internal/cli", "internal/mcp", "internal/contract..."},
 	"internal/filetransfer": {"internal/cli", "internal/mcp", "internal/contract..."},

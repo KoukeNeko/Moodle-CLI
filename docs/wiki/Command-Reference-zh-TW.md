@@ -13,7 +13,7 @@
 | `--read-only` | 隱藏並拒絕所有可能變更 Moodle 的命令。 |
 | `--backend auto|ws-only` | 允許自動 fallback，或將本次執行限制為 Web Services。 |
 
-## 命令 (103)
+## 命令 (106)
 
 ### `moodle api`
 
@@ -1246,6 +1246,41 @@
 | `--dry-run` | 驗證並顯示操作，但不送出 |
 | `--param` | 加入一個 name=value 參數，可重複 |
 | `--params-json` | 以 JSON object 提供巢狀參數 |
+| `--site` | 指定 Moodle 站台 |
+
+### `moodle quiz`
+
+See your quizzes and how your attempts went。
+
+- 用法: `moodle quiz [command]`
+- 類型：命令群組，請選擇子命令
+- 資料效果: **唯讀**
+
+### `moodle quiz list`
+
+quiz：列出項目。
+
+- 用法: `moodle quiz list [flags]`
+- JSON 輸出 kind: `quiz.list`
+- 資料效果: **唯讀**
+
+| Flag | 說明 |
+| --- | --- |
+| `--account` | 指定代為操作的帳號 |
+| `--course` | 限制或指定課程 |
+| `--site` | 指定 Moodle 站台 |
+
+### `moodle quiz show`
+
+quiz：顯示詳細資料。
+
+- 用法: `moodle quiz show <quiz-id|url> [flags]`
+- JSON 輸出 kind: `quiz.show`
+- 資料效果: **唯讀**
+
+| Flag | 說明 |
+| --- | --- |
+| `--account` | 指定代為操作的帳號 |
 | `--site` | 指定 Moodle 站台 |
 
 ### `moodle resolve`

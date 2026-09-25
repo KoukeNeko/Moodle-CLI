@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/quiz.show.schema.json",
+  "title": "moodle-cli quiz.show",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "quiz.show"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "id",
+        "cmid",
+        "course_id",
+        "course_short_name",
+        "name",
+        "opens_at",
+        "closes_at",
+        "time_limit_seconds",
+        "max_attempts",
+        "max_grade",
+        "attempts",
+        "best_grade"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The quiz's own id on the web service route; the course module id when read from pages, which carry no other"
+        },
+        "cmid": {
+          "type": "string",
+          "description": "Course module id, which is what a quiz's address carries"
+        },
+        "course_id": {
+          "type": "string"
+        },
+        "course_short_name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null when the route that answered did not carry it"
+        },
+        "name": {
+          "type": "string"
+        },
+        "opens_at": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RFC 3339 in UTC; null when the quiz sets no opening date, or when meta.missing names it"
+        },
+        "closes_at": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RFC 3339 in UTC; null when the quiz sets no closing date, or when meta.missing names it"
+        },
+        "time_limit_seconds": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "0 for no limit; null when the route could not see the setting"
+        },
+        "max_attempts": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "0 for unlimited, as Moodle writes it; null when the route could not see the setting"
+        },
+        "max_grade": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What the quiz is marked out of; null when not known"
+        },
+        "attempts": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "number",
+                  "state",
+                  "started_at",
+                  "finished_at",
+                  "grade"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "number": {
+                    "type": "integer",
+                    "description": "Counts from one, as Moodle does for quiz attempts"
+                  },
+                  "state": {
+                    "type": "string",
+                    "description": "Moodle's own word: inprogress, overdue, finished or abandoned"
+                  },
+                  "started_at": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "finished_at": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "grade": {
+                    "oneOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Scaled to the quiz's maximum; null while unfinished, still being marked, or not released to this account"
+                  }
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null when the route could not read them; an empty list is a quiz this account has not tried"
+        },
+        "best_grade": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null when there is none yet, or when meta.missing names it"
+        }
+      }
+    },
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
+  }
+}

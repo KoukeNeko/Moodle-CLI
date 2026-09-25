@@ -77,6 +77,14 @@ var registry = map[string]Policy{
 		Why: "reads forum definitions"},
 	"core_calendar_get_calendar_monthly_view": {Retry: RetrySafe, Session: true,
 		Why: "renders the calendar's month; reads events, records nothing"},
+	"mod_quiz_get_quizzes_by_courses": {Retry: RetrySafe,
+		Why: "reads quiz settings"},
+	"mod_quiz_get_user_quiz_attempts": {Retry: RetrySafe,
+		Why: "reads the caller's own attempts; starting one is a different call"},
+	"mod_quiz_get_user_attempts": {Retry: RetrySafe,
+		Why: "the pre-5.1 name of mod_quiz_get_user_quiz_attempts"},
+	"mod_quiz_get_user_best_grade": {Retry: RetrySafe,
+		Why: "reads the caller's own grade"},
 
 	// Reads that are not reads. These are the reason this registry is a list
 	// and not a naming convention.

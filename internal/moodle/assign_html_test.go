@@ -45,6 +45,8 @@ func newPageSite(t *testing.T) *pageSite {
 		`<span class="accesshide"> 作業</span></span></a></div></li>` +
 		`<li class="activity modtype_assign"><div class="activityname">` +
 		`<a href="/mod/assign/view.php?id=1436183"><span class="instancename">Bonus</span></a></div></li>` +
+		`<li class="activity modtype_quiz"><div class="activityname">` +
+		`<a href="/mod/quiz/view.php?id=1436146"><span class="instancename">gprof</span></a></div></li>` +
 		`</ul></body></html>`
 	assignPage, err := os.ReadFile("../webread/testdata/assign-page.html")
 	if err != nil {
@@ -60,6 +62,11 @@ func newPageSite(t *testing.T) *pageSite {
 	})
 	mux.HandleFunc("/mod/assign/view.php", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(assignPage)
+	})
+	mux.HandleFunc("/mod/quiz/view.php", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `<html><body class="path-mod-quiz course-36728 cmid-1436146">`+
+			`<div data-region="activity-information" data-activityname="gprof"></div>`+
+			`<div class="box quizinfo"><p>允許作答幾次： 1</p></div></body></html>`)
 	})
 	mux.HandleFunc(moodle.PathAjax, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -82,7 +89,10 @@ func newPageSite(t *testing.T) *pageSite {
 			events := ""
 			if calls[0].Args["month"] == float64(10) && calls[0].Args["year"] == float64(2026) {
 				events = fmt.Sprintf(`{"modulename":"assign","instance":1436182,"eventtype":"due","timestart":%d},`+
-					`{"modulename":"quiz","instance":1436182,"eventtype":"close","timestart":1}`, dueAt)
+					`{"modulename":"quiz","instance":1436182,"eventtype":"close","timestart":1},`+
+					`{"modulename":"quiz","instance":1436146,"eventtype":"open","timestart":%d},`+
+					`{"modulename":"quiz","instance":1436146,"eventtype":"close","timestart":%d}`,
+					dueAt, dueAt-3600, dueAt)
 			}
 			fmt.Fprintf(w, `[{"error":false,"data":{"weeks":[{"days":[{"events":[%s]}]}]}}]`, events)
 		default:
@@ -92,6 +102,23 @@ func newPageSite(t *testing.T) *pageSite {
 	s.server = httptest.NewServer(mux)
 	t.Cleanup(s.server.Close)
 	return s
+}
+
+func (s *pageSite) context(t *testing.T) (*moodle.PageReader, *moodle.AjaxSession,
+	func(context.Context) ([]course.Summary, error)) {
+	t.Helper()
+	base, err := site.ParseBaseURL(s.server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := moodle.NewClient(site.Site{BaseURL: base})
+	cookie := moodle.SessionCookie{Value: "good"}
+	ajax := moodle.NewAjaxSession(client, cookie)
+	return moodle.NewPageReader(client, cookie), ajax,
+		func(ctx context.Context) ([]course.Summary, error) {
+			result, err := moodle.NewCourseAjaxBackend(ajax).List(ctx, course.ListQuery{})
+			return result.Courses, err
+		}
 }
 
 func (s *pageSite) backend(t *testing.T) *moodle.AssignHTMLBackend {
@@ -234,5 +261,41 @@ func TestForumThreadsAreReadFromTheForumPage(t *testing.T) {
 	// A reply count this route cannot read must not arrive as zero.
 	if !result.Provenance.Partial || !containsField(result.Provenance.Missing, "replies") {
 		t.Errorf("provenance = %+v", result.Provenance)
+	}
+}
+
+func TestQuizzesAreReadFromPagesWithDatesFromTheCalendar(t *testing.T) {
+	// The quiz functions are not offered over AJAX. The course page names the
+	// quiz; the calendar says when it opens and closes; the settings and the
+	// attempts are printed only as sentences in the site's language.
+	s := newPageSite(t)
+	backend := moodle.NewQuizHTMLBackend(s.context(t))
+
+	list, err := backend.List(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Quizzes) != 1 || list.Quizzes[0].Name != "gprof" {
+		t.Fatalf("quizzes = %+v", list.Quizzes)
+	}
+	item := list.Quizzes[0]
+	if item.Opens == nil || item.Opens.Unix() != dueAt-3600 || item.Closes == nil || item.Closes.Unix() != dueAt {
+		t.Errorf("opens %v closes %v", item.Opens, item.Closes)
+	}
+	if item.MaxAttempts != nil || !containsField(list.Provenance.Missing, "max_attempts") {
+		t.Errorf("max attempts should be unknown and listed missing: %v %v",
+			item.MaxAttempts, list.Provenance.Missing)
+	}
+
+	detail, err := backend.Show(context.Background(), "1436146")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.Name != "gprof" || detail.CourseID != "36728" || detail.Closes == nil {
+		t.Errorf("detail = %+v", detail.Quiz)
+	}
+	// Nil, not empty: an empty list would say the account never tried it.
+	if detail.Attempts != nil || !containsField(detail.Provenance.Missing, "attempts") {
+		t.Errorf("attempts = %v, missing = %v", detail.Attempts, detail.Provenance.Missing)
 	}
 }

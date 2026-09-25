@@ -19,6 +19,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
+	"github.com/KoukeNeko/moodle-cli/internal/quiz"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/internal/workload"
@@ -81,6 +82,11 @@ func newFixture(t *testing.T) *fixture {
 					moodle.NewForumBackend(session.Client(), session.Token()),
 				)
 			},
+			Quizzes: func(session *auth.Session, capabilities *site.Capabilities) *quiz.Service {
+				return quiz.NewService(
+					moodle.NewQuizBackend(session.Client(), session.Token(), capabilities),
+				)
+			},
 			API: func(session *auth.Session, mode safety.Mode, allowWrite bool) *api.Service {
 				return api.NewService(
 					moodle.NewRawCaller(session.Client(), session.Token()),
@@ -113,6 +119,9 @@ func newFixture(t *testing.T) *fixture {
 		moodle.FunctionForums,
 		moodle.FunctionForumDiscussion,
 		moodle.FunctionForumPosts,
+		moodle.FunctionQuizzes,
+		moodle.FunctionQuizAttempts,
+		moodle.FunctionBestGrade,
 	}
 	declared := make([]any, 0, len(f.functions))
 	for _, name := range f.functions {
