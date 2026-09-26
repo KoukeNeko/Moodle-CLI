@@ -12,7 +12,8 @@ verifies the final state of assignment submissions.
 1. [Install a release or build from source](Installation).
 2. Add a site and choose an [authentication method](Authentication-and-Sites).
 3. Explore the [command guide](Commands).
-4. For automation, read the [JSON contract](JSON-Contract).
+4. For automation, read the [JSON contract](JSON-Contract) and the
+   [automation recipes](Automation-Recipes), which include rules to give an agent.
 
 ## Design promises
 

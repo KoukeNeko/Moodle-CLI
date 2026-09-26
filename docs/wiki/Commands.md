@@ -81,10 +81,14 @@ moodle version --json
 moodle commands --json
 moodle schema
 moodle schema assignment.submit
+moodle schema assignment submit --json
+moodle assignment list --current --json --fields name,due_date --no-input
 moodle mcp serve
 moodle mcp serve --allow-write
 moodle course list --read-only
 ```
 
 `--read-only` removes write commands. MCP is read-only unless `--allow-write` is explicitly present.
-See [JSON contract](JSON-Contract) before consuming output in a program.
+`--fields` keeps only the named data fields, and `--no-input` makes a command fail instead of
+waiting for an answer. See [JSON contract](JSON-Contract) before consuming output in a program, and
+[automation recipes](Automation-Recipes) for worked examples and rules to give an agent.

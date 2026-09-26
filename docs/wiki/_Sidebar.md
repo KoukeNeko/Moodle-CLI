@@ -10,6 +10,7 @@
 - [Scale test model](Scale-Test-Model) · [規模測試模型](Scale-Test-Model-zh-TW)
 - [Report contract](Report-Contract) · [報告契約](Report-Contract-zh-TW)
 - [JSON contract](JSON-Contract) · [JSON 契約](JSON-Contract-zh-TW)
+- [Automation recipes](Automation-Recipes) · [自動化範例](Automation-Recipes-zh-TW)
 - [Security model](Security-Model) · [安全模型](Security-Model-zh-TW)
 - [Development and testing](Development-and-Testing) · [開發與測試](Development-and-Testing-zh-TW)
 

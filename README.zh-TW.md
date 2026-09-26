@@ -67,7 +67,9 @@ exit code `12` 與 `ambiguous` outcome 結束，不會猜測或盲目重送。
 moodle version --json
 moodle commands --json
 moodle schema assignment.submit
+moodle schema assignment submit --json
 moodle course list --json
+moodle assignment list --current --json --fields name,due_date --no-input
 moodle ws list --version v52 --effect write --json
 moodle ws describe core_course_update_courses --json
 moodle ws call core_course_get_contents --params-json '{"courseid":42}'
@@ -76,6 +78,12 @@ moodle ws call core_course_get_contents --params-json '{"courseid":42}'
 所有 JSON 回應共用同一個版本化 envelope。穩定的錯誤類別各自對應 exit code：成功 `0`、內部錯誤
 `1`、用法 `2`、設定 `3`、認證 `4`、權限 `5`、找不到 `6`、驗證 `7`、衝突 `8`、不可用 `9`、
 網路 `10`、上游 `11`、寫入結果不明 `12`。程式應依結構化 code 分支，不比對英文訊息。
+
+給無人看管的呼叫者：`--fields` 只輸出會讀的欄位；`--no-input` 讓所有提示都變成錯誤，而不是卡住的
+行程；`moodle schema <命令>` 回報每個命令的 `safety`（`read`、`local` 或 `write`）與 `idempotency`，
+以及輸入與輸出的 JSON Schema，讓 agent 自己判斷能不能執行。Wiki 的
+[自動化範例](https://github.com/KoukeNeko/Moodle-CLI/wiki/Automation-Recipes-zh-TW)附有可以直接交給
+agent 的規則。
 
 Typed `ws` registry 由拋棄式 Moodle 4.5.12、5.1.7、5.2.3 站台直接產生，目前是 780 個函式的聯集
 （各版 759／761／755）。每個版本的參數與回傳 JSON Schema、transport、effect、capability、deprecated

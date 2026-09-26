@@ -78,10 +78,13 @@ moodle version --json
 moodle commands --json
 moodle schema
 moodle schema assignment.submit
+moodle schema assignment submit --json
+moodle assignment list --current --json --fields name,due_date --no-input
 moodle mcp serve
 moodle mcp serve --allow-write
 moodle course list --read-only
 ```
 
-`--read-only` 會移除寫入命令。MCP 除非明確加上 `--allow-write`，否則維持唯讀。程式使用輸出前請閱讀
-[JSON contract](JSON-Contract-zh-TW)。
+`--read-only` 會移除寫入命令。MCP 除非明確加上 `--allow-write`，否則維持唯讀。`--fields` 只保留
+指定的 data 欄位，`--no-input` 讓需要回答的命令直接失敗而不是等待。程式使用輸出前請閱讀
+[JSON contract](JSON-Contract-zh-TW)，實際範例與可交給 agent 的規則見[自動化範例](Automation-Recipes-zh-TW)。

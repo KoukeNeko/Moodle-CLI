@@ -10,7 +10,8 @@ Moodle CLI 是給學習者、教職員、管理者、script 與 agent 使用的�
 1. [安裝已發布版本或從原始碼建置](Installation-zh-TW)。
 2. 新增站台並選擇[登入方式](Authentication-and-Sites-zh-TW)。
 3. 查看[命令指南](Commands-zh-TW)。
-4. 自動化前閱讀 [JSON contract](JSON-Contract-zh-TW)。
+4. 自動化前閱讀 [JSON contract](JSON-Contract-zh-TW)與[自動化範例](Automation-Recipes-zh-TW)，
+   其中包含可以直接交給 agent 的規則。
 
 ## 設計承諾
 

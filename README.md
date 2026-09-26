@@ -73,7 +73,9 @@ an `ambiguous` outcome instead of guessing or sending the write again.
 moodle version --json
 moodle commands --json
 moodle schema assignment.submit
+moodle schema assignment submit --json
 moodle course list --json
+moodle assignment list --current --json --fields name,due_date --no-input
 moodle ws list --version v52 --effect write --json
 moodle ws describe core_course_update_courses --json
 moodle ws call core_course_get_contents --params-json '{"courseid":42}'
@@ -83,6 +85,13 @@ Every JSON response uses the same versioned envelope. Stable error classes map t
 exit codes: success `0`, internal `1`, usage `2`, configuration `3`, authentication `4`, permission
 `5`, not found `6`, validation `7`, conflict `8`, unavailable `9`, network `10`, upstream `11`, and
 ambiguous write outcome `12`. Programs branch on structured codes, never English messages.
+
+For unattended callers, `--fields` keeps the payload to what is read, `--no-input` turns every prompt
+into an error instead of a hung process, and `moodle schema <command>` reports each command's
+`safety` (`read`, `local` or `write`) and `idempotency` with its input and output JSON Schema — what an
+agent needs to decide whether it may run a command. The wiki's
+[automation recipes](https://github.com/KoukeNeko/Moodle-CLI/wiki/Automation-Recipes) include rules
+to hand an agent.
 
 The typed `ws` registry is generated from disposable installations of Moodle 4.5.12, 5.1.7, and
 5.2.3. It currently describes a 780-function union (759/761/755 functions respectively), retaining
