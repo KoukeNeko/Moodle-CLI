@@ -13,7 +13,7 @@
 | `--read-only` | 隱藏並拒絕所有可能變更 Moodle 的命令。 |
 | `--backend auto|ws-only` | 允許自動 fallback，或將本次執行限制為 Web Services。 |
 
-## 命令 (107)
+## 命令 (108)
 
 ### `moodle api`
 
@@ -1302,6 +1302,18 @@ quiz：顯示詳細資料。
 
 - 用法: `moodle schema [kind | command...] [flags]`
 - 資料效果: **唯讀**
+
+### `moodle setup`
+
+Add a Moodle site and sign in, choosing from the methods it offers。
+
+- 用法: `moodle setup <url> [flags]`
+- JSON 輸出 kind: `auth.login`
+- 資料效果: **寫入**
+
+| Flag | 說明 |
+| --- | --- |
+| `--name` | name for this site (default: from its address) |
 
 ### `moodle shell-completion`
 

@@ -277,6 +277,24 @@ func (b *AssignmentBackend) List(ctx context.Context, courseIDs []string) (assig
 			}
 		}
 		result.Provenance.Partial = true
+		// Which activities, not merely that something is short. Moodle answers
+		// an activity this account may not read with a warning and a complete
+		// HTTP 200, so the listing looks whole — measured on a real Moodle
+		// 4.5.3: 11 of a course's 15 assignments withheld from a student while
+		// the reply reported four and said nothing else.
+		if withheld := withheldActivities(dto); len(withheld) > 0 {
+			// The count, not the ids: a module id the account may not read is
+			// not something the reader can look up or act on, and eleven of
+			// them fill the line. The count is what tells them the list is
+			// short.
+			activity := "activities"
+			if len(withheld) == 1 {
+				activity = "activity"
+			}
+			result.Provenance.PartialReason = fmt.Sprintf(
+				"the site withheld %d %s from this account, so this course holds "+
+					"more assignments than are listed", len(withheld), activity)
+		}
 	}
 	return result, nil
 }

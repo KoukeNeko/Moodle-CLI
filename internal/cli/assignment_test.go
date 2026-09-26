@@ -1459,3 +1459,56 @@ func TestAReplyThatSaysLittleIsNotReadAsSayingNo(t *testing.T) {
 		t.Errorf("an absent key became a value in the contract:\n%s", jsonOut)
 	}
 }
+
+func TestWithheldAssignmentsAreCountedNotHidden(t *testing.T) {
+	// Measured on a real Moodle 4.5.3: a course held 15 assignment modules and
+	// the student could read four. Moodle answered HTTP 200 with the four and
+	// one warning per refusal, so the listing looked complete. meta.partial was
+	// already true, but nothing said what was short, and meta.missing is a list
+	// of field names rather than a place for rows.
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionAssignments, map[string]any{
+		"courses": []any{map[string]any{
+			"id": 2, "shortname": "CS204",
+			"assignments": []any{map[string]any{
+				"id": 7, "cmid": 12, "course": 2, "name": "Essay 1",
+				"duedate": 1789000000, "submissiondrafts": 0, "grade": 100,
+			}},
+		}},
+		"warnings": []any{
+			map[string]any{"item": "module", "itemid": 91, "warningcode": "1",
+				"message": "No access rights in module context"},
+			map[string]any{"item": "module", "itemid": 92, "warningcode": "1",
+				"message": "No access rights in module context"},
+		},
+	})
+
+	stdout, stderr, code := f.run("assignment", "list")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Essay 1") {
+		t.Errorf("the readable assignment is missing:\n%s", stdout)
+	}
+	// The count is what tells the reader the list is short. The ids are course
+	// module ids for activities this account may not open, so they are not
+	// something to act on.
+	if !strings.Contains(stderr, "withheld 2 activities") {
+		t.Errorf("the notice does not say what was left out:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "91") || strings.Contains(stderr, "92") {
+		t.Errorf("unusable module ids reached the reader:\n%s", stderr)
+	}
+
+	// The contract is unchanged: partial says the answer is short, and
+	// meta.missing stays a list of field names.
+	stdout, _, code = f.run("assignment", "list", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("json exit %d", code)
+	}
+	validate(t, "assignment.list", stdout)
+	if !strings.Contains(stdout, `"partial":true`) || !strings.Contains(stdout, `"missing":[]`) {
+		t.Errorf("meta should be partial with no missing fields:\n%s", stdout)
+	}
+}

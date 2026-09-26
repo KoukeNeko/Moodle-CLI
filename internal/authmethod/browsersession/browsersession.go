@@ -9,6 +9,8 @@ package browsersession
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -18,12 +20,16 @@ import (
 
 // Method exchanges a browser session for a token.
 type Method struct {
-	newClient func(site.Site) *moodle.Client
+	newClient  func(site.Site) *moodle.Client
+	readHidden func() (string, error)
 }
 
 // New builds the method.
-func New(newClient func(site.Site) *moodle.Client) *Method {
-	return &Method{newClient: newClient}
+// New builds the method. readHidden reads a line from the terminal without
+// echoing it; nil leaves the method unable to prompt, which is what a caller
+// with no terminal wants.
+func New(newClient func(site.Site) *moodle.Client, readHidden func() (string, error)) *Method {
+	return &Method{newClient: newClient, readHidden: readHidden}
 }
 
 func (*Method) Name() string { return "browser-session" }
@@ -54,12 +60,35 @@ func (*Method) Probe(_ context.Context, _ site.Site, config *auth.PublicConfig) 
 }
 
 func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Credential, error) {
-	cookie := moodle.ParseSessionCookie(req.SessionCookie)
+	raw := req.SessionCookie
+	if strings.TrimSpace(raw) == "" {
+		// Asked for rather than refused, so that choosing this method from a
+		// menu leads somewhere. Hidden, because a session cookie is a
+		// credential that outlives the command: echoing it would leave it in
+		// the terminal's scrollback and in any recording of the session.
+		if req.In == nil || m.readHidden == nil {
+			return auth.Credential{}, errs.New(errs.CodeUsage,
+				"no browser session given").
+				WithHint("pass --session-cookie 'MoodleSession=…', copied from the browser " +
+					"that is already signed in, or --session-cookie-stdin to pipe it")
+		}
+		fmt.Fprint(req.Out,
+			"Open this site in a browser you are already signed in to, then copy the\n"+
+				"MoodleSession cookie's value from its developer tools.\n"+
+				"Storage or Application → Cookies → MoodleSession.\n\n"+
+				"Paste the session (input hidden): ")
+		read, err := m.readHidden()
+		fmt.Fprintln(req.Out)
+		if err != nil {
+			return auth.Credential{}, errs.Wrap(errs.CodeUsage, err, "cannot read the session")
+		}
+		raw = read
+	}
+	cookie := moodle.ParseSessionCookie(raw)
 	if cookie.Value == "" {
 		return auth.Credential{}, errs.New(errs.CodeUsage,
-			"no browser session given").
-			WithHint("pass --session-cookie 'MoodleSession=…', copied from the browser " +
-				"that is already signed in")
+			"that is not a session cookie").
+			WithHint("paste the MoodleSession value, or MoodleSession=<value>")
 	}
 
 	passport := req.Passport

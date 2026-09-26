@@ -158,7 +158,13 @@ make build
 make install
 ```
 
-登記站台並檢查可用登入方式：
+最快的開始方式是讓它去問站台支援什麼，再由你選擇：
+
+```sh
+moodle setup https://moodle.example.edu
+```
+
+也可以分步進行——登記站台並檢查可用登入方式：
 
 ```sh
 moodle site add school https://moodle.example.edu

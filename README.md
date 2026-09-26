@@ -180,7 +180,13 @@ Install it to `~/.local/bin`:
 make install
 ```
 
-Register a site and inspect its available login methods:
+The quickest start asks the site what it supports and lets you choose:
+
+```sh
+moodle setup https://moodle.example.edu
+```
+
+Or do it in steps — register a site and inspect its available login methods:
 
 ```sh
 moodle site add school https://moodle.example.edu

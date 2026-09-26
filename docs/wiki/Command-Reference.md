@@ -13,7 +13,7 @@ This page is generated from `moodle commands --json`; every public command must 
 | `--read-only` | Hide and refuse every command that may mutate Moodle. |
 | `--backend auto|ws-only` | Allow automatic fallback routes, or restrict the run to Web Services. |
 
-## Commands (107)
+## Commands (108)
 
 ### `moodle api`
 
@@ -1302,6 +1302,18 @@ Print a response kind's JSON Schema, or a command's contract with its safety
 
 - Synopsis: `moodle schema [kind | command...] [flags]`
 - Data effect: **read-only**
+
+### `moodle setup`
+
+Add a Moodle site and sign in, choosing from the methods it offers
+
+- Synopsis: `moodle setup <url> [flags]`
+- JSON response kind: `auth.login`
+- Data effect: **write**
+
+| Flag | Meaning |
+| --- | --- |
+| `--name` | name for this site (default: from its address) |
 
 ### `moodle shell-completion`
 

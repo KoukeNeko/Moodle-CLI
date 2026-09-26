@@ -166,6 +166,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newSchemaCommand(renderer, func() *cobra.Command { return root }),
 		newCommandsCommand(renderer, func() *cobra.Command { return root }),
 		siteCmd,
+		newSetupCommand(renderer, deps),
 		newAuthCommand(renderer, deps),
 		newCourseCommand(renderer, deps, mode),
 		newAssignmentCommand(renderer, deps, mode),

@@ -2,6 +2,18 @@
 
 [English](Authentication-and-Sites) · [首頁](Home-zh-TW)
 
+## 從這裡開始
+
+一個命令就會向站台詢問它支援什麼、說明哪個方式適合它與原因、列出所有方式與其狀態，
+並執行你選的那一個：
+
+```sh
+moodle setup https://moodle.example.edu
+```
+
+這需要終端機。腳本或 agent 請用下面的 `site add` 與 `auth login --method …`，
+它們的每一種憑證都可以從 stdin 傳入。
+
 ## 新增與選擇站台
 
 ```sh

@@ -157,54 +157,7 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				return err
 			}
 
-			// Verify before storing: a credential that does not work must
-			// never be written to the keychain as though it did.
-			session := deps.Auth.OpenWithToken(target, "", credential.Token)
-			capabilities, err := session.Capabilities(cmd.Context())
-			if err != nil {
-				return err
-			}
-
-			name := accountName
-			if name == "" {
-				name = capabilities.Username
-			}
-			if name == "" {
-				name = "default"
-			}
-			account := resolved.Site.UpsertAccount(name, config.Account{
-				UserID:         capabilities.UserID,
-				Username:       capabilities.Username,
-				DisplayName:    capabilities.FullName,
-				AuthMethod:     credential.Method,
-				CredentialKind: site.CredentialWSToken,
-			})
-			if err := deps.Auth.StoreCredential(resolved.Site.ID, account.ID, credential); err != nil {
-				return err
-			}
-			if resolved.Site.WWWRoot == "" {
-				resolved.Site.WWWRoot = target.BaseURL.String()
-			}
-			file.Current.Site = resolved.SiteName
-			file.Current.Account = name
-			if err := file.Save(); err != nil {
-				return err
-			}
-
-			status := v1.AuthStatus{Site: resolved.SiteName, Valid: true}
-			setString(&status.Account, name)
-			setString(&status.Username, capabilities.Username)
-			setString(&status.UserID, capabilities.UserID)
-			setString(&status.FullName, capabilities.FullName)
-			setString(&status.SiteName, capabilities.SiteName)
-			setString(&status.Release, capabilities.Release)
-
-			return r.Render(Result{
-				Envelope: v1.NewEnvelope("auth.login", status, v1.NewMeta(v1.SourceWS)),
-				Human: humanLine("Signed in to %s as %s (%s) using %s.%s",
-					capabilities.SiteName, capabilities.FullName, capabilities.Username,
-					credential.Method, storedWhere(deps)),
-			})
+			return storeLogin(cmd, r, deps, file, resolved, target, credential, accountName)
 		},
 	}
 	cmd.Flags().StringVar(&siteFlag, "site", "", "site to sign in to")
@@ -232,6 +185,62 @@ type methodInfo struct {
 	Description  string  `json:"description"`
 	Availability string  `json:"availability"`
 	Reason       *string `json:"reason"`
+}
+
+// storeLogin verifies a fresh credential, records the account and reports it.
+//
+// Shared by `auth login` and `setup`: the verification is the load-bearing
+// part — a credential that does not work must never be written to the store as
+// though it did — and two copies of it would be two chances to lose it.
+func storeLogin(cmd *cobra.Command, r *Renderer, deps Deps, file *config.File,
+	resolved config.Resolved, target site.Site, credential auth.Credential,
+	accountName string) error {
+	session := deps.Auth.OpenWithToken(target, "", credential.Token)
+	capabilities, err := session.Capabilities(cmd.Context())
+	if err != nil {
+		return err
+	}
+
+	name := accountName
+	if name == "" {
+		name = capabilities.Username
+	}
+	if name == "" {
+		name = "default"
+	}
+	account := resolved.Site.UpsertAccount(name, config.Account{
+		UserID:         capabilities.UserID,
+		Username:       capabilities.Username,
+		DisplayName:    capabilities.FullName,
+		AuthMethod:     credential.Method,
+		CredentialKind: site.CredentialWSToken,
+	})
+	if err := deps.Auth.StoreCredential(resolved.Site.ID, account.ID, credential); err != nil {
+		return err
+	}
+	if resolved.Site.WWWRoot == "" {
+		resolved.Site.WWWRoot = target.BaseURL.String()
+	}
+	file.Current.Site = resolved.SiteName
+	file.Current.Account = name
+	if err := file.Save(); err != nil {
+		return err
+	}
+
+	status := v1.AuthStatus{Site: resolved.SiteName, Valid: true}
+	setString(&status.Account, name)
+	setString(&status.Username, capabilities.Username)
+	setString(&status.UserID, capabilities.UserID)
+	setString(&status.FullName, capabilities.FullName)
+	setString(&status.SiteName, capabilities.SiteName)
+	setString(&status.Release, capabilities.Release)
+
+	return r.Render(Result{
+		Envelope: v1.NewEnvelope("auth.login", status, v1.NewMeta(v1.SourceWS)),
+		Human: humanLine("Signed in to %s as %s (%s) using %s.%s",
+			capabilities.SiteName, capabilities.FullName, capabilities.Username,
+			credential.Method, storedWhere(deps)),
+	})
 }
 
 func newAuthMethodsCommand(r *Renderer, deps Deps) *cobra.Command {

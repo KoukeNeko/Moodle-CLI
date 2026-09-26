@@ -50,6 +50,11 @@ type Renderer struct {
 type Result struct {
 	Envelope v1.Envelope
 	Human    func(w io.Writer) error
+	// PartialReason explains a partial answer whose gap is not a field: rows
+	// the site filtered out of an otherwise successful reply. It reaches only
+	// the person reading, never the JSON, which says the answer is partial and
+	// keeps meta.missing to field names.
+	PartialReason string
 }
 
 // Render writes a successful result.
@@ -75,7 +80,11 @@ func (r Renderer) Render(res Result) error {
 		return err
 	}
 	if meta := res.Envelope.Meta; meta.Partial {
-		if len(meta.Missing) > 0 {
+		if reason := res.PartialReason; reason != "" {
+			// A sentence, because what was left out is rows rather than
+			// fields, and meta.missing is a list of field names.
+			fmt.Fprintf(r.Streams.Err, "Note: this answer is incomplete; %s.\n", reason)
+		} else if len(meta.Missing) > 0 {
 			// Naming the fields is what makes the note useful: a blank due
 			// date means something else once the reader knows the route could
 			// not see due dates at all.

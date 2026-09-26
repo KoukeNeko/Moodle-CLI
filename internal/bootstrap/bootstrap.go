@@ -112,7 +112,7 @@ func Run(ctx context.Context, build Build, args []string) int {
 			// Never chosen automatically: it needs a session cookie handed
 			// over, and a credential that powerful is not something to go
 			// looking for on someone's behalf.
-			browsersession.New(newClient),
+			browsersession.New(newClient, readPassword),
 			manual.New(),
 		),
 		Courses: func(session *auth.Session, capabilities *site.Capabilities) *course.Service {

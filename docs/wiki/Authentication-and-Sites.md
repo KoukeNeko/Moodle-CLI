@@ -2,6 +2,18 @@
 
 [繁體中文](Authentication-and-Sites-zh-TW) · [Home](Home)
 
+## Start here
+
+One command asks the site what it supports, says which method suits it and
+why, lists every method with its status, and runs the one you choose:
+
+```sh
+moodle setup https://moodle.example.edu
+```
+
+It needs a terminal. For a script or an agent, use `site add` and
+`auth login --method …` below, which take every credential on stdin.
+
 ## Add and select a site
 
 ```sh

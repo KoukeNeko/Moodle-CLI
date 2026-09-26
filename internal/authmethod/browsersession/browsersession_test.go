@@ -1,10 +1,12 @@
 package browsersession_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -74,9 +76,11 @@ func (s *launchSite) authenticate(t *testing.T, cookie string) (auth.Credential,
 		t.Fatal(err)
 	}
 	target := site.Site{Name: "school", BaseURL: base}
+	// No hidden reader: a test must never be able to prompt, so a missing
+	// cookie has to fail rather than wait.
 	method := browsersession.New(func(site.Site) *moodle.Client {
 		return moodle.NewClient(target)
-	})
+	}, nil)
 	return method.Authenticate(context.Background(), auth.Request{
 		Site: target, WWWRoot: s.server.URL, SessionCookie: cookie,
 	})
@@ -187,5 +191,68 @@ func TestTheSessionIsNotSentAnywhereButTheLaunchEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(s.query, "passport=") {
 		t.Errorf("the launch request carried no passport: %q", s.query)
+	}
+}
+
+func TestTheSessionIsAskedForHiddenWhenNoneWasGiven(t *testing.T) {
+	// Choosing this method from a menu has to lead somewhere. It used to
+	// refuse and name a flag, which is no help to someone who just picked it
+	// from a list. The paste is hidden: a session cookie outlives the command,
+	// so echoing it would leave it in the terminal's scrollback.
+	s := newLaunchSite(t)
+	base, err := site.ParseBaseURL(s.server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := site.Site{Name: "school", BaseURL: base}
+
+	var prompt bytes.Buffer
+	asked := 0
+	method := browsersession.New(func(site.Site) *moodle.Client {
+		return moodle.NewClient(target)
+	}, func() (string, error) {
+		asked++
+		return "MoodleSession=good-session", nil
+	})
+
+	credential, err := method.Authenticate(context.Background(), auth.Request{
+		Site: target, WWWRoot: s.server.URL,
+		In: strings.NewReader(""), Out: &prompt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if credential.Token == "" {
+		t.Error("no token came back")
+	}
+	if asked != 1 {
+		t.Errorf("the hidden reader was used %d times", asked)
+	}
+	if !strings.Contains(prompt.String(), "input hidden") {
+		t.Errorf("the prompt should say the input is hidden: %q", prompt.String())
+	}
+	// The value must never reach the transcript.
+	if strings.Contains(prompt.String(), "good-session") {
+		t.Error("the session was echoed")
+	}
+}
+
+func TestSomethingThatIsNotASessionIsRefused(t *testing.T) {
+	s := newLaunchSite(t)
+	base, err := site.ParseBaseURL(s.server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := site.Site{Name: "school", BaseURL: base}
+	method := browsersession.New(func(site.Site) *moodle.Client {
+		return moodle.NewClient(target)
+	}, func() (string, error) { return "   ", nil })
+
+	_, err = method.Authenticate(context.Background(), auth.Request{
+		Site: target, WWWRoot: s.server.URL,
+		In: strings.NewReader(""), Out: io.Discard,
+	})
+	if err == nil {
+		t.Fatal("blank input was accepted as a session")
 	}
 }

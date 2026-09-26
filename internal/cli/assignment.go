@@ -103,7 +103,8 @@ func newAssignmentListCommand(r *Renderer, deps Deps) *cobra.Command {
 				session.resolved.SiteName, session.resolved.AccountName)
 			items, _ := envelope.Data.([]v1.Assignment)
 			return r.Render(Result{
-				Envelope: envelope,
+				Envelope:      envelope,
+				PartialReason: result.Provenance.PartialReason,
 				Human: func(w io.Writer) error {
 					return writeAssignmentTable(w, items, len(scope) > 0)
 				},

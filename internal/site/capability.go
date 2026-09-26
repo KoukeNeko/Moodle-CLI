@@ -87,6 +87,17 @@ type Provenance struct {
 	// Missing names contract fields that could not be retrieved. It is never
 	// nil — an empty slice means nothing was missing.
 	Missing []string
+	// PartialReason says, in one sentence, what a partial answer left out
+	// when the thing left out is not a field: rows the site filtered from an
+	// otherwise successful reply. Moodle answers an activity this account may
+	// not read with a warning rather than an error, so the short list looks
+	// complete — measured on a real site, 11 of 15 assignments withheld from
+	// a student while the listing reported four and nothing else.
+	//
+	// It is deliberately not part of the JSON contract, which says only that
+	// the answer is partial: a sentence is for a person, and meta.missing is
+	// a list of field names.
+	PartialReason string
 }
 
 // NewProvenance returns a Provenance for a complete answer from one backend.
