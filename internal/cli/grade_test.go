@@ -650,3 +650,45 @@ func TestATeacherIsNotToldThereAreNoTotals(t *testing.T) {
 		t.Errorf("an archived course is not accounted for:\n%s", stdout)
 	}
 }
+
+func TestGradeTableShowsTextWhereMoodleSentMarkup(t *testing.T) {
+	// Measured on Moodle 4.5.3: gradereport_user_get_grade_items returns the
+	// item name as stored, so a multilang name arrives as one span per
+	// language, and a scale's display arrives with the icon the web UI draws.
+	// Printed raw they are unreadable and they wreck the column widths.
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.server.HandleValue(moodle.FunctionGradeItems, map[string]any{
+		"usergrades": []any{map[string]any{
+			"courseid": 2, "userid": 4,
+			"gradeitems": []any{map[string]any{
+				"id": 1, "itemname": `<span lang="zh_tw" class="multilang">出缺席</span>` +
+					`<span lang="en" class="multilang">Attendance</span>`,
+				"itemtype": "mod", "itemmodule": "attendance",
+				"graderaw": 100.0, "grademax": 100.0,
+				"gradeformatted": `<i class="icon fa fa-check" title="通過" aria-label="通過"></i>100.00`,
+			}},
+		}},
+	})
+
+	stdout, stderr, code := f.run("grade", "list", "--course", "2")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if strings.Contains(stdout, "<span") || strings.Contains(stdout, "<i ") {
+		t.Errorf("markup reached the table:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "出缺席") || !strings.Contains(stdout, "100.00") {
+		t.Errorf("the text was lost with the markup:\n%s", stdout)
+	}
+
+	// The contract keeps what the site sent: it is Moodle's own rendering,
+	// and a consumer that wants the icon must still be able to find it.
+	stdout, _, code = f.run("grade", "list", "--course", "2", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("json exit %d", code)
+	}
+	if !strings.Contains(stdout, "multilang") {
+		t.Errorf("the JSON should pass Moodle's markup through:\n%s", stdout)
+	}
+}

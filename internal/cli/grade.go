@@ -148,8 +148,13 @@ func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 		table := newTable(w)
 		fmt.Fprintln(table, "ITEM\tGRADE\tOUT OF\tMARKED")
 		for _, item := range report.Items {
+			// Moodle returns these as stored, which on a real site means
+			// markup: a multilang name carries a span per language, and a
+			// scale's display carries the icon the web UI draws. Measured on
+			// Moodle 4.5.3. The JSON keeps what the site sent; a person gets
+			// the text.
 			fmt.Fprintf(table, "%s\t%s\t%s\t%s\n",
-				item.Name, gradeCell(item), outOf(item), date(item.GradedAt))
+				plainText(item.Name), gradeCell(item), outOf(item), date(item.GradedAt))
 		}
 		if err := table.Flush(); err != nil {
 			return err
@@ -167,7 +172,8 @@ func writeGradeTable(w io.Writer, report v1.GradeReport) error {
 	}
 	for _, item := range report.Items {
 		if item.Feedback != nil {
-			fmt.Fprintf(w, "\n%s — feedback:\n  %s\n", item.Name, plainText(*item.Feedback))
+			fmt.Fprintf(w, "\n%s — feedback:\n  %s\n",
+				plainText(item.Name), plainText(*item.Feedback))
 		}
 	}
 	if report.GradableUnknown {
@@ -200,8 +206,8 @@ func gradeCell(item v1.Grade) string {
 	if item.Grade == nil {
 		return "-"
 	}
-	if item.Display != "" && item.Display != "-" {
-		return item.Display
+	if display := plainText(item.Display); display != "" && display != "-" {
+		return display
 	}
 	return strconv.FormatFloat(*item.Grade, 'f', -1, 64)
 }
