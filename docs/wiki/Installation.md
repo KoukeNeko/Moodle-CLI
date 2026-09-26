@@ -6,6 +6,22 @@ Check the [Releases page](https://github.com/KoukeNeko/Moodle-CLI/releases) befo
 manager: these commands work after the first stable release and package entries are public. If
 there is no published release yet, [build from source](#build-from-source).
 
+## Tab completion
+
+Once the binary is installed, print a script for your shell and put it where
+that shell looks:
+
+```sh
+moodle shell-completion bash > /etc/bash_completion.d/moodle
+moodle shell-completion zsh > "${fpath[1]}/_moodle"
+moodle shell-completion fish > ~/.config/fish/completions/moodle.fish
+moodle shell-completion powershell | Out-String | Invoke-Expression
+```
+
+It is not called `completion`: that name belongs to Moodle's own activity
+completion. Site and account names complete from your configuration, so
+nothing is requested from the site while you type.
+
 ## Homebrew (macOS or Linux)
 
 Use the project's tap; this formula is not in Homebrew Core:

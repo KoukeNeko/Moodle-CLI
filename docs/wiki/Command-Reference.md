@@ -13,7 +13,7 @@ This page is generated from `moodle commands --json`; every public command must 
 | `--read-only` | Hide and refuse every command that may mutate Moodle. |
 | `--backend auto|ws-only` | Allow automatic fallback routes, or restrict the run to Web Services. |
 
-## Commands (106)
+## Commands (107)
 
 ### `moodle api`
 
@@ -1299,6 +1299,13 @@ Say what a Moodle link points at
 Print a response kind's JSON Schema, or a command's contract with its safety
 
 - Synopsis: `moodle schema [kind | command...] [flags]`
+- Data effect: **read-only**
+
+### `moodle shell-completion`
+
+Print a tab-completion script for your shell
+
+- Synopsis: `moodle shell-completion <bash|fish|powershell|zsh> [flags]`
 - Data effect: **read-only**
 
 ### `moodle site`

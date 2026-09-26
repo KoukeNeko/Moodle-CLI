@@ -13,7 +13,7 @@
 | `--read-only` | 隱藏並拒絕所有可能變更 Moodle 的命令。 |
 | `--backend auto|ws-only` | 允許自動 fallback，或將本次執行限制為 Web Services。 |
 
-## 命令 (106)
+## 命令 (107)
 
 ### `moodle api`
 
@@ -1299,6 +1299,13 @@ quiz：顯示詳細資料。
 列出或輸出指定 JSON response kind 的 schema。
 
 - 用法: `moodle schema [kind | command...] [flags]`
+- 資料效果: **唯讀**
+
+### `moodle shell-completion`
+
+Print a tab-completion script for your shell。
+
+- 用法: `moodle shell-completion <bash|fish|powershell|zsh> [flags]`
 - 資料效果: **唯讀**
 
 ### `moodle site`

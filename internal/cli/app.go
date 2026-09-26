@@ -42,6 +42,9 @@ type App struct {
 	// than when they are built: the global flags are parsed after the tree
 	// already exists.
 	mode *safety.Mode
+	// deps is kept for the completers, which are attached only when a shell
+	// actually asks for candidates.
+	deps Deps
 }
 
 // New builds the command tree.
@@ -158,9 +161,11 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		newAPICommand(renderer, deps, mode),
 		newMCPCommand(deps, mode),
 		newDoctorCommand(renderer, deps),
+		newShellCompletionCommand(renderer, func() *cobra.Command { return root }),
 	)
 
 	app.root = root
+	app.deps = deps
 	return app
 }
 
@@ -178,12 +183,39 @@ func (a *App) Execute(ctx context.Context, args []string) int {
 		// command it is not allowed to run.
 		withholdMutatingCommands(a.root)
 	}
+	if isCompletionRequest(args) {
+		// The candidates are this command's data, and a shell reads them from
+		// stdout. Everything else Cobra prints — help, usage — is a
+		// diagnostic and stays on stderr, which is why out points there.
+		a.root.SetOut(a.renderer.Streams.Out)
+		// Registered here rather than while building the tree: Cobra keeps
+		// flag completion functions in a package-level map keyed by the flag
+		// pointer, and never prunes it. One tree per process makes that
+		// irrelevant, but a caller that builds many would grow it without
+		// bound — and nothing reads them except a request like this one.
+		registerFlagCompletion(a.root, a.deps)
+	}
 	a.root.SetArgs(args)
 	err := a.root.ExecuteContext(ctx)
 	if err == nil {
 		return v1.ExitOK
 	}
 	return a.renderer.RenderError(classify(err))
+}
+
+// isCompletionRequest reports whether the shell is asking for candidates
+// rather than a person asking for a command.
+func isCompletionRequest(args []string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			return false
+		}
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return arg == cobra.ShellCompRequestCmd || arg == cobra.ShellCompNoDescRequestCmd
+	}
+	return false
 }
 
 // withholdMutatingCommands hides every command that can write and makes it

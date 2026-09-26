@@ -5,6 +5,20 @@
 使用套件管理器前，請先確認 [Releases 頁面](https://github.com/KoukeNeko/Moodle-CLI/releases)
 已有公開穩定版且套件倉庫已更新。如果尚無公開版本，請先[從原始碼建置](#從原始碼建置)。
 
+## Tab 補全
+
+安裝好 binary 之後，產生對應 shell 的 script 並放到該 shell 會讀取的位置：
+
+```sh
+moodle shell-completion bash > /etc/bash_completion.d/moodle
+moodle shell-completion zsh > "${fpath[1]}/_moodle"
+moodle shell-completion fish > ~/.config/fish/completions/moodle.fish
+moodle shell-completion powershell | Out-String | Invoke-Expression
+```
+
+命令名稱不是 `completion`，因為那個名字屬於 Moodle 自己的活動完成度。站台與帳號名稱會從設定檔補全，
+輸入過程中不會向站台發送任何請求。
+
 ## Homebrew（macOS 或 Linux）
 
 使用本專案的 tap；此 formula 不在 Homebrew Core：

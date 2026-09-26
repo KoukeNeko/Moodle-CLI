@@ -83,6 +83,8 @@ moodle assignment list --current --json --fields name,due_date --no-input
 moodle mcp serve
 moodle mcp serve --allow-write
 moodle course list --read-only
+moodle course list -v          # 去敏感化的 HTTP 診斷，輸出到 stderr
+moodle shell-completion zsh   # tab 補全；名稱不是 completion，那是 Moodle 的活動完成度
 ```
 
 `--read-only` 會移除寫入命令。MCP 除非明確加上 `--allow-write`，否則維持唯讀。`--fields` 只保留
