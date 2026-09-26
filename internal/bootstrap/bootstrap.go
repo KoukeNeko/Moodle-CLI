@@ -62,14 +62,23 @@ func Run(ctx context.Context, build Build, args []string) int {
 
 	// One HTTP client for the whole process, so connections are reused.
 	httpClient := moodle.NewHTTPClient()
+	// Read when a request is made, not now: --verbose is parsed after the
+	// transport has been assembled.
+	verbose := new(bool)
 	newClient := func(target site.Site) *moodle.Client {
-		return moodle.NewClient(target,
+		options := []moodle.Option{
 			moodle.WithHTTPClient(httpClient),
 			moodle.WithUserAgent(moodle.DefaultUserAgent(version)),
 			// A Moodle is usually a shared university service, and the thing
 			// driving this client may be a loop.
 			moodle.WithPacing(moodle.DefaultPacing),
-		)
+		}
+		if *verbose {
+			// stderr, because stdout carries the result. The trace redacts
+			// the token and the session cookie before writing them.
+			options = append(options, moodle.WithTrace(streams.Err))
+		}
+		return moodle.NewClient(target, options...)
 	}
 	manager := auth.NewManager(secret.Keyring{}, newClient)
 	registry, err := wsregistry.Load()
@@ -256,6 +265,7 @@ func Run(ctx context.Context, build Build, args []string) int {
 			return server.Serve(ctx)
 		},
 		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
+		Verbose:     verbose,
 	}
 
 	app := cli.New(

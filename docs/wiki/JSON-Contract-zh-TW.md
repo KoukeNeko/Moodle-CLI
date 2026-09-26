@@ -124,6 +124,7 @@ write 都是 `non_idempotent`，因為 Moodle function 沒有 idempotency key。
 | `--fields` | 只保留這些 data 欄位（需搭配 `--json`） |
 | `--no-input` | 絕不提示；需要回答時直接失敗 |
 | `--pretty` | JSON 縮排 |
+| `--verbose` / `-v` | 把去敏感化的 HTTP 請求與回應印到 stderr |
 | `--read-only` | 拒絕所有可能改變站台的呼叫；也可用 `MOODLE_CLI_READ_ONLY` |
 | `--backend` | 允許回答的路線：`auto` 或 `ws-only` |
 

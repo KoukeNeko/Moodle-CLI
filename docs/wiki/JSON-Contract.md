@@ -136,6 +136,7 @@ describes them.
 | `--fields` | Keep only these data fields (requires `--json`) |
 | `--no-input` | Never prompt; fail where a command would wait for an answer |
 | `--pretty` | Indent the JSON |
+| `--verbose` / `-v` | Print redacted HTTP requests and responses to stderr |
 | `--read-only` | Refuse every call that can change anything on the site; also `MOODLE_CLI_READ_ONLY` |
 | `--backend` | Which routes may answer: `auto` or `ws-only` |
 

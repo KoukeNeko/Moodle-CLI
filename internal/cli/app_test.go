@@ -229,3 +229,29 @@ func TestVersionHumanOutputIsOneLine(t *testing.T) {
 		t.Errorf("version string missing from %q", stdout)
 	}
 }
+
+func TestVerboseReachesTheTransportItWasGiven(t *testing.T) {
+	// The composition root assembles the transport before this flag is
+	// parsed, so it hands in the pointer the flag writes to and reads it when
+	// a request is made. What the trace then prints, and that it redacts the
+	// token, is covered in internal/moodle.
+	var verbose bool
+	deps := cli.Deps{
+		ConfigPath: filepath.Join(t.TempDir(), "config.yaml"),
+		Auth:       testManager(),
+		Login:      testCoordinator(testManager()),
+		Verbose:    &verbose,
+	}
+	if _, _, code := runWith(t, deps, "version", "--json"); code != v1.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if verbose {
+		t.Error("verbose is on without the flag")
+	}
+	if _, _, code := runWith(t, deps, "version", "--json", "-v"); code != v1.ExitOK {
+		t.Fatalf("exit %d with -v", code)
+	}
+	if !verbose {
+		t.Error("-v did not reach the transport's own switch")
+	}
+}

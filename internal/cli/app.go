@@ -69,6 +69,10 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 	// have been built with their own copy of deps.
 	backend := new(string)
 	deps.Backend = backend
+	if deps.Verbose == nil {
+		// Nothing wired a transport to it; the flag still has to parse.
+		deps.Verbose = new(bool)
+	}
 
 	root := &cobra.Command{
 		Use:           "moodle",
@@ -120,6 +124,8 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 
 	root.PersistentFlags().BoolVar(&asJSON, "json", false,
 		"emit the versioned JSON contract on stdout")
+	root.PersistentFlags().BoolVarP(deps.Verbose, "verbose", "v", false,
+		"print redacted HTTP requests and responses to stderr")
 	root.PersistentFlags().StringSliceVar(&fields, "fields", nil,
 		"with --json, keep only these comma-separated data fields; an unknown name lists the rest")
 	root.PersistentFlags().BoolVar(&noInput, "no-input", false,

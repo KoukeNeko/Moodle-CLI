@@ -31,6 +31,10 @@ type Deps struct {
 	// browser login. It is injected so the presentation layer never imports a
 	// desktop adapter directly.
 	Handler CallbackHandler
+	// Verbose turns on redacted HTTP diagnostics on stderr. Like Backend it
+	// is a pointer: the composition root builds the transport before the flag
+	// has been parsed, and reads the value when a request is actually made.
+	Verbose *bool
 	// Backend overrides the site's own setting for this run: "" leaves the
 	// site's choice alone, "ws-only" rules out the page and AJAX routes.
 	//
