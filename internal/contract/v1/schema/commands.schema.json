@@ -12,13 +12,15 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["path", "short", "kind", "mutates", "flags"],
+        "required": ["path", "short", "kind", "mutates", "safety", "idempotency", "flags"],
         "additionalProperties": false,
         "properties": {
           "path": { "type": "string", "description": "Space-separated command path" },
           "short": { "type": "string" },
           "kind": { "type": ["string", "null"], "description": "Envelope kind this command emits, null if it emits none" },
-          "mutates": { "type": "boolean", "description": "Whether the command can write to Moodle" },
+          "mutates": { "type": "boolean", "description": "Whether read-only mode withholds the command. What it changes, and where, is safety" },
+          "safety": { "type": "string", "enum": ["read", "local", "write"], "description": "read changes nothing; local changes only this machine (configuration, keychain, a downloaded file); write can change something on Moodle" },
+          "idempotency": { "type": "string", "enum": ["idempotent", "non_idempotent"], "description": "Whether a failed or unconfirmed run may simply be repeated. Every write is non_idempotent: Moodle functions carry no idempotency key" },
           "flags": {
             "type": "array",
             "items": {

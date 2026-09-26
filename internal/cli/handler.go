@@ -32,7 +32,7 @@ func newAuthRegisterHandlerCommand(r *Renderer, handler CallbackHandler) *cobra.
 			"removes exactly what this wrote.",
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
-			annotationKind: "auth.handler", annotationMutates: "true",
+			annotationKind: "auth.handler", annotationMutates: "true", annotationSafety: safetyLocal,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if handler == nil {
@@ -59,7 +59,7 @@ func newAuthUnregisterHandlerCommand(r *Renderer, handler CallbackHandler) *cobr
 		Short: "Remove the browser sign-in handler",
 		Args:  cobra.NoArgs,
 		Annotations: map[string]string{
-			annotationKind: "auth.handler", annotationMutates: "true",
+			annotationKind: "auth.handler", annotationMutates: "true", annotationSafety: safetyLocal,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if handler == nil {

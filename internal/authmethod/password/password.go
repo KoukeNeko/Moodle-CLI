@@ -79,7 +79,9 @@ func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Crede
 		}
 	}
 	if password == "" {
-		if m.readPassword == nil {
+		// No input stream means nobody may be asked; the terminal prompt
+		// below would ask them anyway.
+		if m.readPassword == nil || req.In == nil {
 			return auth.Credential{}, errs.New(errs.CodeUsage, "no password given").
 				WithHint("pass --password-stdin to read it from a pipe")
 		}

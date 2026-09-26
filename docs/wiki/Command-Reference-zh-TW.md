@@ -1298,7 +1298,7 @@ quiz：顯示詳細資料。
 
 列出或輸出指定 JSON response kind 的 schema。
 
-- 用法: `moodle schema [kind] [flags]`
+- 用法: `moodle schema [kind | command...] [flags]`
 - 資料效果: **唯讀**
 
 ### `moodle site`

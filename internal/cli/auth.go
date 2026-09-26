@@ -105,6 +105,12 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				return err
 			}
 
+			// With --no-input there is nothing to read an answer from, and each
+			// method already says which flag supplies what it would have asked.
+			in := cmd.InOrStdin()
+			if r.NoInput {
+				in = nil
+			}
 			credential, err := deps.Login.Authenticate(cmd.Context(), auth.Request{
 				Site:          target,
 				Username:      username,
@@ -114,7 +120,7 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				QR:            qr,
 				SessionCookie: sessionCookie,
 				Token:         token,
-				In:            cmd.InOrStdin(),
+				In:            in,
 				// Prompts are diagnostics: stdout carries the result only.
 				Out: r.Streams.Err,
 			}, methodName)
@@ -324,7 +330,7 @@ func newAuthLogoutCommand(r *Renderer, deps Deps) *cobra.Command {
 		Short: "Delete the stored credential from this machine",
 		Args:  cobra.NoArgs,
 		Annotations: map[string]string{
-			annotationKind: "auth.logout",
+			annotationKind: "auth.logout", annotationSafety: safetyLocal,
 			// Local only. The Moodle token is deliberately not revoked: it is
 			// often the same one the user's phone app holds.
 			annotationMutates: "false",

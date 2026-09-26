@@ -59,6 +59,8 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 	var asJSON bool
 	var pretty bool
 	var readOnly bool
+	var fields []string
+	var noInput bool
 	// Shared rather than copied: the flag is parsed after the commands below
 	// have been built with their own copy of deps.
 	backend := new(string)
@@ -76,6 +78,13 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 				renderer.Format = FormatJSON
 			}
 			renderer.Pretty = pretty
+			if len(fields) > 0 && !asJSON {
+				// The table is for people and has its own columns; narrowing
+				// it would be a second, unversioned contract.
+				return errs.New(errs.CodeUsage, "--fields requires --json")
+			}
+			renderer.Fields = fields
+			renderer.NoInput = noInput
 			if readOnly {
 				mode.ReadOnly = true
 			}
@@ -107,6 +116,10 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 
 	root.PersistentFlags().BoolVar(&asJSON, "json", false,
 		"emit the versioned JSON contract on stdout")
+	root.PersistentFlags().StringSliceVar(&fields, "fields", nil,
+		"with --json, keep only these comma-separated data fields; an unknown name lists the rest")
+	root.PersistentFlags().BoolVar(&noInput, "no-input", false,
+		"never prompt; fail where a command would wait for an answer")
 	root.PersistentFlags().BoolVar(&pretty, "pretty", false,
 		"indent JSON output")
 	root.PersistentFlags().BoolVar(&readOnly, "read-only", false,
@@ -123,7 +136,7 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 
 	root.AddCommand(
 		newVersionCommand(renderer, build),
-		newSchemaCommand(renderer),
+		newSchemaCommand(renderer, func() *cobra.Command { return root }),
 		newCommandsCommand(renderer, func() *cobra.Command { return root }),
 		siteCmd,
 		newAuthCommand(renderer, deps),

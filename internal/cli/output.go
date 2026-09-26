@@ -38,6 +38,11 @@ type Renderer struct {
 	Streams Streams
 	Format  Format
 	Pretty  bool
+	// Fields narrows the JSON data to these fields; empty keeps them all.
+	Fields []string
+	// NoInput means nobody may be asked anything: a command that would wait
+	// for an answer fails instead, so an unattended caller never hangs.
+	NoInput bool
 }
 
 // Result is what a command produces: an envelope plus the human rendering of
@@ -57,7 +62,11 @@ type Result struct {
 // out of the data, so a pipe still receives exactly the rows.
 func (r Renderer) Render(res Result) error {
 	if r.Format == FormatJSON {
-		return r.writeJSON(res.Envelope)
+		envelope, err := selectFields(res.Envelope, r.Fields)
+		if err != nil {
+			return err
+		}
+		return r.writeJSON(envelope)
 	}
 	if res.Human == nil {
 		return nil

@@ -45,7 +45,7 @@ func newAuthImportBrowserCommand(r *Renderer, deps Deps) *cobra.Command {
 			"every site's cookies together, so others are necessarily parsed on\n" +
 			"the way past; none of them is returned, kept or logged.",
 		Args:        cobra.NoArgs,
-		Annotations: map[string]string{annotationKind: "auth.import_browser"},
+		Annotations: map[string]string{annotationKind: "auth.import_browser", annotationSafety: safetyLocal},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selectedKind := browser.Kind(strings.ToLower(browserName))
 			switch selectedKind {

@@ -27,8 +27,12 @@ type commandDescriptor struct {
 	Kind  *string `json:"kind"`
 	// Mutates says whether the command can write to Moodle. It is derived
 	// from the command tree, not guessed by the caller.
-	Mutates bool          `json:"mutates"`
-	Flags   []commandFlag `json:"flags"`
+	Mutates bool `json:"mutates"`
+	// Safety and Idempotency are what `moodle schema <command>` reports, so
+	// the whole surface can be judged from one call.
+	Safety      string        `json:"safety"`
+	Idempotency string        `json:"idempotency"`
+	Flags       []commandFlag `json:"flags"`
 }
 
 // annotation keys carried on each cobra.Command.
@@ -63,12 +67,15 @@ func describe(root *cobra.Command) []commandDescriptor {
 				continue
 			}
 			path := strings.TrimSpace(prefix + " " + child.Name())
+			safety := safetyOf(child)
 			out = append(out, commandDescriptor{
-				Path:    path,
-				Short:   child.Short,
-				Kind:    annotationValue(child, annotationKind),
-				Mutates: child.Annotations[annotationMutates] == "true",
-				Flags:   describeFlags(child),
+				Path:        path,
+				Short:       child.Short,
+				Kind:        annotationValue(child, annotationKind),
+				Mutates:     child.Annotations[annotationMutates] == "true",
+				Safety:      safety,
+				Idempotency: idempotencyOf(safety),
+				Flags:       describeFlags(child),
 			})
 			walk(child, path)
 		}

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/command.schema.schema.json",
+  "title": "moodle-cli command.schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "data",
+    "meta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "command.schema"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "command",
+        "description",
+        "kind",
+        "safety",
+        "idempotency",
+        "input_schema",
+        "output_schema"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Space-separated command path"
+        },
+        "description": {
+          "type": "string"
+        },
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Envelope kind the command emits, null if it emits none"
+        },
+        "safety": {
+          "type": "string",
+          "enum": [
+            "read",
+            "local",
+            "write"
+          ],
+          "description": "read changes nothing; local changes only this machine (configuration, keychain, a downloaded file); write can change something on Moodle"
+        },
+        "idempotency": {
+          "type": "string",
+          "enum": [
+            "idempotent",
+            "non_idempotent"
+          ],
+          "description": "Whether a failed or unconfirmed run may simply be repeated. Every write is non_idempotent: Moodle functions carry no idempotency key"
+        },
+        "input_schema": {
+          "type": "object",
+          "description": "JSON Schema of the command's own flags, by flag name, with positional arguments as args. Global flags are described in the JSON contract"
+        },
+        "output_schema": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The published schema of the command's kind, null when it has none"
+        }
+      }
+    },
+    "meta": {
+      "$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"
+    }
+  }
+}

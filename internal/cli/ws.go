@@ -137,6 +137,9 @@ func newWSCallCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Command 
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			annotationKind: "ws.call",
+			// It reaches whatever function it is given, writes included;
+			// the service refuses those unless --allow-write is passed.
+			annotationSafety: safetyWrite,
 			// Dynamic: registered reads remain usable under global --read-only,
 			// while the service rejects registered writes.
 		},

@@ -32,6 +32,9 @@ func newAuthImportSessionCommand(r *Renderer, deps Deps) *cobra.Command {
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			annotationKind: "auth.login",
+			// It verifies with Moodle and stores in the keychain; Moodle
+			// issues nothing.
+			annotationSafety: safetyLocal,
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			input, err := readPrivateSession(cmd, r, fromStdin)
@@ -87,6 +90,10 @@ func readPrivateSession(cmd *cobra.Command, r *Renderer, fromStdin bool) (string
 			return "", errs.New(errs.CodeUsage, "session input is too long")
 		}
 		return strings.TrimSpace(string(data)), nil
+	}
+	if r.NoInput {
+		return "", errs.New(errs.CodeUsage, "--no-input forbids the hidden session prompt").
+			WithHint("pipe the cookie value to `moodle auth import-session --stdin`")
 	}
 	input, ok := cmd.InOrStdin().(*os.File)
 	if !ok || !term.IsTerminal(int(input.Fd())) {

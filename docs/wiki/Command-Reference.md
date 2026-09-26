@@ -1296,9 +1296,9 @@ Say what a Moodle link points at
 
 ### `moodle schema`
 
-Print the JSON Schema for a response kind, or list the kinds
+Print a response kind's JSON Schema, or a command's contract with its safety
 
-- Synopsis: `moodle schema [kind] [flags]`
+- Synopsis: `moodle schema [kind | command...] [flags]`
 - Data effect: **read-only**
 
 ### `moodle site`

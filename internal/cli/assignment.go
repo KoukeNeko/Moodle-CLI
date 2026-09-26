@@ -228,7 +228,11 @@ func newAssignmentSubmitCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobr
 				DryRun:          dryRun,
 			}
 			if !dryRun {
-				if err := confirmSubmit(r.Streams, deps.Interactive, request, assumeYes); err != nil {
+				interactive := deps.Interactive
+				if r.NoInput {
+					interactive = nil
+				}
+				if err := confirmSubmit(r.Streams, interactive, request, assumeYes); err != nil {
 					return err
 				}
 			}

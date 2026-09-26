@@ -52,6 +52,8 @@ func newSiteAcademicConfigureCommand(r *Renderer, deps Deps) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Annotations: map[string]string{
 			annotationKind: "site.academic.configure", annotationMutates: "true",
+			// It rewrites the local configuration, nothing on Moodle.
+			annotationSafety: safetyLocal,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			file, err := config.Load(deps.ConfigPath)
@@ -117,7 +119,7 @@ func newSiteAddCommand(r *Renderer, deps Deps) *cobra.Command {
 		Use:         "add <name> <url>",
 		Short:       "Register a Moodle site",
 		Args:        cobra.ExactArgs(2),
-		Annotations: map[string]string{annotationKind: "site.add"},
+		Annotations: map[string]string{annotationKind: "site.add", annotationSafety: safetyLocal},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			file, err := config.Load(deps.ConfigPath)
 			if err != nil {
@@ -198,7 +200,7 @@ func newSiteUseCommand(r *Renderer, deps Deps) *cobra.Command {
 		Use:         "use <name>",
 		Short:       "Make a site the default for later commands",
 		Args:        cobra.ExactArgs(1),
-		Annotations: map[string]string{annotationKind: "site.use"},
+		Annotations: map[string]string{annotationKind: "site.use", annotationSafety: safetyLocal},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			file, err := config.Load(deps.ConfigPath)
 			if err != nil {
@@ -227,7 +229,7 @@ func newSiteRemoveCommand(r *Renderer, deps Deps) *cobra.Command {
 		Short: "Forget a site and delete its stored credentials",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			annotationKind: "site.remove",
+			annotationKind: "site.remove", annotationSafety: safetyLocal,
 			// Local only: it deletes nothing on the Moodle server.
 			annotationMutates: "false",
 		},

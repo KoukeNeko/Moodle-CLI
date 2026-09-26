@@ -40,7 +40,7 @@ func newFileDownloadCommand(r *Renderer, deps Deps) *cobra.Command {
 			"has all arrived, so an interrupted download leaves nothing behind rather\n" +
 			"than a truncated file under the right name.",
 		Args:        cobra.ExactArgs(1),
-		Annotations: map[string]string{annotationKind: "file.download"},
+		Annotations: map[string]string{annotationKind: "file.download", annotationSafety: safetyLocal},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			configFile, err := config.Load(deps.ConfigPath)
 			if err != nil {
