@@ -84,7 +84,9 @@ moodle ws call core_course_get_contents --params-json '{"courseid":42}'
 Every JSON response uses the same versioned envelope. Stable error classes map to distinct process
 exit codes: success `0`, internal `1`, usage `2`, configuration `3`, authentication `4`, permission
 `5`, not found `6`, validation `7`, conflict `8`, unavailable `9`, network `10`, upstream `11`, and
-ambiguous write outcome `12`. Programs branch on structured codes, never English messages.
+ambiguous write outcome `12`. A caller's own Ctrl-C is `130`, outside the table, because stopping a
+command is a decision rather than a way it failed. Programs branch on structured codes, never English
+messages.
 
 For unattended callers, `--fields` keeps the payload to what is read, `--no-input` turns every prompt
 into an error instead of a hung process, and `moodle schema <command>` reports each command's
@@ -123,8 +125,17 @@ available through the explicitly untyped `api call` escape hatch.
 
 ## Getting started
 
-Once a stable version appears on the [Releases page](https://github.com/KoukeNeko/Moodle-CLI/releases),
-install it using the package manager for your platform. Until then, use the source build below:
+### Install
+
+```sh
+# macOS or Linux, any shell — verifies the download against checksums.txt
+curl -fsSL https://raw.githubusercontent.com/KoukeNeko/Moodle-CLI/main/scripts/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/KoukeNeko/Moodle-CLI/main/scripts/install.ps1 | iex
+```
+
+Or with a package manager:
 
 ```sh
 # macOS or Linux (Homebrew)
@@ -135,16 +146,26 @@ brew install koukeneko/tap/moodle-cli
 scoop bucket add koukeneko https://github.com/KoukeNeko/scoop-bucket
 scoop install koukeneko/moodle-cli
 
-moodle version
+# Debian, Ubuntu, Fedora, RHEL, Alpine — .deb, .rpm and .apk on the Releases page
+sudo dpkg -i moodle-cli_<version>_linux_amd64.deb
 ```
 
-The Releases page also provides direct Linux,
-macOS, and Windows downloads for amd64 and arm64. Match your archive against `checksums.txt`
-before running it. Homebrew and Scoop entries are updated after a stable release passes its
-macOS signature and notarization checks; a newly published tag may take a few minutes to appear
-in the package repositories. See [installation details](https://github.com/KoukeNeko/Moodle-CLI/wiki/Installation).
+```sh
+moodle version
+moodle shell-completion zsh > "${fpath[1]}/_moodle"   # bash, zsh, fish, powershell
+```
 
-To build the current source instead, use Go 1.26 or newer:
+The [Releases page](https://github.com/KoukeNeko/Moodle-CLI/releases) also has direct Linux, macOS
+and Windows archives for amd64 and arm64. The install scripts check the archive against
+`checksums.txt` and refuse a digest that does not match; if you download by hand, match it yourself.
+Homebrew and Scoop are updated after a stable release passes its macOS signature and notarization
+checks, so a newly published tag can take a few minutes to appear there. `scripts/uninstall.sh` and
+`scripts/uninstall.ps1` remove what was installed, and `--purge` also drops configuration and stored
+credentials. See [installation details](https://github.com/KoukeNeko/Moodle-CLI/wiki/Installation).
+
+### Build from source
+
+Go 1.26 or newer:
 
 ```sh
 git clone https://github.com/KoukeNeko/Moodle-CLI.git
@@ -196,7 +217,12 @@ moodle auth import-session --site school
 
 Credentials are kept in the operating-system keychain. Configuration stores site and account
 metadata, never tokens or browser sessions. For an ephemeral CI run, use `MOODLE_WS_TOKEN` or
-`MOODLE_SESSION` instead of persisting a credential.
+`MOODLE_SESSION` instead of persisting a credential. Where there is no keychain at all, opt into a
+`0600` file with `--credential-store file`:
+
+```sh
+moodle --credential-store file auth login --site school --token-stdin
+```
 
 ## Everyday commands
 
@@ -243,7 +269,9 @@ or inspect all 780 core functions in [feature coverage](https://github.com/Kouke
 This program reads credentials and connects to a server, so its boundary should be explicit:
 
 - It contacts only the Moodle site configured for the active profile.
-- It accesses only credentials stored under Moodle CLI's own keychain entries.
+- It accesses only credentials stored under Moodle CLI's own keychain entries. A machine with no
+  keychain — headless Linux, SSH, WSL, a container — can opt into a `0600` file with
+  `--credential-store file`; nothing falls back to a file on its own.
 - Browser import reads the selected browser profile only after an explicit command, returns or
   stores only the named site's cookie, and never logs it.
 - `auth logout` removes the local credential but does not revoke the Moodle token, because the same
@@ -254,6 +282,10 @@ See the [security model](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-M
 threat boundary and callback design.
 
 ## Compatibility
+
+[COMPATIBILITY.md](COMPATIBILITY.md) is the full matrix: which Moodle versions, platforms, login
+methods and credential stores are verified, which are expected to work, and which are untested —
+each with its evidence. The summary:
 
 The full Docker-backed suite is verified against exactly these versions:
 

@@ -77,7 +77,8 @@ moodle ws call core_course_get_contents --params-json '{"courseid":42}'
 
 所有 JSON 回應共用同一個版本化 envelope。穩定的錯誤類別各自對應 exit code：成功 `0`、內部錯誤
 `1`、用法 `2`、設定 `3`、認證 `4`、權限 `5`、找不到 `6`、驗證 `7`、衝突 `8`、不可用 `9`、
-網路 `10`、上游 `11`、寫入結果不明 `12`。程式應依結構化 code 分支，不比對英文訊息。
+網路 `10`、上游 `11`、寫入結果不明 `12`。呼叫者自己按下 Ctrl-C 是 `130`，刻意不佔用表格位置：中斷
+命令是一個決定，不是失敗的方式。程式應依結構化 code 分支，不比對英文訊息。
 
 給無人看管的呼叫者：`--fields` 只輸出會讀的欄位；`--no-input` 讓所有提示都變成錯誤，而不是卡住的
 行程；`moodle schema <命令>` 回報每個命令的 `safety`（`read`、`local` 或 `write`）與 `idempotency`，
@@ -109,8 +110,17 @@ non-editing teacher、student、一般 authenticated user 與自訂角色使用�
 
 ## 快速開始
 
-請先確認 [Releases 頁面](https://github.com/KoukeNeko/Moodle-CLI/releases)已有公開的穩定版，
-再使用你的平台套件管理器安裝；若尚未發布，請依下方步驟從原始碼建置：
+### 安裝
+
+```sh
+# macOS 或 Linux，任何 shell——會以 checksums.txt 驗證下載內容
+curl -fsSL https://raw.githubusercontent.com/KoukeNeko/Moodle-CLI/main/scripts/install.sh | sh
+
+# Windows（PowerShell）
+irm https://raw.githubusercontent.com/KoukeNeko/Moodle-CLI/main/scripts/install.ps1 | iex
+```
+
+或使用套件管理器：
 
 ```sh
 # macOS 或 Linux（Homebrew）
@@ -121,15 +131,24 @@ brew install koukeneko/tap/moodle-cli
 scoop bucket add koukeneko https://github.com/KoukeNeko/scoop-bucket
 scoop install koukeneko/moodle-cli
 
-moodle version
+# Debian、Ubuntu、Fedora、RHEL、Alpine——Releases 頁面提供 .deb、.rpm、.apk
+sudo dpkg -i moodle-cli_<version>_linux_amd64.deb
 ```
 
-Releases 頁面另有 Linux、macOS、Windows
-的 amd64 與 arm64 下載檔。執行前請以 `checksums.txt` 核對 archive。Stable release 通過 macOS
-簽章與 notarization 驗證後，才更新 Homebrew 與 Scoop；新 tag 可能需要幾分鐘才會出現在套件倉庫。
-詳見[安裝手冊](https://github.com/KoukeNeko/Moodle-CLI/wiki/Installation-zh-TW)。
+```sh
+moodle version
+moodle shell-completion zsh > "${fpath[1]}/_moodle"   # bash、zsh、fish、powershell
+```
 
-如果要從目前原始碼建置，請使用 Go 1.26 以上版本：
+[Releases 頁面](https://github.com/KoukeNeko/Moodle-CLI/releases)另有 Linux、macOS、Windows 的
+amd64 與 arm64 archive。安裝腳本會以 `checksums.txt` 核對 archive，digest 不符就拒絕安裝；手動下載
+請自行核對。Stable release 通過 macOS 簽章與 notarization 驗證後才更新 Homebrew 與 Scoop，新 tag
+可能需要幾分鐘才會出現。`scripts/uninstall.sh` 與 `scripts/uninstall.ps1` 會移除安裝的內容，加上
+`--purge` 則連設定與已存憑證一併移除。詳見[安裝手冊](https://github.com/KoukeNeko/Moodle-CLI/wiki/Installation-zh-TW)。
+
+### 從原始碼建置
+
+請使用 Go 1.26 以上版本：
 
 ```sh
 git clone https://github.com/KoukeNeko/Moodle-CLI.git
@@ -172,7 +191,12 @@ moodle auth import-browser --site school --browser safari --store
 ```
 
 憑證存在作業系統 keychain；設定檔只保存站台與帳號中繼資料，不保存 token 或 browser session。
-CI 的一次性執行可以用 `MOODLE_WS_TOKEN` 或 `MOODLE_SESSION`，完全不落地保存。
+CI 的一次性執行可以用 `MOODLE_WS_TOKEN` 或 `MOODLE_SESSION`，完全不落地保存。完全沒有 keychain 的
+機器可以主動選用權限 `0600` 的檔案：
+
+```sh
+moodle --credential-store file auth login --site school --token-stdin
+```
 
 ## 日常命令
 
@@ -219,7 +243,8 @@ moodle mcp serve --allow-write        # 明確開放寫入工具
 這支程式會讀取憑證並連線到伺服器，因此邊界必須明確：
 
 - 只連線到目前 profile 設定的 Moodle 站台。
-- 只存取 Moodle CLI 自己建立的 keychain 項目。
+- 只存取 Moodle CLI 自己建立的 keychain 項目。完全沒有 keychain 的機器（headless Linux、SSH、WSL、
+  容器）可以主動選用權限 `0600` 的檔案：`--credential-store file`；不會自動退回檔案。
 - 只有明確執行 browser import 才讀取指定 profile；只回傳或保存指定站台的 cookie，絕不寫入 log。
 - `auth logout` 只刪本機憑證，不撤銷 Moodle token，因為同一個 token 可能也供 Moodle mobile app 使用。
 - 沒有遙測、自動更新、提權、process injection 或憑證匯出。
@@ -227,6 +252,9 @@ moodle mcp serve --allow-write        # 明確開放寫入工具
 完整 threat boundary 與 callback 設計見[安全模型](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-Model-zh-TW)。
 
 ## 相容性
+
+[COMPATIBILITY.zh-TW.md](COMPATIBILITY.zh-TW.md) 是完整矩陣：哪些 Moodle 版本、平台、登入方式與
+憑證儲存已驗證、預期可用或未測試，每一項都附依據。以下為摘要：
 
 Docker 完整測試只宣稱以下實際驗證過的版本：
 
