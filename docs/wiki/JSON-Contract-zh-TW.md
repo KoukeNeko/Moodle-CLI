@@ -128,4 +128,14 @@ write 都是 `non_idempotent`，因為 Moodle function 沒有 idempotency key。
 | `--read-only` | 拒絕所有可能改變站台的呼叫；也可用 `MOODLE_CLI_READ_ONLY` |
 | `--backend` | 允許回答的路線：`auto` 或 `ws-only` |
 
+## v1 之內允許改變什麼
+
+每個已發布 schema 的每個物件都設 `additionalProperties: false`，因此**在既有 kind 新增欄位屬於
+breaking change**，不是相容變更。v1 之內可以新增的是新的 `kind`、新的 `reason` 值與新的 enum 值——
+所以新的回應形狀會以自己的 kind 出現（`command.schema` 就是如此），而只給人看的補充說明走 stderr，
+不進 envelope。
+
+這比多數 contract 嚴格，而且是刻意的：封閉的 schema 才能抓出 consumer 打錯的欄位名（把 `short_name`
+寫成 `shortname`），`--fields` 也用同一份來源拒絕不存在的名稱。
+
 改變 contract v1 的含意或形狀必須建立新的 schema version。人類訊息與 diagnostic detail 不是穩定 API。

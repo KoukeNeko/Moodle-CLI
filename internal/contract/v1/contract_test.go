@@ -3,6 +3,7 @@ package v1_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
@@ -126,5 +127,51 @@ func TestInterruptedIsOneThirtyAndAmbiguousStillWins(t *testing.T) {
 	// The code stays inside the published enum: adding one would break it.
 	if !interrupted.Code.Valid() {
 		t.Errorf("code %q is not in the closed set", interrupted.Code)
+	}
+}
+
+func TestEveryPublishedObjectRefusesAnAddedField(t *testing.T) {
+	// ADR-0003 §8, as amended: adding a field to an existing kind is a
+	// breaking change, because every published object sets
+	// additionalProperties: false. The rule and the schemas disagreed for the
+	// whole of v1 — the text promised additions were compatible while 35 of 36
+	// schemas rejected them — and a check is the only thing that keeps the two
+	// together.
+	//
+	// A new response shape goes in a new kind, and a note meant for a person
+	// goes to stderr rather than into the envelope.
+	var open []string
+	var walk func(node any, path string)
+	walk = func(node any, path string) {
+		switch value := node.(type) {
+		case map[string]any:
+			if value["type"] == "object" && value["properties"] != nil {
+				if closed, ok := value["additionalProperties"].(bool); !ok || closed {
+					open = append(open, path)
+				}
+			}
+			for key, child := range value {
+				walk(child, path+"/"+key)
+			}
+		case []any:
+			for i, child := range value {
+				walk(child, fmt.Sprintf("%s[%d]", path, i))
+			}
+		}
+	}
+
+	for _, kind := range v1.SchemaKinds() {
+		doc, err := v1.Schema(kind)
+		if err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+		var parsed any
+		if err := json.Unmarshal(doc, &parsed); err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+		walk(parsed, kind)
+	}
+	for _, path := range open {
+		t.Errorf("%s accepts an added field, which the contract calls breaking", path)
 	}
 }

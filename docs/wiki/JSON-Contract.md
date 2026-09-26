@@ -140,5 +140,15 @@ describes them.
 | `--read-only` | Refuse every call that can change anything on the site; also `MOODLE_CLI_READ_ONLY` |
 | `--backend` | Which routes may answer: `auto` or `ws-only` |
 
+## What may change inside v1
+
+Every object in every published schema sets `additionalProperties: false`, so **adding a field to an
+existing kind is a breaking change**, not a compatible one. What may be added inside v1 is a new
+`kind`, a new `reason` value, and a new enum value — so a new response shape arrives as its own kind
+(`command.schema` did), and a note meant for a person goes to stderr rather than into the envelope.
+
+This is stricter than most contracts, deliberately: a closed schema is what catches a consumer's
+typo — `shortname` for `short_name` — and `--fields` refuses an unknown name from the same source.
+
 Changing the meaning or shape of contract v1 requires a new schema version. Human wording and
 diagnostic details are not stable API.
