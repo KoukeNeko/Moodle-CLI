@@ -38,6 +38,25 @@ func TestQuizListJSONSatisfiesSchema(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
 		t.Fatal(err)
 	}
+	// The listing carries the course's id and nothing else about it, so a null
+	// short name has to be declared rather than read as a course without one.
+	if !strings.Contains(stdout, `"course_short_name":null`) ||
+		!strings.Contains(stdout, `"course_short_name"`) {
+		t.Errorf("course_short_name should be null here:\n%s", stdout)
+	}
+	var meta struct {
+		Meta struct {
+			Partial bool     `json:"partial"`
+			Missing []string `json:"missing"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &meta); err != nil {
+		t.Fatal(err)
+	}
+	if !meta.Meta.Partial || len(meta.Meta.Missing) == 0 || meta.Meta.Missing[0] != "course_short_name" {
+		t.Errorf("meta should name the field this route cannot read: %+v", meta.Meta)
+	}
+
 	item := doc.Data[0]
 	if item.Name != "Quiz & test" {
 		t.Errorf("name = %q; the listing escapes it", item.Name)

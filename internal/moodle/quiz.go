@@ -88,12 +88,26 @@ func (b *QuizBackend) List(ctx context.Context, courseIDs []string) (quiz.ListRe
 	}
 	result := quiz.ListResult{
 		Quizzes:    []quiz.Quiz{},
-		Provenance: site.NewProvenance(site.BackendWS),
+		Provenance: quizWSProvenance(),
 	}
 	for i := range dto.Quizzes {
 		result.Quizzes = append(result.Quizzes, dto.quiz(i))
 	}
 	return result, nil
+}
+
+// quizWSProvenance records the one field this route cannot fill.
+//
+// mod_quiz_get_quizzes_by_courses answers with the course's id and nothing
+// else about it, unlike mod_assign_get_assignments which nests its quizzes
+// under the course and carries its short name. A null short name with nothing
+// in meta.missing would read as a course that has none, which Moodle does not
+// allow.
+func quizWSProvenance() site.Provenance {
+	provenance := site.NewProvenance(site.BackendWS)
+	provenance.Partial = true
+	provenance.Missing = []string{"course_short_name"}
+	return provenance
 }
 
 func (b *QuizBackend) Show(ctx context.Context, quizID string) (quiz.Detail, error) {
@@ -119,7 +133,7 @@ func (b *QuizBackend) Show(ctx context.Context, quizID string) (quiz.Detail, err
 	detail := quiz.Detail{
 		Quiz:       dto.quiz(index),
 		Attempts:   []quiz.Attempt{},
-		Provenance: site.NewProvenance(site.BackendWS),
+		Provenance: quizWSProvenance(),
 	}
 
 	function := FunctionQuizAttempts
