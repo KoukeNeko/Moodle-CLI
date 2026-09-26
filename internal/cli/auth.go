@@ -48,17 +48,19 @@ func newAuthCommand(r *Renderer, deps Deps) *cobra.Command {
 
 func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 	var (
-		siteFlag      string
-		accountName   string
-		methodName    string
-		token         string
-		tokenStdin    bool
-		username      string
-		passwordStdin bool
-		callback      string
-		passport      string
-		qr            string
-		sessionCookie string
+		siteFlag           string
+		accountName        string
+		methodName         string
+		token              string
+		tokenStdin         bool
+		username           string
+		passwordStdin      bool
+		callback           string
+		passport           string
+		qr                 string
+		qrStdin            bool
+		sessionCookie      string
+		sessionCookieStdin bool
 	)
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -70,25 +72,52 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 			annotationMutates: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if tokenStdin {
-				read, err := readAll(cmd.InOrStdin())
-				if err != nil {
-					return errs.Wrap(errs.CodeUsage, err, "cannot read the token from stdin")
-				}
-				token = read
-				if methodName == "" {
-					methodName = "token"
-				}
-			}
+			// Every credential a method needs can arrive on stdin, so that
+			// none has to travel in argv, where `ps` shows it to anyone on the
+			// machine and the shell keeps it in history.
+			//
+			// At most one, because each reads the whole stream: a second read
+			// would get nothing and sign in with an empty credential.
 			password := ""
-			if passwordStdin {
+			stdinSources := []struct {
+				flag   string
+				asked  bool
+				target *string
+				method string
+			}{
+				{"--token-stdin", tokenStdin, &token, "token"},
+				{"--password-stdin", passwordStdin, &password, "password"},
+				{"--qr-stdin", qrStdin, &qr, "qr"},
+				{"--session-cookie-stdin", sessionCookieStdin, &sessionCookie, "browser-session"},
+			}
+			chosen := -1
+			for i, source := range stdinSources {
+				if !source.asked {
+					continue
+				}
+				if chosen >= 0 {
+					return errs.New(errs.CodeUsage,
+						fmt.Sprintf("%s and %s both read stdin, and it can only be read once",
+							stdinSources[chosen].flag, source.flag)).
+						WithHint("pass one of them")
+				}
+				chosen = i
+			}
+			if chosen >= 0 {
+				source := stdinSources[chosen]
 				read, err := readAll(cmd.InOrStdin())
 				if err != nil {
-					return errs.Wrap(errs.CodeUsage, err, "cannot read the password from stdin")
+					return errs.Wrap(errs.CodeUsage, err,
+						"cannot read "+source.flag+" from stdin")
 				}
-				password = read
+				if read == "" {
+					// Otherwise an empty pipe signs in with an empty
+					// credential and the site's refusal names the site.
+					return errs.New(errs.CodeUsage, source.flag+" read nothing from stdin")
+				}
+				*source.target = read
 				if methodName == "" {
-					methodName = "password"
+					methodName = source.method
 				}
 			}
 
@@ -189,8 +218,11 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 	cmd.Flags().StringVar(&callback, "callback", "", "a pasted <scheme>://token=... callback URL (manual method)")
 	cmd.Flags().StringVar(&passport, "passport", "", "the passport used to start the login, so the callback can be verified")
 	cmd.Flags().StringVar(&qr, "qr", "", "the decoded content of a login QR code (qr method)")
+	cmd.Flags().BoolVar(&qrStdin, "qr-stdin", false, "read the QR content from stdin")
 	cmd.Flags().StringVar(&sessionCookie, "session-cookie", "",
 		"a session your browser already holds, as MoodleSession=… (browser-session method)")
+	cmd.Flags().BoolVar(&sessionCookieStdin, "session-cookie-stdin", false,
+		"read the browser session from stdin")
 	return cmd
 }
 

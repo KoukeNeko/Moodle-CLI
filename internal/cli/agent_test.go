@@ -241,3 +241,46 @@ func TestAnInterruptedCommandExitsOneThirty(t *testing.T) {
 		t.Errorf("the envelope does not name the interrupt:\n%s", out.String())
 	}
 }
+
+func TestEveryLoginCredentialCanArriveOnStdin(t *testing.T) {
+	// A credential in argv is visible to `ps` and kept in shell history, so
+	// each method's secret needs a way in that is neither that nor a terminal
+	// prompt. Only token and password had one.
+	f := newFixture(t)
+	if _, stderr, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatalf("site add: %s", stderr)
+	}
+	f.server.AddToken("piped-token")
+
+	// The flag implies its method, so --method is not needed as well.
+	stdout, stderr, code := f.runWithStdin("piped-token\n", "auth", "login", "--token-stdin")
+	if code != v1.ExitOK {
+		t.Fatalf("token-stdin: exit %d: %s%s", code, stdout, stderr)
+	}
+
+	// Reading stdin twice would leave the second credential empty, so the
+	// combination is refused rather than silently signing in with nothing.
+	_, stderr, code = f.runWithStdin("x\n", "auth", "login", "--token-stdin", "--qr-stdin")
+	if code != v1.ExitUsage {
+		t.Fatalf("two stdin flags: exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stderr, "--qr-stdin") || !strings.Contains(stderr, "once") {
+		t.Errorf("the refusal should name both flags and why:\n%s", stderr)
+	}
+
+	// An empty pipe is a usage error here, not a credential the site rejects.
+	_, stderr, code = f.runWithStdin("", "auth", "login", "--qr-stdin")
+	if code != v1.ExitUsage || !strings.Contains(stderr, "--qr-stdin") {
+		t.Fatalf("empty pipe: exit %d: %s", code, stderr)
+	}
+
+	// Both new flags exist and imply their method.
+	for _, flag := range []string{"--qr-stdin", "--session-cookie-stdin"} {
+		_, stderr, code := f.runWithStdin("not-a-real-credential\n", "auth", "login", flag)
+		// It reaches the method and fails there on the content, rather than
+		// failing to parse the flag.
+		if code == v1.ExitUsage && strings.Contains(stderr, "unknown flag") {
+			t.Errorf("%s is not a flag: %s", flag, stderr)
+		}
+	}
+}

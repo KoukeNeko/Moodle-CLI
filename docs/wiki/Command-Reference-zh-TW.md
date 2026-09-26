@@ -305,7 +305,9 @@
 | `--passport` | the passport used to start the login, so the callback can be verified |
 | `--password-stdin` | read the password from stdin |
 | `--qr` | the decoded content of a login QR code (qr method) |
+| `--qr-stdin` | read the QR content from stdin |
 | `--session-cookie` | a session your browser already holds, as MoodleSession=… (browser-session method) |
+| `--session-cookie-stdin` | read the browser session from stdin |
 | `--site` | 指定 Moodle 站台 |
 | `--token` | an existing web service token |
 | `--token-stdin` | read the token from stdin |
