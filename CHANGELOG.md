@@ -1,4 +1,66 @@
-# Moodle CLI v0.2.0 — correct dates, page-route reads, quizzes, and an agent-ready surface
+# Moodle CLI v0.2.1 — one command to sign in, and honest gaps
+
+Driven by signing in to a real university Moodle from scratch: an SSO site whose
+session had expired, where every route that worked needed something pasted.
+
+## Added
+
+```sh
+moodle setup https://moodle.example.edu
+```
+
+One command asks the site what it supports, says what its configuration implies,
+lists every login method with its status, names the one that suits the site and
+why, and runs the choice. Two commands were correct and unhelpful: `site add`
+succeeds whatever the site turns out to be, and `auth login` then chooses
+automatically — which skips every method needing a paste, and on an SSO site
+that is every method that works. A student's introduction to the tool was
+"no login method can run without more information".
+
+The suggestion reads the site's own configuration rather than ranking methods in
+the abstract. Measured against a real SSO site, it recommends `browser-session`,
+which is what worked there — and unlike `auth import-session`, that trades the
+session for a token which does not expire with it.
+
+`auth login` now reads the QR content and the browser session from stdin, with
+`--qr-stdin` and `--session-cookie-stdin`. Only the token and password could
+arrive that way; the rest had to travel in argv, where `ps` shows them to anyone
+on the machine and the shell keeps them in history. Passing two stdin flags is
+refused rather than signing in with the second credential empty.
+
+## Fixed
+
+`browser-session` only read a flag, so choosing it from a menu failed with a
+message naming that flag. It now prompts, with the input hidden: a session cookie
+outlives the command, so echoing it would leave it in the terminal's scrollback.
+
+The grade table printed Moodle's own markup. Measured on Moodle 4.5.3: the report
+returns the item name as stored, so a multilang name arrived as one span per
+language, and a scale's mark arrived wrapped in the icon the web UI draws. Both
+were unreadable and both wrecked the column widths. The JSON still passes
+Moodle's rendering through unchanged.
+
+An assignment listing said it was incomplete without saying what was short.
+Moodle answers an activity this account may not read with a warning and a
+complete HTTP 200 — measured on a real site, 11 of a course's 15 assignments
+withheld from a student while the listing reported four. The count is now
+reported, because a module id for an activity you cannot open is not something
+to act on.
+
+## Contract
+
+`schema_version` stays `1`, and nothing was added to it.
+
+ADR-0003 §8 promised that adding a field was compatible and that consumers must
+ignore unknown ones. The schemas never allowed it: 35 of 36 set
+`additionalProperties: false` from the first release, so any addition failed
+validation. The text now matches the implementation rather than the schemas being
+loosened — a closed schema is what catches a consumer's typo, and `--fields`
+refuses an unknown name from the same source. Inside v1, what may be added is a
+new `kind`, a new `reason` value and a new enum value; a note meant for a person
+goes to stderr. A test asserts every published object stays closed.
+
+## v0.2.0 — correct dates, page-route reads, quizzes, and an agent-ready surface
 
 This release was driven by running the previous one against a real university Moodle: a
 Moodle 4.5 site behind SSO that issues no web service token, where every read has to come from the
