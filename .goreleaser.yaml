@@ -22,6 +22,12 @@ before:
     # The arch test reads other packages at run time, so Go's test cache
     # cannot see those inputs and would replay a stale pass.
     - go test -count=1 ./...
+    # Completions for the Linux packages. Generated with `go run` because the
+    # binary these are shipped beside does not exist until the builds below.
+    - mkdir -p completions
+    - sh -c 'go run ./cmd/moodle shell-completion bash > completions/moodle.bash'
+    - sh -c 'go run ./cmd/moodle shell-completion zsh > completions/_moodle'
+    - sh -c 'go run ./cmd/moodle shell-completion fish > completions/moodle.fish'
 
 builds:
   - id: moodle
@@ -59,6 +65,40 @@ archives:
     files:
       - README.md
       - LICENSE
+
+# Linux packages, for a machine with no Homebrew: a university workstation, a
+# lab image, a container. They carry the completions as well, which a tarball
+# cannot install for the user.
+nfpms:
+  - id: moodle
+    ids: [moodle]
+    package_name: moodle-cli
+    # The command is `moodle`; the package is moodle-cli, like the Homebrew
+    # formula and the project itself.
+    file_name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    vendor: KoukeNeko
+    homepage: https://github.com/KoukeNeko/Moodle-CLI
+    maintainer: "KoukeNeko <111033412+KoukeNeko@users.noreply.github.com>"
+    description: |
+      Independent command-line client for Moodle.
+      Reads courses, assignments, quizzes, grades, deadlines and forums, and
+      hands work in through Moodle's own two-step submission, verifying the
+      final state rather than trusting an HTTP 200. Credentials are kept in the
+      OS keychain rather than a configuration file.
+      Moodle is a trademark of Moodle Pty Ltd. This is an independent client,
+      not affiliated with or endorsed by Moodle or Moodle HQ.
+    license: MIT
+    section: utils
+    priority: optional
+    formats: [deb, rpm, apk]
+    contents:
+      - src: completions/moodle.bash
+        dst: /usr/share/bash-completion/completions/moodle
+      - src: completions/_moodle
+        dst: /usr/share/zsh/site-functions/_moodle
+      - src: completions/moodle.fish
+        dst: /usr/share/fish/vendor_completions.d/moodle.fish
 
 checksum:
   name_template: "checksums.txt"

@@ -51,3 +51,6 @@ report-site/.data-app-offline/
 
 # 本機工作日誌：記錄每輪做了什麼，屬個人筆記不入版控
 NOTES.local.md
+
+# goreleaser 產生的 shell 補全檔（發版時重新產生，不入版控）
+/completions/

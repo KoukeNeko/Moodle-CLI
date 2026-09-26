@@ -1,0 +1,110 @@
+name: Install scripts
+
+# The installers are verified against the published release rather than the
+# working tree, so an unrelated code change cannot affect them — and so what is
+# tested is what a student actually runs. Running them on every push would only
+# burn CI minutes and inflate the release download counter, so they run when
+# they change, weekly to catch GitHub or release hosting drifting underneath
+# them, and on demand.
+on:
+  push:
+    paths:
+      - "scripts/install.sh"
+      - "scripts/install.ps1"
+      - "scripts/uninstall.sh"
+      - "scripts/uninstall.ps1"
+      - ".github/workflows/install-scripts.yml"
+  pull_request:
+    paths:
+      - "scripts/install.sh"
+      - "scripts/install.ps1"
+      - "scripts/uninstall.sh"
+      - "scripts/uninstall.ps1"
+      - ".github/workflows/install-scripts.yml"
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install-scripts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Lint the POSIX scripts
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck -s sh scripts/install.sh scripts/uninstall.sh
+
+      - name: Refuse an archive whose digest does not match
+        if: runner.os != 'Windows'
+        run: |
+          set -eu
+          # The guard is the reason this script exists, so it is tested
+          # directly rather than trusted. Sourcing with the lib switch exposes
+          # the functions without installing anything.
+          work="$RUNNER_TEMP/guard"
+          mkdir -p "$work"
+          cd "$work"
+          printf 'real bytes\n' > a.tar.gz
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum a.tar.gz > checksums.txt
+          else
+            shasum -a 256 a.tar.gz > checksums.txt
+          fi
+          export MOODLE_CLI_INSTALL_LIB=1
+          script="$GITHUB_WORKSPACE/scripts/install.sh"
+          sh -c ". '$script'; verify_checksum a.tar.gz checksums.txt"
+          printf 'tampered\n' > a.tar.gz
+          if sh -c ". '$script'; verify_checksum a.tar.gz checksums.txt" 2>/dev/null; then
+            echo "::error::a tampered archive was accepted"; exit 1
+          fi
+          if sh -c ". '$script'; verify_checksum absent.tar.gz checksums.txt" 2>/dev/null; then
+            echo "::error::an archive missing from checksums.txt was accepted"; exit 1
+          fi
+
+      - name: Install and uninstall with the POSIX scripts
+        if: runner.os != 'Windows'
+        run: |
+          set -eu
+          # Guarantee at least one completion directory exists so the
+          # installer's conditional path runs on every runner, then read the
+          # paths back from its own output rather than assuming which candidate
+          # it picked.
+          mkdir -p "$HOME/.local/share/bash-completion/completions"
+          MOODLE_CLI_INSTALL_DIR="$RUNNER_TEMP/bin" sh scripts/install.sh | tee "$RUNNER_TEMP/install.log"
+          "$RUNNER_TEMP/bin/moodle" version --json | grep '"version"'
+          sed -n 's/^Installed .* completion to //p' "$RUNNER_TEMP/install.log" > "$RUNNER_TEMP/completions.txt"
+          # A release older than shell-completion cannot write any, and the
+          # installer says so instead of leaving a broken file. Requiring them
+          # unconditionally would fail against the last release rather than
+          # against these scripts.
+          if "$RUNNER_TEMP/bin/moodle" shell-completion bash >/dev/null 2>&1; then
+            test -s "$RUNNER_TEMP/completions.txt"
+            while read -r file; do test -s "$file"; done < "$RUNNER_TEMP/completions.txt"
+          else
+            echo "::notice::the installed release has no shell-completion command"
+            test ! -s "$RUNNER_TEMP/completions.txt"
+          fi
+          # The uninstaller has to remove exactly what the installer wrote, so
+          # the pair is exercised as a round trip rather than separately.
+          MOODLE_CLI_INSTALL_DIR="$RUNNER_TEMP/bin" sh scripts/uninstall.sh
+          test ! -e "$RUNNER_TEMP/bin/moodle"
+          while read -r file; do test ! -e "$file"; done < "$RUNNER_TEMP/completions.txt"
+
+      - name: Install and uninstall with the PowerShell scripts
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./scripts/install.ps1 -InstallDir "$env:RUNNER_TEMP\bin"
+          & "$env:RUNNER_TEMP\bin\moodle.exe" version --json
+          ./scripts/uninstall.ps1 -InstallDir "$env:RUNNER_TEMP\bin"
+          if (Test-Path "$env:RUNNER_TEMP\bin\moodle.exe") { throw 'the uninstaller left the binary behind' }
