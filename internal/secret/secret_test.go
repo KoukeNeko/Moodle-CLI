@@ -2,6 +2,8 @@ package secret_test
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -105,4 +107,117 @@ func TestKeyringReportsUnavailableKeychainActionably(t *testing.T) {
 	if !strings.Contains(e.Hint, "MOODLE_SESSION") {
 		t.Errorf("hint should name the session variable too, got %q", e.Hint)
 	}
+	// A single run is not a way to stay signed in. The one option that is
+	// has to be named where the failure happens, or nobody finds it.
+	if !strings.Contains(e.Hint, "--credential-store file") {
+		t.Errorf("hint should offer the file store, got %q", e.Hint)
+	}
+}
+
+func TestFileStoreRoundTripsAndStaysPrivate(t *testing.T) {
+	dir := t.TempDir()
+	store := secret.NewFile(filepath.Join(dir, "config.yaml"))
+	token := secret.Ref{SiteID: "s", AccountID: "a", Kind: secret.KindWSToken}
+	session := secret.Ref{SiteID: "s", AccountID: "a", Kind: secret.KindSession}
+
+	if _, err := store.Get(token); !errors.Is(err, secret.ErrNotFound) {
+		t.Fatalf("an empty store should report not found, got %v", err)
+	}
+	if err := store.Set(token, "abc"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set(session, "cookie"); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := store.Get(token); err != nil || value != "abc" {
+		t.Fatalf("Get = %q, %v", value, err)
+	}
+
+	// Other accounts on the machine must not be able to read it.
+	info, err := os.Stat(store.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o600 {
+		t.Errorf("mode = %04o, want 0600", mode)
+	}
+
+	// One credential going away must not take the others with it.
+	if err := store.Delete(token); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := store.Get(session); err != nil || value != "cookie" {
+		t.Fatalf("the session was lost with the token: %q, %v", value, err)
+	}
+	// Deleting what is already gone is a success, as it is for the keychain.
+	if err := store.Delete(token); err != nil {
+		t.Errorf("Delete on a missing entry: %v", err)
+	}
+	// The last one out removes the file rather than leaving something that
+	// looks like it holds credentials.
+	if err := store.Delete(session); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(store.Path); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("an emptied store left a file behind: %v", err)
+	}
+}
+
+func TestAFileStoreRefusesRatherThanDiscardWhatItCannotRead(t *testing.T) {
+	// Rewriting an unreadable file would throw away credentials this build
+	// cannot parse — including another version's.
+	dir := t.TempDir()
+	store := secret.NewFile(filepath.Join(dir, "config.yaml"))
+	if err := os.WriteFile(store.Path, []byte("not json at all"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set(secret.Ref{SiteID: "s", AccountID: "a", Kind: secret.KindWSToken}, "x"); err == nil {
+		t.Fatal("an unreadable store was overwritten")
+	}
+	data, err := os.ReadFile(store.Path)
+	if err != nil || string(data) != "not json at all" {
+		t.Errorf("the file was changed: %q, %v", data, err)
+	}
+}
+
+func TestTheStoreIsChosenWhenACredentialIsUsed(t *testing.T) {
+	// The composition root builds the store before the flag is parsed, so the
+	// choice has to be read per call rather than captured.
+	dir := t.TempDir()
+	chosen := new(secret.Backend)
+	store := secret.Selected{Backend: chosen, ConfigPath: filepath.Join(dir, "config.yaml")}
+	ref := secret.Ref{SiteID: "s", AccountID: "a", Kind: secret.KindWSToken}
+
+	*chosen = secret.BackendFile
+	if err := store.Set(ref, "abc"); err != nil {
+		t.Fatal(err)
+	}
+	if value, err := store.Get(ref); err != nil || value != "abc" {
+		t.Fatalf("Get = %q, %v", value, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, secret.FileName)); err != nil {
+		t.Errorf("nothing was written to the file store: %v", err)
+	}
+}
+
+func TestOnlyKnownCredentialStoresAreAccepted(t *testing.T) {
+	if _, err := secret.ParseBackend("keyring"); err != nil {
+		t.Errorf("keyring: %v", err)
+	}
+	if _, err := secret.ParseBackend("FILE"); err != nil {
+		t.Errorf("case should not matter: %v", err)
+	}
+	err := errs.From(mustFail(t, "pass"))
+	if err.Code != errs.CodeConfiguration || !strings.Contains(err.Hint, "file") {
+		t.Errorf("unknown store: %+v", err)
+	}
+}
+
+func mustFail(t *testing.T, value string) error {
+	t.Helper()
+	backend, err := secret.ParseBackend(value)
+	if err == nil {
+		t.Fatalf("%q was accepted as %q", value, backend)
+	}
+	return err
 }

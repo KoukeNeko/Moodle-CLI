@@ -17,6 +17,7 @@ import (
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
+	"github.com/KoukeNeko/moodle-cli/internal/secret"
 )
 
 // EnvReadOnly turns on read-only mode for the whole process.
@@ -69,6 +70,12 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 	// have been built with their own copy of deps.
 	backend := new(string)
 	deps.Backend = backend
+	credentialStore := new(secret.Backend)
+	if deps.CredentialStore == nil {
+		deps.CredentialStore = credentialStore
+	}
+	credentialStore = deps.CredentialStore
+	var credentialStoreFlag string
 	if deps.Verbose == nil {
 		// Nothing wired a transport to it; the flag still has to parse.
 		deps.Verbose = new(bool)
@@ -90,6 +97,13 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 				// The table is for people and has its own columns; narrowing
 				// it would be a second, unversioned contract.
 				return errs.New(errs.CodeUsage, "--fields requires --json")
+			}
+			if credentialStoreFlag != "" {
+				chosen, err := secret.ParseBackend(credentialStoreFlag)
+				if err != nil {
+					return err
+				}
+				*credentialStore = chosen
 			}
 			renderer.Fields = fields
 			renderer.NoInput = noInput
@@ -124,6 +138,9 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 
 	root.PersistentFlags().BoolVar(&asJSON, "json", false,
 		"emit the versioned JSON contract on stdout")
+	root.PersistentFlags().StringVar(&credentialStoreFlag, "credential-store", "",
+		"where to keep credentials: keyring (default) or file, which is this "+
+			"machine's only option when it has no keychain")
 	root.PersistentFlags().BoolVarP(deps.Verbose, "verbose", "v", false,
 		"print redacted HTTP requests and responses to stderr")
 	root.PersistentFlags().StringSliceVar(&fields, "fields", nil,

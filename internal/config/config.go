@@ -89,6 +89,10 @@ func (a Academic) Validate() error {
 // Preferences are user-facing defaults. Command-line flags always win.
 type Preferences struct {
 	Output string `yaml:"output"`
+	// CredentialStore names where credentials are kept: "keyring" (the
+	// default) or "file". It is a preference rather than a fallback: nothing
+	// switches to a file on its own.
+	CredentialStore string `yaml:"credential_store"`
 
 	Extra map[string]any `yaml:",inline"`
 }

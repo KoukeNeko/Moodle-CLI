@@ -67,9 +67,9 @@ func newAuthImportSessionCommand(r *Renderer, deps Deps) *cobra.Command {
 			return r.Render(Result{
 				Envelope: v1.NewEnvelope("auth.login", status, v1.NewMeta(v1.SourceAJAX)),
 				Human: humanLine(
-					"Stored the browser session for %s as account %q (user %s).\n"+
+					"Stored the browser session for %s as account %q (user %s).%s\n"+
 						"Signing out in the browser may invalidate this session too.",
-					resolved.SiteName, name, userID),
+					resolved.SiteName, name, userID, storedWhere(deps)),
 			})
 		},
 	}

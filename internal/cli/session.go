@@ -14,6 +14,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/quiz"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
+	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/internal/workload"
 	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
@@ -31,6 +32,10 @@ type Deps struct {
 	// browser login. It is injected so the presentation layer never imports a
 	// desktop adapter directly.
 	Handler CallbackHandler
+	// CredentialStore selects where credentials are kept. Like Backend it is
+	// a pointer: the composition root builds the credential store before the
+	// flag has been parsed, and reads the value when one is used.
+	CredentialStore *secret.Backend
 	// Verbose turns on redacted HTTP diagnostics on stderr. Like Backend it
 	// is a pointer: the composition root builds the transport before the flag
 	// has been parsed, and reads the value when a request is actually made.
@@ -127,4 +132,18 @@ func targetSite(name string, entry *config.Site) (site.Site, error) {
 		}
 	}
 	return target, nil
+}
+
+// storedWhere names the store when it is not the operating system's own.
+//
+// The keychain is the default and needs no saying. A file does: it is the
+// user's own choice, it protects only against other accounts on the machine,
+// and knowing which file it is is the difference between being able to remove
+// it and not.
+func storedWhere(deps Deps) string {
+	if deps.CredentialStore == nil || *deps.CredentialStore != secret.BackendFile {
+		return ""
+	}
+	return "\nKept in " + secret.NewFile(deps.ConfigPath).Path +
+		", readable only by this user rather than in a keychain."
 }

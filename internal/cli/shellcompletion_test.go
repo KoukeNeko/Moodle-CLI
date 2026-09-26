@@ -1,10 +1,16 @@
 package cli_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
+	"github.com/KoukeNeko/moodle-cli/internal/moodle"
+	"github.com/KoukeNeko/moodle-cli/internal/secret"
+	"github.com/KoukeNeko/moodle-cli/internal/site"
 )
 
 func TestCompletionCandidatesGoToStdout(t *testing.T) {
@@ -89,5 +95,45 @@ func TestShellCompletionNamesTheShellsItKnows(t *testing.T) {
 		if !strings.Contains(stderr, shell) {
 			t.Errorf("the refusal does not offer %s: %s", shell, stderr)
 		}
+	}
+}
+
+func TestTheFileCredentialStoreKeepsSomeoneSignedIn(t *testing.T) {
+	// The case this exists for: a machine with no keychain, where every
+	// command would otherwise need the credential passed to it again. The
+	// real store is wired in rather than the in-memory one, so the file on
+	// disk is what the second command reads.
+	f := newFixture(t)
+	chosen := new(secret.Backend)
+	f.deps.CredentialStore = chosen
+	store := secret.Selected{Backend: chosen, ConfigPath: f.deps.ConfigPath}
+	manager := auth.NewManager(store, func(target site.Site) *moodle.Client {
+		return moodle.NewClient(target)
+	})
+	f.deps.Auth = manager
+	f.deps.Login = testCoordinator(manager)
+	if _, stderr, code := f.run("site", "add", "school", f.server.URL()); code != 0 {
+		t.Fatalf("site add: %s", stderr)
+	}
+	stdout, stderr, code := f.run("--credential-store", "file", "auth", "login", "--token", "good-token")
+	if code != v1.ExitOK {
+		t.Fatalf("login exit %d: %s", code, stderr)
+	}
+	// Where it went is the difference between being able to remove it and not.
+	if !strings.Contains(stdout, "readable only by this user") {
+		t.Errorf("login did not say where the credential was kept:\n%s", stdout)
+	}
+
+	// A later command finds it, which is the whole point.
+	if stdout, stderr, code := f.run("--credential-store", "file", "auth", "status"); code != v1.ExitOK {
+		t.Fatalf("status exit %d: %s%s", code, stdout, stderr)
+	}
+	// The file itself, at the mode other accounts cannot read.
+	info, err := os.Stat(filepath.Join(filepath.Dir(f.deps.ConfigPath), secret.FileName))
+	if err != nil {
+		t.Fatalf("nothing was written to the file store: %v", err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o600 {
+		t.Errorf("mode = %04o, want 0600", mode)
 	}
 }

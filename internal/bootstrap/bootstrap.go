@@ -80,7 +80,16 @@ func Run(ctx context.Context, build Build, args []string) int {
 		}
 		return moodle.NewClient(target, options...)
 	}
-	manager := auth.NewManager(secret.Keyring{}, newClient)
+	// The store is chosen by a flag parsed after this, and by the
+	// configuration's own preference; both are read when a credential is used.
+	credentialStore := new(secret.Backend)
+	if file, err := config.Load(configPath); err == nil {
+		if chosen, err := secret.ParseBackend(file.Preferences.CredentialStore); err == nil {
+			*credentialStore = chosen
+		}
+	}
+	manager := auth.NewManager(
+		secret.Selected{Backend: credentialStore, ConfigPath: configPath}, newClient)
 	registry, err := wsregistry.Load()
 	if err != nil {
 		renderer := cli.Renderer{Streams: streams, Format: cli.FormatTable}
@@ -264,8 +273,9 @@ func Run(ctx context.Context, build Build, args []string) int {
 			)
 			return server.Serve(ctx)
 		},
-		Interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
-		Verbose:     verbose,
+		Interactive:     func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
+		Verbose:         verbose,
+		CredentialStore: credentialStore,
 	}
 
 	app := cli.New(

@@ -83,6 +83,27 @@ printf '%s' "$PASSWORD" | moodle auth login --site school \
 
 一次性 process 可用 `MOODLE_WS_TOKEN` 或 `MOODLE_SESSION` 覆寫已存憑證，不寫入磁碟或 keychain。
 
+## 沒有 keychain 的機器
+
+Headless Linux、SSH 連線、WSL 與多數容器都沒有 Secret Service，作業系統沒有地方存憑證。登入時會回報
+這件事，並給兩條路：環境變數只撐一次執行，或改用檔案長期保存。
+
+```sh
+moodle --credential-store file auth login --site school --token-stdin
+moodle --credential-store file auth status
+```
+
+不想每次都帶旗標，就把選擇寫進設定：
+
+```yaml
+preferences:
+  credential_store: file
+```
+
+不會自動切換到檔案。檔案是設定檔旁的 `credentials.json`，以 `0600` 建立、目錄 `0700`，`auth login`
+會印出路徑。這隔離同機的其他帳號，但擋不住以同一使用者身分執行的程式。`moodle auth logout` 會移除該
+筆憑證，檔案空了也會一併刪除。
+
 ## 登出
 
 ```sh

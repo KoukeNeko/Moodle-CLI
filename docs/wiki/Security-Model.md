@@ -9,6 +9,12 @@ security boundary is intentionally narrow and visible.
 
 - Tokens and browser sessions are stored in the operating-system keychain under Moodle CLI's own
   entries. The configuration file contains metadata only.
+- A machine with no keychain — headless Linux, SSH, WSL, a container — can keep them in a file
+  instead, with `--credential-store file` or `preferences.credential_store: file`. Nothing switches
+  to a file on its own: the file is `credentials.json` beside the configuration, created `0600` in a
+  `0700` directory, and `auth login` reports the path. Mode `0600` keeps other accounts on the
+  machine out and nothing else — it does not protect against anything running as this user, which is
+  equally true of an unlocked desktop keychain.
 - `MOODLE_WS_TOKEN` and `MOODLE_SESSION` supply an ephemeral credential for one process and take
   precedence over stored credentials.
 - Secrets should enter through stdin or environment variables, not command-line arguments.

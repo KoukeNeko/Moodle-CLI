@@ -172,8 +172,9 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 
 			return r.Render(Result{
 				Envelope: v1.NewEnvelope("auth.login", status, v1.NewMeta(v1.SourceWS)),
-				Human: humanLine("Signed in to %s as %s (%s) using %s.",
-					capabilities.SiteName, capabilities.FullName, capabilities.Username, credential.Method),
+				Human: humanLine("Signed in to %s as %s (%s) using %s.%s",
+					capabilities.SiteName, capabilities.FullName, capabilities.Username,
+					credential.Method, storedWhere(deps)),
 			})
 		},
 	}

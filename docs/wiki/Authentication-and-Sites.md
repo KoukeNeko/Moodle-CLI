@@ -93,6 +93,29 @@ printf '%s' "$PASSWORD" | moodle auth login --site school \
 For an ephemeral process, `MOODLE_WS_TOKEN` and `MOODLE_SESSION` override stored credentials without
 writing them to disk or the keychain.
 
+## Machines with no keychain
+
+A headless Linux box, an SSH session, WSL and most containers have no Secret Service, so there is
+nowhere for the operating system to keep a credential. Signing in reports that, and offers two
+routes: an environment variable for one run, or a file for good.
+
+```sh
+moodle --credential-store file auth login --site school --token-stdin
+moodle --credential-store file auth status
+```
+
+To stop passing the flag, record the choice:
+
+```yaml
+preferences:
+  credential_store: file
+```
+
+Nothing switches to a file on its own. The file is `credentials.json` beside the configuration,
+created `0600` in a `0700` directory, and `auth login` prints its path. That keeps other accounts on
+the machine out; it does not protect against anything running as this user. `moodle auth logout`
+removes the entry, and the file itself once it holds nothing.
+
 ## Logout
 
 ```sh

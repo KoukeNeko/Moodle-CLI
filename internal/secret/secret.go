@@ -110,8 +110,9 @@ func unavailable(cause error, verb string) error {
 	err := errs.Wrap(errs.CodeConfiguration, cause,
 		fmt.Sprintf("cannot %s the OS keychain", verb)).
 		WithReason("keychain_unavailable")
-	const singleRun = "Pass the credential for a single run instead: MOODLE_WS_TOKEN for a token, " +
-		"MOODLE_SESSION for a browser session."
+	const singleRun = "Keep it in a file this user alone can read with " +
+		"`--credential-store file`, or pass it for a single run instead: " +
+		"MOODLE_WS_TOKEN for a token, MOODLE_SESSION for a browser session."
 	if isMissingSecretService(cause) {
 		return err.WithHint(
 			"no keychain is available (headless Linux, SSH or WSL often have none). " + singleRun)
