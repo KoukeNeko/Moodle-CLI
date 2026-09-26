@@ -79,6 +79,13 @@ const (
 	dirMode fs.FileMode = 0o700
 	// fileMode is the near-universal bar for a credential on disk, and what
 	// gh, cargo and gcloud all use.
+	//
+	// Windows has no mode bits: Go maps all but the read-only attribute to
+	// nothing, so a file created with this reports 0666 there. What protects
+	// it on Windows is the ACL its parent inherits — %APPDATA% is per-user —
+	// and Credential Manager is the default store there in any case. The mode
+	// is the guarantee on POSIX and a no-op on Windows; neither the code nor
+	// the documentation should claim otherwise.
 	fileMode fs.FileMode = 0o600
 )
 

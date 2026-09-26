@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -133,12 +134,14 @@ func TestFileStoreRoundTripsAndStaysPrivate(t *testing.T) {
 		t.Fatalf("Get = %q, %v", value, err)
 	}
 
-	// Other accounts on the machine must not be able to read it.
+	// Other accounts on the machine must not be able to read it. Windows has
+	// no mode bits — Go reports 0666 whatever was asked for — and relies on
+	// the parent's ACL, so the guarantee is asserted only where it exists.
 	info, err := os.Stat(store.Path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if mode := info.Mode().Perm(); mode != 0o600 {
+	if mode := info.Mode().Perm(); runtime.GOOS != "windows" && mode != 0o600 {
 		t.Errorf("mode = %04o, want 0600", mode)
 	}
 

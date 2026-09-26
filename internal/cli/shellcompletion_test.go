@@ -3,6 +3,7 @@ package cli_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -128,12 +129,14 @@ func TestTheFileCredentialStoreKeepsSomeoneSignedIn(t *testing.T) {
 	if stdout, stderr, code := f.run("--credential-store", "file", "auth", "status"); code != v1.ExitOK {
 		t.Fatalf("status exit %d: %s%s", code, stdout, stderr)
 	}
-	// The file itself, at the mode other accounts cannot read.
+	// The file itself, at the mode other accounts cannot read. Windows has no
+	// mode bits and leans on the parent directory's ACL instead, so the
+	// guarantee is asserted only where the platform implements it.
 	info, err := os.Stat(filepath.Join(filepath.Dir(f.deps.ConfigPath), secret.FileName))
 	if err != nil {
 		t.Fatalf("nothing was written to the file store: %v", err)
 	}
-	if mode := info.Mode().Perm(); mode != 0o600 {
+	if mode := info.Mode().Perm(); runtime.GOOS != "windows" && mode != 0o600 {
 		t.Errorf("mode = %04o, want 0600", mode)
 	}
 }

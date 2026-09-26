@@ -14,7 +14,8 @@ security boundary is intentionally narrow and visible.
   to a file on its own: the file is `credentials.json` beside the configuration, created `0600` in a
   `0700` directory, and `auth login` reports the path. Mode `0600` keeps other accounts on the
   machine out and nothing else — it does not protect against anything running as this user, which is
-  equally true of an unlocked desktop keychain.
+  equally true of an unlocked desktop keychain. Windows has no mode bits, so there the file relies on
+  the ACL `%APPDATA%` already carries; Credential Manager is the default on that platform anyway.
 - `MOODLE_WS_TOKEN` and `MOODLE_SESSION` supply an ephemeral credential for one process and take
   precedence over stored credentials.
 - Secrets should enter through stdin or environment variables, not command-line arguments.

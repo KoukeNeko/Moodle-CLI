@@ -10,7 +10,8 @@ Moodle CLI 會處理認證資料、連線到學校服務，也能交作業，因
 - 沒有 keychain 的機器（headless Linux、SSH、WSL、容器）可以改存檔案：`--credential-store file`
   或設定 `preferences.credential_store: file`。不會自動切換到檔案；檔案是設定檔旁的
   `credentials.json`，以 `0600` 建立、目錄 `0700`，`auth login` 會回報路徑。`0600` 只隔離同機的其他
-  帳號，擋不住以同一使用者身分執行的程式——已解鎖的桌面 keychain 同樣擋不住。
+  帳號，擋不住以同一使用者身分執行的程式——已解鎖的桌面 keychain 同樣擋不住。Windows 沒有權限位元，
+  該平台依靠 `%APPDATA%` 既有的 ACL；那裡預設本來就是 Credential Manager。
 - `MOODLE_WS_TOKEN` 與 `MOODLE_SESSION` 提供單一 process 的一次性憑證，優先於已存憑證。
 - Secret 應從 stdin 或環境變數傳入，不要放在 command-line argument。
 - `auth logout` 只刪本機副本，不撤銷 Moodle token，因為該 token 可能與官方 mobile app 共用。

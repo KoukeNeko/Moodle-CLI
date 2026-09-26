@@ -63,7 +63,7 @@ timestamp.
 | macOS Keychain | Used by default; not exercised in CI | A hosted runner has no unlocked keychain, so the round trip is covered by an in-memory store and by manual checks, not automatically. |
 | Windows Credential Manager | Used by default; not exercised in CI | As above. |
 | Linux Secret Service (GNOME Keyring, KWallet) | Used by default; not exercised in CI | Verified by hand against GNOME Keyring on 2026-09-26. |
-| A `0600` file | Verified | Opt-in only, with `--credential-store file` or `preferences.credential_store`. For a machine with no keychain: headless Linux, SSH, WSL, a container. Never automatic. |
+| A file, opt-in | Verified on POSIX | `--credential-store file` or `preferences.credential_store`, for a machine with no keychain: headless Linux, SSH, WSL, a container. Never automatic. Created `0600` in a `0700` directory on Linux and macOS. **Windows has no mode bits** — Go maps all but the read-only attribute to nothing — so there the file is protected by the ACL `%APPDATA%` already carries, and Credential Manager is the default store anyway. |
 | `MOODLE_WS_TOKEN` / `MOODLE_SESSION` | Verified | One process, nothing written to disk. |
 
 ## Authentication

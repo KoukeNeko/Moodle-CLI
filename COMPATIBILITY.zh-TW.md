@@ -60,7 +60,7 @@ macOS archive 本質上無法可重現：公證需要安全時間戳。
 | macOS Keychain | 預設使用；CI 未涵蓋 | 託管 runner 沒有已解鎖的 keychain，往返由記憶體儲存與人工檢查覆蓋，不是自動化。 |
 | Windows Credential Manager | 預設使用；CI 未涵蓋 | 同上。 |
 | Linux Secret Service（GNOME Keyring、KWallet） | 預設使用；CI 未涵蓋 | 2026-09-26 以 GNOME Keyring 人工驗證。 |
-| `0600` 檔案 | 已驗證 | 只能主動選用：`--credential-store file` 或 `preferences.credential_store`。給沒有 keychain 的機器：headless Linux、SSH、WSL、容器。永不自動啟用。 |
+| 檔案（主動選用） | POSIX 上已驗證 | `--credential-store file` 或 `preferences.credential_store`，給沒有 keychain 的機器：headless Linux、SSH、WSL、容器。永不自動啟用。在 Linux 與 macOS 以 `0600` 建立、目錄 `0700`。**Windows 沒有權限位元**（Go 只對應唯讀屬性），該平台依靠 `%APPDATA%` 既有的 ACL 保護，而且那裡預設本來就是 Credential Manager。 |
 | `MOODLE_WS_TOKEN`／`MOODLE_SESSION` | 已驗證 | 只在單一 process 有效，不寫入磁碟。 |
 
 ## 登入方式
