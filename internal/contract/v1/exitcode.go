@@ -19,6 +19,14 @@ const (
 	// ExitAmbiguous means the request may already have been applied upstream.
 	// Scripts must treat it as "unknown", never as a plain failure to retry.
 	ExitAmbiguous = 12
+	// ExitInterrupted means the caller stopped the command, with Ctrl-C or
+	// SIGTERM. It follows the shell convention of 128 plus the signal number
+	// rather than taking a place in the table above, because stopping a
+	// command is a decision rather than a way it failed.
+	//
+	// A write that was already in flight reports ExitAmbiguous instead:
+	// Moodle does not undo it because the client stopped listening.
+	ExitInterrupted = 130
 )
 
 var exitByCode = map[errs.Code]int{
@@ -44,6 +52,9 @@ func ExitCode(err error) int {
 	e := errs.From(err)
 	if e.EffectiveOutcome() == errs.OutcomeAmbiguous {
 		return ExitAmbiguous
+	}
+	if e.Reason == errs.ReasonInterrupted {
+		return ExitInterrupted
 	}
 	if code, ok := exitByCode[e.Code]; ok {
 		return code

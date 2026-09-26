@@ -34,6 +34,7 @@ else
     4) echo "signed out: sign in again" >&2 ;;
     5) echo "this account may not read grades" >&2 ;;
     10) echo "network trouble; safe to retry a read" >&2 ;;
+    130) echo "stopped by the user" >&2; exit 130 ;;
     *) printf '%s\n' "$out" | jq -r '.error.message' >&2 ;;
   esac
   exit 1
@@ -42,7 +43,7 @@ fi
 
 使用 `--json` 時錯誤 envelope 也輸出到 stdout，一個串流就能拿到所有結果。完整對照表見
 [JSON 契約](JSON-Contract-zh-TW#exit-code)。對任何會寫入的程式來說最重要的是 `12`：寫入可能已經
-發生，要先回讀物件再決定。
+發生，要先回讀物件再決定。`130` 是呼叫者自己按下的 Ctrl-C，應該往外傳，而不是當成要回報的失敗。
 
 ## 3. 讓 agent 先查、再演練、最後執行
 
@@ -76,6 +77,7 @@ if moodle assignment submit 1436182 hw1.tar.gz --yes --json --no-input > result.
 else
   case $? in
     12) moodle assignment status 1436182 --json --no-input ;;  # 絕不盲目重送
+    130) moodle assignment status 1436182 --json --no-input ;;  # 送出後才 Ctrl-C 會是 12，不是 130
     *)  jq -r '.error.message' result.json >&2; exit 1 ;;
   esac
 fi
@@ -95,7 +97,7 @@ When using the moodle CLI:
   Run safety "read" freely; ask before safety "write".
 - Before reading a null as "none", check meta.missing: a field listed there was not readable.
 - Branch on exit codes and error.code, never on message text. Never retry exit 12:
-  read the object back instead.
+  read the object back instead. Exit 130 is the user's Ctrl-C; stop, do not retry.
 ```
 
 支援 Model Context Protocol 的 agent 也可以改用 `moodle mcp serve`，直接取得結構化結果，不需要經過

@@ -629,7 +629,12 @@ func networkError(ctx context.Context, cause error, function string) error {
 			return errs.Wrap(errs.CodeNetwork, cause,
 				fmt.Sprintf("%s timed out", function)).AsRetryable()
 		}
-		return errs.Wrap(errs.CodeNetwork, cause, "cancelled")
+		// The caller stopped the command. Whether a request already in
+		// flight was applied is not known here and is not claimed: the
+		// layer that knows the call was a write marks it ambiguous.
+		return errs.Wrap(errs.CodeNetwork, cause,
+			fmt.Sprintf("interrupted before %s finished", function)).
+			WithReason(errs.ReasonInterrupted)
 	}
 	message := fmt.Sprintf("cannot reach Moodle for %s", function)
 	hint := ""

@@ -75,9 +75,14 @@ moodle quiz list --current --json --fields name,closes_at
 | 10 | `network` | Transport failure |
 | 11 | `upstream` | Moodle 回傳失敗或無效內容 |
 | 12 | 任意 code、`outcome: ambiguous` | 寫入可能已經發生 |
+| 130 | `network`、`reason: interrupted` | 呼叫者中斷了命令 |
 
 Ambiguous outcome 優先於底層錯誤類別。不要自動重試 exit 12；應回讀受影響的 Moodle object，再依目前
 狀態決定下一步。
+
+Exit `130` 遵循 shell 的 128 加上 signal 編號慣例，刻意不佔用上表的位置：中斷命令是一個決定，不是
+失敗的方式。它的 `code` 仍是 `network`（封閉集合中沒有對應的值），`reason` 為 `interrupted`。若中斷
+發生在**寫入**請求送出之後，回報的是 `12`：Moodle 不會因為客戶端不再等待就取消寫入，必須回讀狀態。
 
 ## Schema 與命令探索
 

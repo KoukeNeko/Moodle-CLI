@@ -36,6 +36,7 @@ else
     4) echo "signed out: sign in again" >&2 ;;
     5) echo "this account may not read grades" >&2 ;;
     10) echo "network trouble; safe to retry a read" >&2 ;;
+    130) echo "stopped by the user" >&2; exit 130 ;;
     *) printf '%s\n' "$out" | jq -r '.error.message' >&2 ;;
   esac
   exit 1
@@ -45,6 +46,7 @@ fi
 With `--json` the error envelope arrives on stdout too, so one stream carries whatever happened. The
 full table is in [JSON contract](JSON-Contract#exit-codes). The code that matters most to anything
 that writes is `12`: the write may already have happened, so read the object back before deciding.
+`130` is the caller's own Ctrl-C — pass it on rather than reporting it as a failure.
 
 ## 3. Let an agent inspect, rehearse, then commit
 
@@ -80,6 +82,7 @@ if moodle assignment submit 1436182 hw1.tar.gz --yes --json --no-input > result.
 else
   case $? in
     12) moodle assignment status 1436182 --json --no-input ;;  # never resend blindly
+    130) moodle assignment status 1436182 --json --no-input ;;  # Ctrl-C after sending is 12, not 130
     *)  jq -r '.error.message' result.json >&2; exit 1 ;;
   esac
 fi
@@ -100,7 +103,7 @@ When using the moodle CLI:
   Run safety "read" freely; ask before safety "write".
 - Before reading a null as "none", check meta.missing: a field listed there was not readable.
 - Branch on exit codes and error.code, never on message text. Never retry exit 12:
-  read the object back instead.
+  read the object back instead. Exit 130 is the user's Ctrl-C; stop, do not retry.
 ```
 
 An agent that speaks the Model Context Protocol can use `moodle mcp serve` instead, which returns

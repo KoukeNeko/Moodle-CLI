@@ -167,3 +167,34 @@ func TestGuardAllowsReads(t *testing.T) {
 		t.Fatal("the read did not run")
 	}
 }
+
+func TestAnInterruptedWriteBecomesAmbiguous(t *testing.T) {
+	// Moodle does not undo a write because the client stopped listening, so
+	// an interrupt after the request was sent leaves the outcome unknown.
+	// Reporting it as a clean failure would let a caller submit twice.
+	interrupted := errs.New(errs.CodeNetwork, "interrupted before it finished").
+		WithReason(errs.ReasonInterrupted)
+
+	guard := safety.Guard{}
+	err := guard.Do(context.Background(), "mod_assign_save_submission",
+		func(context.Context) error { return interrupted })
+	if got := errs.From(err); got.EffectiveOutcome() != errs.OutcomeAmbiguous {
+		t.Errorf("outcome = %v, want ambiguous", got.EffectiveOutcome())
+	} else if got.Hint == "" {
+		t.Error("an ambiguous interrupt should say to read the state back")
+	}
+
+	// A read changed nothing, so the interrupt stays what it was.
+	err = guard.Do(context.Background(), "core_enrol_get_users_courses",
+		func(context.Context) error { return interrupted })
+	if got := errs.From(err); got.EffectiveOutcome() == errs.OutcomeAmbiguous {
+		t.Error("an interrupted read was reported as possibly applied")
+	}
+
+	// An unreviewed function is assumed to write, here as everywhere else.
+	err = guard.Do(context.Background(), "local_unknown_thing",
+		func(context.Context) error { return interrupted })
+	if got := errs.From(err); got.EffectiveOutcome() != errs.OutcomeAmbiguous {
+		t.Errorf("unreviewed: outcome = %v, want ambiguous", got.EffectiveOutcome())
+	}
+}

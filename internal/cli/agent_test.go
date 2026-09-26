@@ -1,11 +1,14 @@
 package cli_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/KoukeNeko/moodle-cli/internal/cli"
 	v1 "github.com/KoukeNeko/moodle-cli/internal/contract/v1"
 )
 
@@ -212,5 +215,29 @@ func TestSchemaDescribesACommandReadOnlyWithholds(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"safety":"write"`) {
 		t.Errorf("a withheld write was not described as one:\n%s", stdout)
+	}
+}
+
+func TestAnInterruptedCommandExitsOneThirty(t *testing.T) {
+	// Ctrl-C used to arrive as exit 10 with a network error, which told a
+	// script the site was unreachable and the read was worth retrying.
+	f := newFixture(t)
+	f.addSiteAndLogin()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var out, errOut bytes.Buffer
+	app := cli.New(
+		cli.BuildInfo{Version: "1.2.3"},
+		cli.Streams{In: strings.NewReader(""), Out: &out, Err: &errOut},
+		f.deps,
+	)
+	code := app.Execute(ctx, []string{"course", "list", "--json"})
+	if code != v1.ExitInterrupted {
+		t.Fatalf("exit %d, want %d\n%s%s", code, v1.ExitInterrupted, out.String(), errOut.String())
+	}
+	validate(t, "error", out.String())
+	if !strings.Contains(out.String(), `"reason":"interrupted"`) {
+		t.Errorf("the envelope does not name the interrupt:\n%s", out.String())
 	}
 }

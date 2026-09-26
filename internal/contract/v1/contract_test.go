@@ -109,3 +109,22 @@ func TestSchemaLookup(t *testing.T) {
 		}
 	}
 }
+
+func TestInterruptedIsOneThirtyAndAmbiguousStillWins(t *testing.T) {
+	// Stopping a command is a decision, not a way it failed, so it sits
+	// outside the code table at the shell's 128 + SIGINT.
+	interrupted := errs.New(errs.CodeNetwork, "interrupted").
+		WithReason(errs.ReasonInterrupted)
+	if got := v1.ExitCode(interrupted); got != v1.ExitInterrupted {
+		t.Errorf("interrupted: exit %d, want %d", got, v1.ExitInterrupted)
+	}
+	// A write cut off after the request was sent may already have been
+	// applied, and that is the case a caller must handle first.
+	if got := v1.ExitCode(interrupted.Ambiguous()); got != v1.ExitAmbiguous {
+		t.Errorf("interrupted write: exit %d, want %d", got, v1.ExitAmbiguous)
+	}
+	// The code stays inside the published enum: adding one would break it.
+	if !interrupted.Code.Valid() {
+		t.Errorf("code %q is not in the closed set", interrupted.Code)
+	}
+}

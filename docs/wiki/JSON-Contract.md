@@ -81,9 +81,16 @@ same true when one is attached.
 | 10 | `network` | transport failure |
 | 11 | `upstream` | Moodle returned an invalid or failed response |
 | 12 | any code, `outcome: ambiguous` | a write may already have happened |
+| 130 | `network`, `reason: interrupted` | the caller stopped the command |
 
 Ambiguous outcome takes precedence over the underlying error class. Do not automatically retry exit
 12. Read the affected Moodle object and decide from its current state.
+
+Exit `130` follows the shell convention of 128 plus the signal number rather than taking a place in
+the table, because stopping a command is a decision rather than a way it failed. Its `code` stays
+`network` — the closed set has no value for it — and `reason` is `interrupted`. An interrupt that cut
+off a **write** after the request was sent reports `12` instead: Moodle does not undo a write because
+the client stopped listening, so the state has to be read back.
 
 ## Schema and command discovery
 

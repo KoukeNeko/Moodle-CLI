@@ -173,9 +173,30 @@ type Guard struct {
 }
 
 // Do runs fn unless the mode forbids the call.
+//
+// An interrupted write is escalated to an ambiguous outcome here, because this
+// is the lowest layer that knows the call was a write: the transport reports
+// the interrupt, and Moodle does not undo a request because the client stopped
+// listening. Marking it known-failed would let a caller repeat a submission.
 func (g Guard) Do(ctx context.Context, function string, fn func(context.Context) error) error {
 	if err := g.Mode.Allow(function); err != nil {
 		return err
 	}
-	return fn(ctx)
+	return AmbiguousIfInterrupted(fn(ctx), Mutates(function))
+}
+
+// AmbiguousIfInterrupted marks an interrupted write as an ambiguous outcome.
+// It is exported for the callers that decide an effect themselves rather than
+// going through a Guard, such as the typed web-service registry.
+func AmbiguousIfInterrupted(err error, mutates bool) error {
+	if err == nil || !mutates {
+		return err
+	}
+	failure := errs.From(err)
+	if failure.Reason != errs.ReasonInterrupted {
+		return err
+	}
+	return failure.Ambiguous().WithHint(
+		"the command was interrupted after the request was sent, so it may " +
+			"already have been applied; read the current state before trying again")
 }

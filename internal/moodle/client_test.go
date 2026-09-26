@@ -198,8 +198,14 @@ func TestCancellationIsNotReportedAsASiteFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("want an error")
 	}
-	if !strings.Contains(errs.From(err).Error(), "cancelled") {
-		t.Errorf("got %q, want it to mention cancellation", errs.From(err).Error())
+	e := errs.From(err)
+	if e.Reason != errs.ReasonInterrupted {
+		t.Errorf("reason = %q, want interrupted (%s)", e.Reason, e.Error())
+	}
+	// Nothing to retry on the caller's own decision to stop, and a read
+	// changed nothing, so the outcome is known.
+	if e.Retryable || e.EffectiveOutcome() == errs.OutcomeAmbiguous {
+		t.Errorf("retryable=%v outcome=%v", e.Retryable, e.EffectiveOutcome())
 	}
 }
 

@@ -64,6 +64,16 @@ const (
 	// reason to wait, never a reason to retry a write: the request may have
 	// been refused before it ran or after.
 	ReasonRateLimited Reason = "rate_limited"
+	// ReasonInterrupted means the caller stopped the command: Ctrl-C or
+	// SIGTERM. It is not a failure of the site, and it is deliberately a
+	// Reason rather than a Code, because stopping a command is a decision
+	// rather than a way it can fail — and Code is a closed set.
+	//
+	// It says nothing about whether a request that was already in flight was
+	// applied. Moodle does not undo a write because the client stopped
+	// listening, so a write interrupted mid-flight is marked ambiguous by the
+	// layer that knows it was a write.
+	ReasonInterrupted Reason = "interrupted"
 	// ReasonTimeout means the thing being waited for never arrived. It is
 	// distinct from a site refusing: nothing was refused, and whether it
 	// would have succeeded is unknown. The contract calls reason an open set

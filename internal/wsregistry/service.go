@@ -110,6 +110,7 @@ func (s *Service) Call(ctx context.Context, capabilities *site.Capabilities, rel
 	}
 
 	response, err := s.caller.Call(ctx, name, params)
+	err = safety.AmbiguousIfInterrupted(err, variant.Effect == EffectWrite)
 	if err != nil {
 		// A write whose response was lost is already marked ambiguous by the
 		// transport. Do not retry it here: Moodle functions have no idempotency

@@ -4,6 +4,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -252,6 +253,12 @@ func classify(err error) error {
 	var e *errs.Error
 	if ok := asError(err, &e); ok {
 		return e
+	}
+	// An interrupt that did not land inside a request arrives unclassified.
+	// Reported as a usage error it would read as a wrong command line.
+	if errors.Is(err, context.Canceled) {
+		return errs.Wrap(errs.CodeNetwork, err, "interrupted").
+			WithReason(errs.ReasonInterrupted)
 	}
 	// Keep the cobra error reachable through Unwrap rather than flattening it
 	// into a string; the short context avoids repeating its text.
