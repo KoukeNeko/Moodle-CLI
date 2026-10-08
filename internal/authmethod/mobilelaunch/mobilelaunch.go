@@ -65,7 +65,7 @@ func New(newClient ClientFactory, broker Broker) *Method {
 func (*Method) Name() string { return "mobilelaunch" }
 
 func (*Method) Describe() string {
-	return "sign in in your browser and have the result come back on its own"
+	return "sign in in your browser, including SSO/OAuth, and receive a Moodle token"
 }
 
 // Probe reports whether this can work at all.

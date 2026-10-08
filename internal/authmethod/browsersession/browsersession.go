@@ -35,7 +35,7 @@ func New(newClient func(site.Site) *moodle.Client, readHidden func() (string, er
 func (*Method) Name() string { return "browser-session" }
 
 func (*Method) Describe() string {
-	return "exchange a session your browser already holds for a token"
+	return "try exchanging a browser session for a token (site settings may refuse)"
 }
 
 // Probe reports whether the exchange could work.

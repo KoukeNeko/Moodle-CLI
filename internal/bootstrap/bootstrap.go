@@ -103,7 +103,7 @@ func Run(ctx context.Context, build Build, args []string) int {
 		// Preference order: least disruptive first. A method that needs the
 		// user to paste something is never chosen automatically.
 		Login: auth.NewCoordinator(manager,
-			token.New(),
+			token.New(readPassword),
 			password.New(newClient, readPassword),
 			// Browser handoff is the SSO path that asks for no credential to
 			// be copied. Its Probe skips it when no handler is installed.

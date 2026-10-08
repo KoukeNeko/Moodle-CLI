@@ -6,6 +6,8 @@ package token
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/auth"
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -13,10 +15,16 @@ import (
 )
 
 // Method signs in with an existing token.
-type Method struct{}
+type Method struct{ readHidden func() (string, error) }
 
 // New builds the method.
-func New() *Method { return &Method{} }
+func New(readHidden ...func() (string, error)) *Method {
+	m := &Method{}
+	if len(readHidden) > 0 {
+		m.readHidden = readHidden[0]
+	}
+	return m
+}
 
 func (*Method) Name() string { return "token" }
 
@@ -30,12 +38,25 @@ func (*Method) Probe(context.Context, site.Site, *auth.PublicConfig) auth.ProbeR
 	return auth.ProbeResult{Availability: auth.Available}
 }
 
-func (*Method) Authenticate(_ context.Context, req auth.Request) (auth.Credential, error) {
-	if req.Token == "" {
-		return auth.Credential{}, errs.New(errs.CodeUsage, "no token given").
-			WithHint("pass --token <token>, or --token-stdin to read it from a pipe")
+func (m *Method) Authenticate(_ context.Context, req auth.Request) (auth.Credential, error) {
+	token := strings.TrimSpace(req.Token)
+	if token == "" {
+		if req.In == nil || m.readHidden == nil {
+			return auth.Credential{}, errs.New(errs.CodeUsage, "no token given").
+				WithHint("use --token-stdin to read an existing token from a pipe; if you do not have one, choose password or a browser login method")
+		}
+		fmt.Fprint(req.Out, "Paste your existing Moodle web service token (input hidden): ")
+		read, err := m.readHidden()
+		fmt.Fprintln(req.Out)
+		if err != nil {
+			return auth.Credential{}, errs.Wrap(errs.CodeUsage, err, "cannot read the token")
+		}
+		token = strings.TrimSpace(read)
+		if token == "" {
+			return auth.Credential{}, errs.New(errs.CodeUsage, "empty token")
+		}
 	}
 	// The token is not checked here: the caller verifies it against the site
 	// before storing it, so an unusable credential never reaches the keychain.
-	return auth.Credential{Token: req.Token, Method: "token"}, nil
+	return auth.Credential{Token: token, Method: "token"}, nil
 }

@@ -124,7 +124,9 @@ func describeSite(w io.Writer, config *auth.PublicConfig) {
 	}
 	if config.EnableMobileWebService != 1 {
 		fmt.Fprintln(w, "\nThis site has mobile web services switched off, so it issues no token.\n"+
-			"A browser session can still read, but nothing can hand work in.")
+			"A browser session can still read, but nothing can hand work in.\n"+
+			"To use this site, try `moodle auth import-browser --store` if signed in\n"+
+			"in a browser, or `moodle auth import-session` to paste its cookie privately.")
 		return
 	}
 	if config.HasIdentityProviders {
@@ -151,23 +153,14 @@ func recommendation(candidates []auth.Candidate, config *auth.PublicConfig) (str
 	switch {
 	case available["mobilelaunch"]:
 		return "mobilelaunch", "your browser signs in and hands the result back on its own"
-	case available["browser-session"] && sso:
-		// One paste, and it ends in a token that outlives the session it came
-		// from — which is what makes it better than import-session here.
-		return "browser-session", "you are signed in through " +
-			"single sign-on already, and this trades that session for a token that does not expire with it"
-	case available["qr"] && sso:
-		return "qr", "it works with single sign-on, and the code is one paste"
 	case available["password"] && !sso:
-		return "password", "this site keeps its own passwords"
-	case available["browser-session"]:
-		return "browser-session", "it reuses the browser you are already signed in to"
-	case available["qr"]:
-		return "qr", "the code is one paste and needs no password"
-	case available["token"]:
-		return "token", "you already have a token to give it"
+		return "password", "this site accepts Moodle passwords and can issue a token for you"
 	case available["manual"]:
-		return "manual", "it is the one that works without anything else in place"
+		return "manual", "you can sign in through the site in a browser and let it issue a token"
+	case available["qr"]:
+		return "qr", "the site can issue a token from a login QR code"
+	case available["browser-session"]:
+		return "browser-session", "a newly signed-in browser session can be exchanged for a token"
 	}
 	return "", ""
 }
@@ -201,6 +194,10 @@ func askForMethod(r *Renderer, out io.Writer, candidates []auth.Candidate, confi
 	// filtered list that looks like the whole set.
 	if suggested != "" {
 		fmt.Fprintf(out, "\nSuggested: %s — %s.\n", suggested, why)
+	}
+	if suggested != "" {
+		fmt.Fprintln(out, "You do not need to find a token first: password and browser login methods ask Moodle to issue one.")
+		fmt.Fprintln(out, "Choose token only if you already have a web service token.")
 	}
 	fmt.Fprintf(out, "Choose a number or a name")
 	if suggested != "" {

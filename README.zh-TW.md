@@ -164,6 +164,13 @@ make install
 moodle setup https://moodle.example.edu
 ```
 
+**使用學校 OAuth／SSO 登入時，不需要先找 token。** `setup` 會依站台設定引導你用瀏覽器登入；
+Moodle 的 mobile launch 流程在登入後核發 Web Service token，CLI 保存並重複使用它。
+這不是 OAuth access token，也沒有 CLI 可自行取得的 refresh token。新核發 token 的有效期限
+由 Moodle 站台設定，Moodle 5.2 預設為 12 週；到期或遭撤銷後需重新登入。若站台關閉
+mobile web services，就無法透過 OAuth 取得 Web Service token，只能匯入瀏覽器 session
+使用支援的唯讀功能。
+
 也可以分步進行——登記站台並檢查可用登入方式：
 
 ```sh
@@ -178,6 +185,11 @@ moodle auth register-handler
 moodle auth login --site school --method mobilelaunch
 ```
 
+macOS／Windows 尚無自動 callback，可用下方的 `manual` 方式在瀏覽器完成同一個
+OAuth／SSO 流程，再貼回 callback 網址。若瀏覽器沒有顯示該網址，可改用
+`moodle auth import-browser --site school --store` 保存瀏覽器 session；這種 session
+不會變成 Web Service token。
+
 所有平台都能使用不需 desktop handler 的手動 callback：
 
 ```sh
@@ -185,6 +197,9 @@ moodle auth login --site school --method manual
 ```
 
 其他明確登入方式：
+
+`--method token` 只適用於**已持有** Web Service token；在終端機執行時可隱藏貼上，
+無需把 token 放進命令列參數。
 
 ```sh
 printf '%s' "$TOKEN" | moodle auth login --site school --token-stdin

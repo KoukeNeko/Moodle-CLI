@@ -186,6 +186,14 @@ The quickest start asks the site what it supports and lets you choose:
 moodle setup https://moodle.example.edu
 ```
 
+For institutional OAuth/SSO, you do not need to obtain a token first. The browser
+signs in to Moodle, then Moodle's mobile launch flow issues a Web Service token
+that the CLI stores and reuses. This is not the OAuth access token, and the CLI
+has no OAuth refresh token. Moodle controls its lifetime: in Moodle 5.2 a newly
+issued token defaults to 12 weeks. Sign in again if it expires or is revoked.
+If the site disables mobile web services, OAuth cannot yield a Web Service token;
+import a browser session for the supported read-only features instead.
+
 Or do it in steps — register a site and inspect its available login methods:
 
 ```sh
@@ -200,6 +208,11 @@ moodle auth register-handler
 moodle auth login --site school --method mobilelaunch
 ```
 
+On macOS and Windows, use the manual callback method below for the same browser
+OAuth/SSO flow. If the browser does not expose the callback URL, explicitly
+import its session with `moodle auth import-browser --site school --store`;
+that session is not converted into a Web Service token.
+
 If the browser exposes the callback URL to copy, the manual flow needs no registered desktop handler:
 
 ```sh
@@ -207,6 +220,9 @@ moodle auth login --site school --method manual
 ```
 
 Other explicit methods include:
+
+Choose `--method token` only when you already have a Web Service token. In a
+terminal, it prompts with hidden input so the token need not appear in argv.
 
 ```sh
 printf '%s' "$TOKEN" | moodle auth login --site school --token-stdin
