@@ -46,10 +46,10 @@ same use cases also back an MCP server whose write tools are absent unless expli
 ### Sign in the way the site allows
 
 Moodle CLI supports an existing token, Moodle username/password, login QR data, a browser session,
-and Moodle's mobile launch flow. On Linux desktops, the mobile flow can open the normal browser and
-receive the result through a per-user D-Bus URL handler. Institutional SSO, passkeys, and MFA remain
-inside the browser where they belong. On macOS, an existing Safari session can be imported explicitly;
-the automatic callback handler is still Linux-only. Windows currently uses the manual callback method.
+and Moodle's mobile launch flow. On macOS and Linux desktops, press Enter to open your normal browser;
+the CLI receives the sign-in result automatically. macOS installs a per-user Apple Event handler on
+first sign-in; Linux uses a registered D-Bus handler. Institutional SSO, passkeys, and MFA remain
+inside the browser. Windows currently uses the manual callback method.
 
 Browser-session import is explicit: `moodle auth import-browser` looks for the requested site's
 session in Safari on macOS, Firefox, or a Chromium-family profile. It never runs as a hidden side
@@ -94,6 +94,11 @@ into an error instead of a hung process, and `moodle schema <command>` reports e
 agent needs to decide whether it may run a command. The wiki's
 [automation recipes](https://github.com/KoukeNeko/Moodle-CLI/wiki/Automation-Recipes) include rules
 to hand an agent.
+
+An agent harness should reuse a working credential before attempting login. Query
+`moodle auth methods --site school --json --no-input` for site support, then choose an explicit
+method based on the credentials and browser access it actually has: `available` does not mean
+unattended. See [choosing authentication for a harness](https://github.com/KoukeNeko/Moodle-CLI/wiki/Authentication-and-Sites#choosing-authentication-for-a-harness).
 
 The typed `ws` registry is generated from disposable installations of Moodle 4.5.12, 5.1.7, and
 5.2.3. It currently describes a 780-function union (759/761/755 functions respectively), retaining
@@ -190,7 +195,12 @@ For institutional OAuth/SSO, you do not need to obtain a token first. The browse
 signs in to Moodle, then Moodle's mobile launch flow issues a Web Service token
 that the CLI stores and reuses. This is not the OAuth access token, and the CLI
 has no OAuth refresh token. Moodle controls its lifetime: in Moodle 5.2 a newly
-issued token defaults to 12 weeks. Sign in again if it expires or is revoked.
+issued token defaults to 12 weeks (84 days), but administrators can change this.
+Moodle may return an existing token on sign-in, so neither signing in again nor
+calling the API resets its expiry. The CLI does not currently report an expiry
+date; eCourse2's actual token expiry was not returned by the APIs checked.
+Sign in again if it expires or is revoked. See
+[token lifetime and signing in again](https://github.com/KoukeNeko/Moodle-CLI/wiki/Authentication-and-Sites#token-lifetime-and-signing-in-again).
 If the site disables mobile web services, OAuth cannot yield a Web Service token;
 import a browser session for the supported read-only features instead.
 
@@ -201,6 +211,13 @@ moodle site add school https://moodle.example.edu
 moodle auth methods --site school
 ```
 
+On macOS, browser sign-in installs its callback handler automatically. Press Enter, complete SSO in
+your browser, and the CLI verifies and stores the returned token:
+
+```sh
+moodle auth login --site school --method mobilelaunch
+```
+
 For a Linux desktop, install the callback handler once and let the normal browser complete SSO:
 
 ```sh
@@ -208,7 +225,7 @@ moodle auth register-handler
 moodle auth login --site school --method mobilelaunch
 ```
 
-On macOS and Windows, use the manual callback method below for the same browser
+On Windows, use the manual callback method below for the same browser
 OAuth/SSO flow. If the browser does not expose the callback URL, explicitly
 import its session with `moodle auth import-browser --site school --store`;
 that session is not converted into a Web Service token.

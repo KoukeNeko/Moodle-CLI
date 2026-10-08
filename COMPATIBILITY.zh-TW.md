@@ -2,7 +2,7 @@
 
 *[English](COMPATIBILITY.md) · **繁體中文***
 
-更新日期：2026-09-27
+更新日期：2026-10-09
 
 下表每一個「已驗證」都有實際跑過的依據：CI job、本專案的測試，或對真實站台量測的紀錄。其餘一律寫明狀態。
 
@@ -45,12 +45,12 @@ schema 分開保留。
 
 | 平台 | 狀態 | 限制 |
 | --- | --- | --- |
-| Linux | 編譯、單元測試與完整 Docker 測試 | 唯一支援自動瀏覽器 callback handler 的平台。 |
-| macOS | CI 編譯與單元測試 | 沒有自動 callback：請用 `auth import-browser`、`auth import-session`，或 `--method manual`／`qr`。Binary 有 Developer ID 簽章與 Apple 公證，並在發布前於真實 macOS 主機對可下載的 archive 驗證。 |
+| Linux | 編譯、單元測試與完整 Docker 測試 | 自動瀏覽器 callback 使用已註冊的 per-user D-Bus handler。 |
+| macOS | CI 編譯與單元測試；本機原生 callback 已驗證 | `mobilelaunch` 首次登入會安裝 per-user Apple Event handler。2026-10-09 已驗證原生 URL 傳遞，以及 eCourse2 SSO、token 與課程讀取完整流程。Binary 有 Developer ID 簽章與 Apple 公證，並在發布前於真實 macOS 主機對可下載的 archive 驗證。 |
 | Windows | CI 編譯與單元測試 | 沒有自動 callback。Chrome、Edge、Brave v20 的 cookie store 無 cgo 無法讀取，因此不支援瀏覽器匯入，請用 `qr` 或 `manual`。**未經 Authenticode 簽章**，SmartScreen 可能警告。 |
 
-Docker Moodle 測試只在 Linux 執行，因此上面與站台互動的行為都是在 Linux 上量測的。macOS 與 Windows
-編譯同一份程式並執行同一套單元與契約測試。
+Docker Moodle 測試只在 Linux 執行。macOS 與 Windows 編譯同一份程式並執行同一套單元與契約測試；
+macOS 瀏覽器 callback 另有上述本機原生測試與真實站台驗證。
 
 建置設定是朝可重現寫的——build date 與檔案時間戳取自 commit 而非發版時間，`-trimpath` 也不留建置者
 路徑——但 CI 目前還沒有重建某個 tag 並比對 digest，所以可重現性是設定的性質，而不是量測到的事實。
@@ -60,7 +60,7 @@ macOS archive 本質上無法可重現：公證需要安全時間戳。
 
 | 位置 | 狀態 | 說明 |
 | --- | --- | --- |
-| macOS Keychain | 預設使用；CI 未涵蓋 | 託管 runner 沒有已解鎖的 keychain，往返由記憶體儲存與人工檢查覆蓋，不是自動化。 |
+| macOS Keychain | 預設使用；CI 未涵蓋 | 託管 runner 沒有已解鎖的 keychain，測試使用記憶體儲存。2026-10-09 已在本機以 eCourse2 驗證 token 保存，以及另一個 CLI process 重複使用。 |
 | Windows Credential Manager | 預設使用；CI 未涵蓋 | 同上。 |
 | Linux Secret Service（GNOME Keyring、KWallet） | 預設使用；CI 未涵蓋 | 2026-09-26 以 GNOME Keyring 人工驗證。需要已解鎖的 collection：在沒有桌面 session 的 SSH 環境下由 D-Bus 啟動的 keyring 會回報自己是鎖住的，錯誤訊息會說明這件事。 |
 | 檔案（主動選用） | POSIX 上已驗證 | `--credential-store file` 或 `preferences.credential_store`，給沒有 keychain 的機器：headless Linux、SSH、WSL、容器。永不自動啟用。在 Linux 與 macOS 以 `0600` 建立、目錄 `0700`。**Windows 沒有權限位元**（Go 只對應唯讀屬性），該平台依靠 `%APPDATA%` 既有的 ACL 保護，而且那裡預設本來就是 Credential Manager。 |
@@ -73,8 +73,8 @@ macOS archive 本質上無法可重現：公證需要安全時間戳。
 | 既有 web service token | 已驗證 | `auth login --token-stdin`。 |
 | Moodle 帳號密碼 | 已驗證 | 僅在站台自己顯示登入表單時可用。 |
 | QR 登入碼 | 真實站台未驗證 | 已實作並有單元測試。Moodle 要求 HTTPS，而 Docker 測試站台是 HTTP，因此沒有端到端驗證。Moodle 把這個碼直接放在使用者自己的個人資料頁，藏在「檢視 QR code」按鈕後面，而且**不會**顯示給站台管理員——見 `admin/tool/mobile/lib.php`。這是唯一會送出 `MoodleMobile` User-Agent 的請求。 |
-| 用瀏覽器 session 換 token | 真實站台已驗證 | `auth login --method browser-session`，也是 `setup` 在 SSO 站台會建議的方式。貼一次 `MoodleSession` cookie 就換成一般的 web service token，且不隨原 session 過期。2026-09-26 在 SSO 後的 Moodle 4.5.3 量測。 |
-| 瀏覽器 SSO 自動 callback | 端到端未驗證 | 這是 `mobilelaunch`，與上面的交換不同：handler 註冊與 callback transaction 在 Linux 有測試，但完整往返需要有 identity provider 的 HTTPS 站台並註冊 handler。ADR-0004 有追蹤。 |
+| 用瀏覽器 session 換 token | 真實站台已驗證 | `auth login --method browser-session`。貼一次新的 `MoodleSession` cookie 就換成一般的 web service token，且不隨原 session 過期。2026-09-26 在 SSO 後的 Moodle 4.5.3 量測。 |
+| 瀏覽器 SSO 自動 callback | macOS 單一真實站台端到端已驗證 | 2026-10-09 已以 `mobilelaunch` 完成 eCourse2 SSO、自動 callback、token 驗證與保存，以及後續 Web Service 課程讀取。原生 Apple Event 傳遞有本機主動啟用的測試；Linux handler 註冊與 callback transaction 有測試，但完整 Linux SSO 往返仍未驗證。eCourse2 token 到期時間仍未知。 |
 | 手動貼上 callback | 已驗證 | 所有平台。 |
 | 匯入瀏覽器 session（Firefox、Safari、Chromium） | Parser 以擷取的真實 store 驗證 | Windows 的 Chrome／Edge／Brave v20 無法讀取；Safari 需要完全磁碟存取權，若磁碟上沒有 cookie 則走 `auth import-session`。 |
 | 貼上 session cookie | 真實站台已驗證 | `auth import-session`，隱藏輸入或 `--stdin`。2026-09-25 在 SSO 後的 Moodle 4.5 量測。 |

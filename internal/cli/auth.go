@@ -141,6 +141,7 @@ func newAuthLoginCommand(r *Renderer, deps Deps) *cobra.Command {
 				in = nil
 			}
 			credential, err := deps.Login.Authenticate(cmd.Context(), auth.Request{
+				Interactive:   !r.NoInput && deps.Interactive != nil && deps.Interactive(),
 				Site:          target,
 				Username:      username,
 				Password:      password,

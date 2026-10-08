@@ -2,7 +2,7 @@
 
 ***English** · [繁體中文](COMPATIBILITY.zh-TW.md)*
 
-Updated: 2026-09-27
+Updated: 2026-10-09
 
 Every "Verified" row below is backed by something that runs: a CI job, a test in this repository, or
 a measurement recorded against a real site. Anything else says so.
@@ -46,12 +46,13 @@ Release archives are pure Go (`CGO_ENABLED=0`) for:
 
 | Platform | Status | Limits |
 | --- | --- | --- |
-| Linux | Builds, unit tests and the full Docker suite | The only platform with the automatic browser callback handler. |
-| macOS | Builds and unit tests in CI | No automatic callback: sign in with `auth import-browser`, `auth import-session`, or `--method manual`/`qr`. Binaries carry a Developer ID signature and Apple notarization, checked against the downloadable archive on a real macOS host before a release is published. |
+| Linux | Builds, unit tests and the full Docker suite | Automatic browser callbacks use a registered per-user D-Bus handler. |
+| macOS | Builds and unit tests in CI; native callback verified locally | `mobilelaunch` installs a per-user Apple Event handler on first sign-in. Native URL delivery and an eCourse2 SSO/token/course-list round trip were verified on 2026-10-09. Binaries carry a Developer ID signature and Apple notarization, checked against the downloadable archive on a real macOS host before a release is published. |
 | Windows | Builds and unit tests in CI | No automatic callback. Chrome, Edge and Brave v20 cookie stores cannot be read without cgo, so browser import is unavailable there; use `qr` or `manual`. **Not Authenticode-signed**, so SmartScreen may warn. |
 
-The Docker-backed Moodle suite runs on Linux only, so the site-facing behaviour above is measured
-there. macOS and Windows compile the same code and run the same unit and contract tests.
+The Docker-backed Moodle suite runs on Linux only. macOS and Windows compile the same code and run
+the same unit and contract tests; the macOS browser callback additionally has local native and real-site
+verification described above.
 
 The build is written to be reproducible — the build date and file timestamps come from the commit,
 not from release time, and `-trimpath` keeps the builder's paths out — but nothing in CI yet rebuilds
@@ -63,7 +64,7 @@ timestamp.
 
 | Where | Status | Notes |
 | --- | --- | --- |
-| macOS Keychain | Used by default; not exercised in CI | A hosted runner has no unlocked keychain, so the round trip is covered by an in-memory store and by manual checks, not automatically. |
+| macOS Keychain | Used by default; not exercised in CI | A hosted runner has no unlocked keychain. Tests use an in-memory store; token persistence and reuse by a separate CLI process were verified locally with eCourse2 on 2026-10-09. |
 | Windows Credential Manager | Used by default; not exercised in CI | As above. |
 | Linux Secret Service (GNOME Keyring, KWallet) | Used by default; not exercised in CI | Verified by hand against GNOME Keyring on 2026-09-26. An unlocked collection is required: a keyring activated over SSH with no desktop session reports itself as locked, and the error says so. |
 | A file, opt-in | Verified on POSIX | `--credential-store file` or `preferences.credential_store`, for a machine with no keychain: headless Linux, SSH, WSL, a container. Never automatic. Created `0600` in a `0700` directory on Linux and macOS. **Windows has no mode bits** — Go maps all but the read-only attribute to nothing — so there the file is protected by the ACL `%APPDATA%` already carries, and Credential Manager is the default store anyway. |
@@ -76,8 +77,8 @@ timestamp.
 | An existing web service token | Verified | `auth login --token-stdin`. |
 | Moodle username and password | Verified | Only where the site shows its own login form. |
 | QR login code | Unverified against a real site | Implemented and unit-tested. Moodle requires HTTPS for it and the Docker test sites are HTTP, so it is untested end to end. Moodle shows the code inline on the user's own profile, behind a "View QR code" button, and never to a site administrator — `admin/tool/mobile/lib.php`. The only request that sends a `MoodleMobile` User-Agent. |
-| Exchanging a browser session for a token | Verified against a real site | `auth login --method browser-session`, which `setup` suggests on an SSO site. One paste of the `MoodleSession` cookie becomes an ordinary web service token that outlives the session it came from. Measured on Moodle 4.5.3 behind SSO, 2026-09-26. |
-| Browser SSO with automatic callback | Unverified end to end | This is `mobilelaunch`, not the exchange above: the handler registration and callback transaction are tested on Linux, but the full round trip needs an HTTPS site with an identity provider and a registered handler. ADR-0004 tracks it. |
+| Exchanging a browser session for a token | Verified against a real site | `auth login --method browser-session`. One paste of a fresh `MoodleSession` cookie becomes an ordinary web service token that outlives the session it came from. Measured on Moodle 4.5.3 behind SSO, 2026-09-26. |
+| Browser SSO with automatic callback | Verified end to end on macOS against one real site | `mobilelaunch` completed eCourse2 SSO, automatic callback, token verification/storage, and a subsequent Web Service course listing on 2026-10-09. Native Apple Event delivery is opt-in tested locally; Linux handler registration and callback transactions are tested, but a full Linux SSO round trip remains unverified. Token expiry for eCourse2 remains unknown. |
 | Manual callback paste | Verified | Every platform. |
 | Importing a browser session (Firefox, Safari, Chromium) | Parsers verified against captured stores | Windows Chrome/Edge/Brave v20 stores are unreadable; Safari needs Full Disk Access, and `auth import-session` is the route when the on-disk cookie is absent. |
 | Pasting a session cookie | Verified against a real site | `auth import-session`, hidden input or `--stdin`. Measured on Moodle 4.5 behind SSO, 2026-09-25. |

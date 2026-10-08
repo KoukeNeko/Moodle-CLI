@@ -4,7 +4,6 @@ package callback
 
 import (
 	"context"
-	"net"
 	"time"
 
 	"github.com/godbus/dbus/v5"
@@ -95,33 +94,6 @@ func ServeCallback(ctx context.Context, scheme, runtimeDir string, wait time.Dur
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-}
-
-// Deliver hands a callback to the process waiting for it.
-//
-// The channel is the one Listen opened: a socket in this user's own runtime
-// directory. If nothing is listening, the callback has nowhere to go and
-// saying so is the whole answer — a handler that swallowed it would leave the
-// other process waiting for something that already arrived.
-func Deliver(runtimeDir, uri string) error {
-	path, err := socketPath(runtimeDir)
-	if err != nil {
-		return err
-	}
-	conn, err := net.DialTimeout("unix", path, 5*time.Second)
-	if err != nil {
-		return errs.New(errs.CodeNotFound,
-			"no sign-in is waiting for this callback on this machine").
-			WithHint("it may have been cancelled, or it may belong to another " +
-				"user's session")
-	}
-	defer conn.Close()
-
-	_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	if _, err := conn.Write([]byte(uri + "\n")); err != nil {
-		return errs.Wrap(errs.CodeUnavailable, err, "cannot hand over the callback")
-	}
-	return nil
 }
 
 // BusNameFor and ObjectPathFor expose what a handler claims, so a test can

@@ -44,9 +44,9 @@ envelope，命令提供 JSON Schema，錯誤則有固定 exit code。同一套 u
 ### 依站台實際能力登入
 
 Moodle CLI 支援既有 token、Moodle 帳密、登入 QR 資料、瀏覽器 session，以及 Moodle mobile launch
-流程。Linux 桌面可以用每位使用者自己的 D-Bus URL handler，開啟平常使用的瀏覽器並自動接回結果；
-學校 SSO、passkey 與 MFA 都留在瀏覽器內完成。macOS 可明確匯入既有 Safari session；自動 callback
-handler 仍只支援 Linux，Windows 目前使用手動 callback 方式。
+流程。macOS 與 Linux 桌面按 Enter 後開啟平常使用的瀏覽器，CLI 自動接回登入結果。
+macOS 首次登入會安裝目前使用者的 Apple Event handler；Linux 使用已註冊的 D-Bus handler。
+學校 SSO、passkey 與 MFA 都留在瀏覽器內完成。Windows 目前使用手動 callback 方式。
 
 匯入瀏覽器 session 必須明確執行：`moodle auth import-browser` 可在 macOS Safari、Firefox 或
 Chromium 系瀏覽器中尋找指定站台的 session，不會成為登入時暗中發生的副作用。Safari 的 cookie 格式
@@ -85,6 +85,11 @@ moodle ws call core_course_get_contents --params-json '{"courseid":42}'
 以及輸入與輸出的 JSON Schema，讓 agent 自己判斷能不能執行。Wiki 的
 [自動化範例](https://github.com/KoukeNeko/Moodle-CLI/wiki/Automation-Recipes-zh-TW)附有可以直接交給
 agent 的規則。
+
+Agent harness 應先重複使用可用的憑證，再考慮登入。執行
+`moodle auth methods --site school --json --no-input` 查詢站台支援，並依已持有的憑證與能否開啟
+瀏覽器明確選擇方法；`available` 不代表可以無人值守。詳見
+[harness 如何選擇登入方式](https://github.com/KoukeNeko/Moodle-CLI/wiki/Authentication-and-Sites-zh-TW#harness-如何選擇登入方式)。
 
 Typed `ws` registry 由拋棄式 Moodle 4.5.12、5.1.7、5.2.3 站台直接產生，目前是 780 個函式的聯集
 （各版 759／761／755）。每個版本的參數與回傳 JSON Schema、transport、effect、capability、deprecated
@@ -167,7 +172,11 @@ moodle setup https://moodle.example.edu
 **使用學校 OAuth／SSO 登入時，不需要先找 token。** `setup` 會依站台設定引導你用瀏覽器登入；
 Moodle 的 mobile launch 流程在登入後核發 Web Service token，CLI 保存並重複使用它。
 這不是 OAuth access token，也沒有 CLI 可自行取得的 refresh token。新核發 token 的有效期限
-由 Moodle 站台設定，Moodle 5.2 預設為 12 週；到期或遭撤銷後需重新登入。若站台關閉
+由 Moodle 站台設定，Moodle 5.2 預設為 12 週（84 天），管理員可以調整。
+重新登入可能取回既有 token，重新登入或持續呼叫 API 都不會讓它的期限重算。
+CLI 目前不回報到期日；已查詢的 eCourse2 API 也未提供這顆 token 的實際到期時間。
+到期或遭撤銷後需重新登入，詳見
+[token 有效期限與重新登入](https://github.com/KoukeNeko/Moodle-CLI/wiki/Authentication-and-Sites-zh-TW#token-有效期限與重新登入)。若站台關閉
 mobile web services，就無法透過 OAuth 取得 Web Service token，只能匯入瀏覽器 session
 使用支援的唯讀功能。
 
@@ -178,6 +187,12 @@ moodle site add school https://moodle.example.edu
 moodle auth methods --site school
 ```
 
+macOS 會自動安裝 callback handler。按 Enter 開啟瀏覽器，完成 SSO 後，CLI 自動驗證並保存 token：
+
+```sh
+moodle auth login --site school --method mobilelaunch
+```
+
 Linux 桌面只需安裝一次 callback handler，之後由一般瀏覽器完成 SSO：
 
 ```sh
@@ -185,7 +200,7 @@ moodle auth register-handler
 moodle auth login --site school --method mobilelaunch
 ```
 
-macOS／Windows 尚無自動 callback，可用下方的 `manual` 方式在瀏覽器完成同一個
+Windows 尚無自動 callback，可用下方的 `manual` 方式在瀏覽器完成同一個
 OAuth／SSO 流程，再貼回 callback 網址。若瀏覽器沒有顯示該網址，可改用
 `moodle auth import-browser --site school --store` 保存瀏覽器 session；這種 session
 不會變成 Web Service token。

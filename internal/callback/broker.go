@@ -3,6 +3,8 @@ package callback
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -21,7 +23,20 @@ func NewBroker(scheme, runtimeDir string) *Broker {
 
 // DefaultBroker uses this tool's scheme and the current desktop session.
 func DefaultBroker() *Broker {
-	return NewBroker(Scheme, os.Getenv("XDG_RUNTIME_DIR"))
+	return NewBroker(Scheme, RuntimeDir())
+}
+
+// RuntimeDir is shared by the waiting CLI and the desktop-activated handler.
+// Launch Services does not inherit a terminal's XDG_RUNTIME_DIR on macOS.
+func RuntimeDir() string {
+	if runtime.GOOS == "darwin" {
+		cache, err := os.UserCacheDir()
+		if err != nil {
+			return ""
+		}
+		return filepath.Join(cache, "moodle-cli-login")
+	}
+	return os.Getenv("XDG_RUNTIME_DIR")
 }
 
 func (b *Broker) Scheme() string { return b.scheme }
@@ -31,11 +46,17 @@ func (b *Broker) Installed() bool { return Status(b.scheme).Installed() }
 
 // OpenAndReceive performs the platform handoff and waits for its reply.
 func (b *Broker) OpenAndReceive(ctx context.Context, address string, wait time.Duration, opened func(bool)) (string, error) {
+	if err := b.prepare(); err != nil {
+		return "", err
+	}
 	listener, err := Listen(b.runtimeDir)
 	if err != nil {
 		return "", err
 	}
 	defer listener.Close()
+	if err := b.prepareHandler(); err != nil {
+		return "", err
+	}
 
 	viaPortal, err := OpenInBrowser(ctx, address)
 	if err != nil {

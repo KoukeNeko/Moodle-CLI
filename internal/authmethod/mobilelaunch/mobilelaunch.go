@@ -14,6 +14,7 @@
 package mobilelaunch
 
 import (
+	"bufio"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -87,11 +88,10 @@ func (m *Method) Probe(_ context.Context, _ site.Site, config *auth.PublicConfig
 		}
 	}
 	if m.broker == nil || !m.broker.Installed() {
-		if runtime.GOOS == "darwin" {
+		if runtime.GOOS == "darwin" && m.broker != nil {
 			return auth.ProbeResult{
-				Availability: auth.Unavailable,
-				Reason: "automatic browser callback is not available on macOS; " +
-					"try `moodle auth import-browser --browser safari --store` after signing in with Safari, or `moodle auth import-session` if the cookie is absent from disk",
+				Availability: auth.Available,
+				Reason:       "the per-user macOS browser handler will be installed when you sign in",
 			}
 		}
 		if runtime.GOOS != "linux" {
@@ -109,12 +109,10 @@ func (m *Method) Probe(_ context.Context, _ site.Site, config *auth.PublicConfig
 }
 
 func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Credential, error) {
-	if m.broker == nil || !m.broker.Installed() {
-		if runtime.GOOS == "darwin" {
-			return auth.Credential{}, errs.New(errs.CodeUnavailable,
-				"automatic browser callback is not available on macOS").
-				WithHint("sign in with Safari, then try `moodle auth import-browser --browser safari --store`; if the cookie is absent from disk, use `moodle auth import-session`")
-		}
+	if err := ctx.Err(); err != nil {
+		return auth.Credential{}, err
+	}
+	if m.broker == nil || (!m.broker.Installed() && runtime.GOOS != "darwin") {
 		if runtime.GOOS != "linux" {
 			return auth.Credential{}, errs.New(errs.CodeUnavailable,
 				"automatic browser callback is not available on "+runtime.GOOS).
@@ -137,6 +135,33 @@ func (m *Method) Authenticate(ctx context.Context, req auth.Request) (auth.Crede
 		return auth.Credential{}, errs.New(errs.CodeConfiguration,
 			"the site's own address is not known yet").
 			WithHint("run `moodle doctor` first, which asks the site for it")
+	}
+	if req.Interactive {
+		if req.In == nil || req.Out == nil {
+			return auth.Credential{}, errs.New(errs.CodeUsage, "browser sign-in needs terminal input and output")
+		}
+		fmt.Fprintf(req.Out, "Sign in to %s in your browser.\n", root)
+		if runtime.GOOS == "darwin" && !m.broker.Installed() {
+			fmt.Fprintln(req.Out, "A browser sign-in handler will be installed in your Applications folder.")
+		}
+		fmt.Fprint(req.Out, "Press Enter to open your browser, or Ctrl+C to cancel: ")
+		read := make(chan error, 1)
+		go func() {
+			_, err := bufio.NewReader(req.In).ReadString('\n')
+			read <- err
+		}()
+		select {
+		case err := <-read:
+			if err != nil {
+				return auth.Credential{}, errs.Wrap(errs.CodeUsage, err, "cannot read the browser sign-in prompt")
+			}
+		case <-ctx.Done():
+			return auth.Credential{}, ctx.Err()
+		}
+		fmt.Fprintln(req.Out)
+	}
+	if err := ctx.Err(); err != nil {
+		return auth.Credential{}, err
 	}
 
 	passport := req.Passport
@@ -209,7 +234,7 @@ func (m *Method) announce(req auth.Request, address string, viaPortal bool) {
 	}
 	fmt.Fprintln(req.Out, "Opening your browser to sign in.")
 	fmt.Fprintln(req.Out, "When you are done there, this will continue on its own.")
-	if !viaPortal {
+	if !viaPortal && runtime.GOOS == "linux" {
 		// The address carries the passport, which ties the callback to this
 		// attempt. The portal takes it as a message; a command takes it as an
 		// argument, and /proc shows arguments to other users on this machine.

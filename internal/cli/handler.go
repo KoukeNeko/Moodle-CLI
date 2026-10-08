@@ -15,19 +15,16 @@ import (
 
 // newAuthRegisterHandlerCommand installs the desktop handler.
 //
-// It is explicit, and asked for by name, because it is not an ephemeral
-// action: it writes files the desktop reads, claims a URL scheme in a
-// namespace nobody owns, and leaves both behind until they are removed. Doing
-// that quietly during a sign-in would be changing someone's desktop because
-// they wanted to read their coursework.
+// Linux requires explicit registration. On macOS browser sign-in can also
+// install the per-user application after announcing it at the Enter prompt.
 func newAuthRegisterHandlerCommand(r *Renderer, handler CallbackHandler) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "register-handler",
 		Short: "Let your browser hand sign-ins back to this tool",
 		Long: "Installs a per-user handler so that, after you sign in through\n" +
 			"your browser, the result comes back here on its own.\n\n" +
-			"It writes two files and asks your desktop to associate a URL\n" +
-			"scheme with them. Nothing needs administrator rights, nothing\n" +
+			"It installs a desktop handler and associates a URL scheme\n" +
+			"with it. Nothing needs administrator rights, nothing\n" +
 			"outside your own account is touched, and `unregister-handler`\n" +
 			"removes exactly what this wrote.",
 		Args: cobra.NoArgs,

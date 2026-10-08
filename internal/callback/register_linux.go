@@ -42,18 +42,6 @@ func objectPath(scheme string) string {
 
 func desktopFileName(scheme string) string { return busName(scheme) + ".desktop" }
 
-// Registration says what is installed and where, so a status command can
-// show it and an uninstall can undo exactly it.
-type Registration struct {
-	Scheme      string
-	DesktopFile string
-	ServiceFile string
-	Executable  string
-	// MIMEDefault is what the desktop says handles this scheme, which may be
-	// something else entirely.
-	MIMEDefault string
-}
-
 func dataHome() string {
 	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
 		return dir

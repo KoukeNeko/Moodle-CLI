@@ -92,5 +92,6 @@ make verify
 
 ## 平台說明
 
-CLI 與手動登入流程可在 Linux、macOS、Windows 建置。自動 browser callback 目前只支援 Linux，
-因為它使用 per-user D-Bus service；其他平台請用 `moodle auth login --method manual`。
+CLI 可在 Linux、macOS、Windows 建置。Linux 自動 callback 使用 per-user D-Bus service；macOS
+使用 Apple Event handler，首次登入以系統內建的 `osacompile` 建立，不需要 Xcode。
+Windows 請用 `moodle auth login --method manual`。

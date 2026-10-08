@@ -106,7 +106,8 @@ func Run(ctx context.Context, build Build, args []string) int {
 			token.New(readPassword),
 			password.New(newClient, readPassword),
 			// Browser handoff is the SSO path that asks for no credential to
-			// be copied. Its Probe skips it when no handler is installed.
+			// be copied. Linux needs prior handler registration; macOS can
+			// install its per-user handler when this method runs.
 			mobilelaunch.New(newClient, callback.DefaultBroker()),
 			qrlogin.New(newClient),
 			// Never chosen automatically: it needs a session cookie handed

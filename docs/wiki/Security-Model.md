@@ -38,7 +38,7 @@ stores it in the OS keychain. The value is not accepted as a command-line argume
 diagnostics. The person running the command must copy the cookie from their own browser; it must
 never be sent in a screenshot, chat, or issue.
 
-## Linux callback handler
+## Browser callback handlers
 
 The automatic mobile-launch callback uses per-user desktop and D-Bus service files. D-Bus activation
 keeps the token-bearing callback out of `/proc/<pid>/cmdline`. A callback is accepted only when it:
@@ -48,8 +48,11 @@ keeps the token-bearing callback out of `/proc/<pid>/cmdline`. A callback is acc
 3. has not already been claimed; and
 4. contains a token the target Moodle site accepts.
 
-macOS and Windows do not install a partial or unverified handler; they return an explicit unsupported
-error and direct the user to the manual flow.
+On macOS, a per-user application receives the URL as an Apple Event and sends it to the CLI through an
+anonymous stdin pipe. It never writes the token to a temporary file or a process argument. The CLI
+forwards it through the same private Unix socket and transaction checks as Linux. The locally compiled
+application is signed ad hoc; the release binary retains its separate release signing.
+Windows automatic callbacks remain unsupported.
 
 ## Network and writes
 

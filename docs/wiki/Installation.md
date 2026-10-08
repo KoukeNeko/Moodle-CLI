@@ -98,6 +98,6 @@ sites; see [Development and testing](Development-and-Testing).
 
 ## Platform note
 
-The CLI and manual login flow build on Linux, macOS, and Windows. The automatic browser callback
-handler is currently Linux-only because it uses a per-user D-Bus service. Other platforms should use
-`moodle auth login --method manual`.
+The CLI builds on Linux, macOS, and Windows. Automatic browser callbacks use a per-user D-Bus service
+on Linux and an Apple Event handler on macOS. macOS builds its handler with the system's `osacompile`
+on first sign-in, without requiring Xcode. Windows should use `moodle auth login --method manual`.

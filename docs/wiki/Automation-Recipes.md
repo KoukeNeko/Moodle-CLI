@@ -8,6 +8,10 @@ is read, `--no-input` so nothing waits for a prompt, and exit codes to decide wh
 `--read-only` (or set `MOODLE_CLI_READ_ONLY=1`) to anything that only reads: a mistake then cannot
 reach the site.
 
+Before choosing a login method, follow the
+[harness authentication decision table](Authentication-and-Sites#choosing-authentication-for-a-harness).
+It distinguishes reusing credentials, unattended exchanges, and browser sign-in requiring a person.
+
 ## 1. This term's deadlines, in order
 
 ```sh
@@ -98,6 +102,14 @@ Put these in whatever your agent reads before it works — `AGENTS.md`, `CLAUDE.
 ```text
 When using the moodle CLI:
 - Always pass --json --no-input. Add --read-only unless the task is to change something.
+- Check `auth status` for the intended site/account first; reuse a working credential.
+- Before login, query `auth methods --json --no-input`. Combine name/availability
+  with supplied credentials and browser/human access; available is not unattended.
+- Choose --method explicitly. For headless SSO without a credential, stop and
+  report that a person must provision one. Do not run setup or mobilelaunch:
+  mobilelaunch --no-input still opens a browser and waits for a callback.
+- Never log credentials or request them in chat; accept secrets through secure
+  stdin or environment injection. On authentication exit 4, stop dependent work.
 - Use --fields for only the fields you read; an unknown name is refused with the real ones.
 - Before running a command you have not used, run `moodle schema <command> --json`.
   Run safety "read" freely; ask before safety "write".

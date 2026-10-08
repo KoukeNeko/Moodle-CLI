@@ -6,6 +6,8 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -84,14 +86,16 @@ func TestMissingHandlerHintMatchesThePlatform(t *testing.T) {
 	method := New(testClient, &fakeBroker{})
 	config := &auth.PublicConfig{EnableMobileWebService: 1}
 	got := method.Probe(context.Background(), site.Site{}, config)
+	if runtime.GOOS == "darwin" {
+		if got.Availability != auth.Available || !strings.Contains(got.Reason, "will be installed") {
+			t.Fatalf("macOS should offer automatic handler installation: %+v", got)
+		}
+		return
+	}
 	if got.Availability != auth.Unavailable {
 		t.Fatalf("availability = %q, want unavailable", got.Availability)
 	}
 	switch runtime.GOOS {
-	case "darwin":
-		if !strings.Contains(got.Reason, "--browser safari") || strings.Contains(got.Reason, "register-handler") {
-			t.Fatalf("macOS hint should offer Safari, not an unsupported handler: %q", got.Reason)
-		}
 	case "linux":
 		if !strings.Contains(got.Reason, "register-handler") {
 			t.Fatalf("Linux hint should offer the handler: %q", got.Reason)
@@ -133,5 +137,62 @@ func TestTheBrokerOwnsTheDesktopHandoff(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Opening your browser") {
 		t.Errorf("the user was not told the browser opened: %q", out.String())
+	}
+}
+
+func TestInteractiveSignInWaitsForEnterBeforeOpeningBrowser(t *testing.T) {
+	for _, input := range []string{"", "\n"} {
+		broker := &fakeBroker{installed: true, reply: "not a callback"}
+		method := New(testClient, broker)
+		var out bytes.Buffer
+		_, err := method.Authenticate(context.Background(), auth.Request{
+			Interactive: true, WWWRoot: "https://moodle.example.edu",
+			In: strings.NewReader(input), Out: &out,
+		})
+		if err == nil {
+			t.Fatal("synthetic callback should fail validation")
+		}
+		if !strings.Contains(out.String(), "Press Enter") {
+			t.Fatalf("missing Enter prompt: %q", out.String())
+		}
+		if opened := broker.address != ""; opened != (input == "\n") {
+			t.Fatalf("input %q opened browser: %v", input, opened)
+		}
+	}
+}
+
+type cancelPromptReader struct {
+	cancel  context.CancelFunc
+	release <-chan struct{}
+}
+
+func (r cancelPromptReader) Read([]byte) (int, error) {
+	r.cancel()
+	<-r.release
+	return 0, io.EOF
+}
+
+func TestCtrlCCancelsTheEnterPromptWithoutOpeningBrowser(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	release := make(chan struct{})
+	defer close(release)
+	broker := &fakeBroker{installed: true}
+	method := New(testClient, broker)
+	done := make(chan error, 1)
+	go func() {
+		_, err := method.Authenticate(ctx, auth.Request{
+			Interactive: true, WWWRoot: "https://moodle.example.edu",
+			In: cancelPromptReader{cancel: cancel, release: release}, Out: io.Discard,
+		})
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) || broker.address != "" {
+			t.Fatalf("cancelled sign-in = %v, browser address = %q", err, broker.address)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Ctrl+C did not cancel the Enter prompt")
 	}
 }

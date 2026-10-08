@@ -32,7 +32,9 @@ type ProbeResult struct {
 
 // Request carries what a method needs from the caller.
 type Request struct {
-	Site site.Site
+	// Interactive enables terminal prompts; unattended callers never pause.
+	Interactive bool
+	Site        site.Site
 	// WWWRoot is the site's canonical root as Moodle reports it. Callback
 	// hashes are computed over this, which is not always the URL the user
 	// typed.

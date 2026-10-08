@@ -53,7 +53,7 @@ func (desktopHandler) Serve(ctx context.Context, scheme string) error {
 		return err
 	}
 	return callback.ServeCallback(ctx, scheme,
-		os.Getenv("XDG_RUNTIME_DIR"), 2*time.Minute)
+		callback.RuntimeDir(), 2*time.Minute)
 }
 
 func presentHandler(reg callback.Registration) cli.HandlerRegistration {

@@ -28,7 +28,7 @@ Moodle session 會被回傳或保存，任何 cookie 都不寫入 log。指定 `
 `--stdin` 時才從管線讀取。CLI 向所選 Moodle 驗證成功後才存入作業系統鑰匙圈。Cookie 值不能放在命令參數，
 錯誤訊息也不會回顯。只能從自己的瀏覽器複製，絕對不要放進截圖、聊天或 issue。
 
-## Linux callback handler
+## 瀏覽器 callback handler
 
 自動 mobile-launch callback 使用 per-user desktop 與 D-Bus service file。D-Bus activation 讓含 token 的
 callback 不出現在 `/proc/<pid>/cmdline`。只有同時符合以下條件才接受 callback：
@@ -38,7 +38,10 @@ callback 不出現在 `/proc/<pid>/cmdline`。只有同時符合以下條件才�
 3. 從未被 claim；
 4. 其中 token 確實被目標 Moodle 接受。
 
-macOS 與 Windows 不安裝半套、未驗證的 handler，而是明確回報未支援並導向 manual flow。
+macOS 使用目前使用者的 application 接收 Apple Event，透過匿名 stdin pipe 傳給 CLI，
+不把 token 寫進暫存檔或 process argument。CLI 沿用 Linux 的私人 Unix socket 與 transaction 驗證。
+本機編譯的 application 使用 ad hoc 簽章，release binary 的發行簽章獨立保留。
+Windows 自動 callback 仍未支援。
 
 ## 網路與寫入
 

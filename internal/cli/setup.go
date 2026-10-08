@@ -101,8 +101,9 @@ func newSetupCommand(r *Renderer, deps Deps) *cobra.Command {
 
 			fmt.Fprintf(out, "\n")
 			credential, err := deps.Login.Authenticate(cmd.Context(), auth.Request{
-				Site: target,
-				In:   cmd.InOrStdin(),
+				Interactive: true,
+				Site:        target,
+				In:          cmd.InOrStdin(),
 				// Prompts are diagnostics: stdout carries the result only.
 				Out: out,
 			}, choice)

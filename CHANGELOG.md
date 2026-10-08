@@ -1,4 +1,40 @@
-# Moodle CLI v0.2.1 — one command to sign in, and honest gaps
+# Moodle CLI v0.3.0 — automatic browser sign-in on macOS
+
+## Added
+
+```sh
+moodle auth login --site school --method mobilelaunch
+```
+
+On macOS, press Enter to open the normal browser, complete institutional SSO, and let the CLI
+receive, verify, and save Moodle's Web Service token automatically. First sign-in installs a
+per-user URL handler in `~/Applications` using macOS's built-in AppleScript compiler; Xcode and
+manual callback copying are not required. Linux retains its registered D-Bus callback handler.
+
+The macOS helper receives an Apple Event and passes the callback through an anonymous stdin pipe
+and a private Unix socket. Token-bearing URLs are kept out of handler process arguments and
+temporary files. Registration preserves unrelated applications, supports repeated registration,
+and restores the previous helper if an update fails. The locally compiled helper is signed ad hoc;
+the distributed CLI retains Developer ID signing and Apple notarization.
+
+## Documentation and limitations
+
+The English and Traditional Chinese README and handbook now explain the separate OAuth and mobile
+callbacks, token lifetime, signing in again, and choosing authentication for an agent harness.
+Harness guidance covers reusing credentials, explicit login methods, secure stdin/environment
+inputs, desktop browser sign-in, and headless credential provisioning.
+
+An eCourse2 browser sign-in and subsequent Web Service course listing were verified on 2026-10-09.
+Its actual token expiry was not exposed by the APIs checked; Moodle's default token duration is
+not a confirmed expiry for that site. The CLI has no automatic token refresh or remote/device-code
+login flow. Windows automatic callbacks remain unsupported. `mobilelaunch --no-input` skips the
+Enter prompt but still requires a browser sign-in and callback, so it is not a headless login mode.
+
+## Contract
+
+`schema_version` stays `1`; no fields were added to the JSON contract.
+
+## v0.2.1 — one command to sign in, and honest gaps
 
 Driven by signing in to a real university Moodle from scratch: an SSO site whose
 session had expired, where every route that worked needed something pasted.

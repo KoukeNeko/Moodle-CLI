@@ -7,6 +7,10 @@
 發生了什麼。只讀取的操作請加上 `--read-only`（或設定 `MOODLE_CLI_READ_ONLY=1`），這樣即使出錯也碰不到
 站台。
 
+選擇登入方式前，先依照
+[harness 登入選擇表](Authentication-and-Sites-zh-TW#harness-如何選擇登入方式)，區分重複使用憑證、
+無人值守的憑證交換，以及需要人接手的瀏覽器登入。
+
 ## 1. 這學期的截止日，依時間排序
 
 ```sh
@@ -92,6 +96,14 @@ fi
 ```text
 When using the moodle CLI:
 - Always pass --json --no-input. Add --read-only unless the task is to change something.
+- Check `auth status` for the intended site/account first; reuse a working credential.
+- Before login, query `auth methods --json --no-input`. Combine name/availability
+  with supplied credentials and browser/human access; available is not unattended.
+- Choose --method explicitly. For headless SSO without a credential, stop and
+  report that a person must provision one. Do not run setup or mobilelaunch:
+  mobilelaunch --no-input still opens a browser and waits for a callback.
+- Never log credentials or request them in chat; accept secrets through secure
+  stdin or environment injection. On authentication exit 4, stop dependent work.
 - Use --fields for only the fields you read; an unknown name is refused with the real ones.
 - Before running a command you have not used, run `moodle schema <command> --json`.
   Run safety "read" freely; ask before safety "write".
