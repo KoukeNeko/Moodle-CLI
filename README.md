@@ -1,3 +1,6 @@
+<img width="960" height="540" alt="2c-misregister-agent-960x540-12fps-light" src="https://github.com/user-attachments/assets/a78af2e8-e572-49e0-8c9d-ef9bb9615cdf" />
+
+
 <h1 align="center">Moodle CLI</h1>
 
 <p align="center">
