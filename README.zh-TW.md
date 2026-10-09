@@ -23,6 +23,10 @@
   · <a href="docs/architecture.md">架構</a>
 </p>
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/a78af2e8-e572-49e0-8c9d-ef9bb9615cdf" width="800" alt="Moodle CLI 示範：CLI 顯示還沒交的作業、在聊天中詢問 agent 並找出它、把檔案拖進去、由 CLI 交件，最後 Moodle 確認已繳交。">
+</p>
+
 ```sh
 moodle course list
 moodle calendar upcoming
@@ -163,11 +167,22 @@ make build
 make install
 ```
 
+### 登入
+
 最快的開始方式是讓它去問站台支援什麼，再由你選擇：
 
 ```sh
 moodle setup https://moodle.example.edu
 ```
+
+也可以分步進行——登記站台並檢查可用登入方式：
+
+```sh
+moodle site add school https://moodle.example.edu
+moodle auth methods --site school
+```
+
+#### 瀏覽器登入（學校 SSO）
 
 **使用學校 OAuth／SSO 登入時，不需要先找 token。** `setup` 會依站台設定引導你用瀏覽器登入；
 Moodle 的 mobile launch 流程在登入後核發 Web Service token，CLI 保存並重複使用它。
@@ -179,13 +194,6 @@ CLI 目前不回報到期日；已查詢的 eCourse2 API 也未提供這顆 toke
 [token 有效期限與重新登入](https://github.com/KoukeNeko/Moodle-CLI/wiki/Authentication-and-Sites-zh-TW#token-有效期限與重新登入)。若站台關閉
 mobile web services，就無法透過 OAuth 取得 Web Service token，只能匯入瀏覽器 session
 使用支援的唯讀功能。
-
-也可以分步進行——登記站台並檢查可用登入方式：
-
-```sh
-moodle site add school https://moodle.example.edu
-moodle auth methods --site school
-```
 
 macOS 會自動安裝 callback handler。按 Enter 開啟瀏覽器，完成 SSO 後，CLI 自動驗證並保存 token：
 
@@ -211,10 +219,10 @@ OAuth／SSO 流程，再貼回 callback 網址。若瀏覽器沒有顯示該網�
 moodle auth login --site school --method manual
 ```
 
-其他明確登入方式：
+#### 其他登入方式
 
 `--method token` 只適用於**已持有** Web Service token；在終端機執行時可隱藏貼上，
-無需把 token 放進命令列參數。
+無需把 token 放進命令列參數。其他明確登入方式的範例：
 
 ```sh
 printf '%s' "$TOKEN" | moodle auth login --site school --token-stdin
@@ -225,6 +233,8 @@ moodle auth import-browser --site school --store
 # macOS：匯入已在 Safari 登入的 session
 moodle auth import-browser --site school --browser safari --store
 ```
+
+#### 憑證存放位置
 
 憑證存在作業系統 keychain；設定檔只保存站台與帳號中繼資料，不保存 token 或 browser session。
 CI 的一次性執行可以用 `MOODLE_WS_TOKEN` 或 `MOODLE_SESSION`，完全不落地保存。完全沒有 keychain 的
@@ -310,8 +320,8 @@ Docker 完整測試只宣稱以下實際驗證過的版本：
 RSS、HTTP requests 與磁碟。Image bootstrap 完成後，Moodle scale 容器不能連公網。Moodle 5.2.3
 自身要求 PostgreSQL 16，因此使用最低相容版本，不繞過環境檢查。
 
-Release build 目標為 Linux、macOS、Windows 的 amd64 與 arm64。現在只有 Linux 實作自動 browser
-callback handler；CLI 與手動登入路徑會在三種作業系統建置與測試。
+Release build 目標為 Linux、macOS、Windows 的 amd64 與 arm64。macOS 與 Linux 有自動 browser
+callback handler，Windows 使用手動 callback；CLI 與手動登入路徑會在三種作業系統建置與測試。
 
 ## 開發
 

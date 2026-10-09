@@ -1,6 +1,3 @@
-<img width="960" height="540" alt="2c-misregister-agent-960x540-12fps-light" src="https://github.com/user-attachments/assets/a78af2e8-e572-49e0-8c9d-ef9bb9615cdf" />
-
-
 <h1 align="center">Moodle CLI</h1>
 
 <p align="center">
@@ -24,6 +21,10 @@
   · <a href="https://koukeneko.github.io/Moodle-CLI/">Verification dashboard</a>
   · <a href="test/e2e/README.md">Test lab</a>
   · <a href="docs/architecture.md">Architecture</a>
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/a78af2e8-e572-49e0-8c9d-ef9bb9615cdf" width="800" alt="Moodle CLI demo: the CLI shows the assignment that still needs handing in, an agent in a chat finds it, a file is dragged in, the CLI submits it, and Moodle confirms it was handed in.">
 </p>
 
 ```sh
@@ -188,11 +189,22 @@ Install it to `~/.local/bin`:
 make install
 ```
 
+### Sign in
+
 The quickest start asks the site what it supports and lets you choose:
 
 ```sh
 moodle setup https://moodle.example.edu
 ```
+
+Or do it in steps — register a site and inspect its available login methods:
+
+```sh
+moodle site add school https://moodle.example.edu
+moodle auth methods --site school
+```
+
+#### Browser sign-in (institutional SSO)
 
 For institutional OAuth/SSO, you do not need to obtain a token first. The browser
 signs in to Moodle, then Moodle's mobile launch flow issues a Web Service token
@@ -206,13 +218,6 @@ Sign in again if it expires or is revoked. See
 [token lifetime and signing in again](https://github.com/KoukeNeko/Moodle-CLI/wiki/Authentication-and-Sites#token-lifetime-and-signing-in-again).
 If the site disables mobile web services, OAuth cannot yield a Web Service token;
 import a browser session for the supported read-only features instead.
-
-Or do it in steps — register a site and inspect its available login methods:
-
-```sh
-moodle site add school https://moodle.example.edu
-moodle auth methods --site school
-```
 
 On macOS, browser sign-in installs its callback handler automatically. Press Enter, complete SSO in
 your browser, and the CLI verifies and stores the returned token:
@@ -239,10 +244,11 @@ If the browser exposes the callback URL to copy, the manual flow needs no regist
 moodle auth login --site school --method manual
 ```
 
-Other explicit methods include:
+#### Other login methods
 
 Choose `--method token` only when you already have a Web Service token. In a
 terminal, it prompts with hidden input so the token need not appear in argv.
+Examples of the explicit methods:
 
 ```sh
 printf '%s' "$TOKEN" | moodle auth login --site school --token-stdin
@@ -256,6 +262,8 @@ moodle auth import-browser --site school --browser safari --store
 # hidden-input prompt after copying MoodleSession's value in Web Inspector:
 moodle auth import-session --site school
 ```
+
+#### Where credentials are kept
 
 Credentials are kept in the operating-system keychain. Configuration stores site and account
 metadata, never tokens or browser sessions. For an ephemeral CI run, use `MOODLE_WS_TOKEN` or
@@ -350,9 +358,9 @@ recording latency, peak RSS, HTTP requests, and disk use. The scale container ha
 after its image bootstrap completes. Moodle 5.2.3 requires PostgreSQL 16, so the profile uses that
 minimum instead of bypassing Moodle's environment check.
 
-Release builds target Linux, macOS, and Windows on amd64 and arm64. Linux is the only platform with
-the automatic browser callback handler today; the CLI and manual authentication paths build and test
-on all three operating systems.
+Release builds target Linux, macOS, and Windows on amd64 and arm64. macOS and Linux have an
+automatic browser callback handler; Windows uses the manual callback method. The CLI and manual
+authentication paths build and test on all three operating systems.
 
 ## Development
 
