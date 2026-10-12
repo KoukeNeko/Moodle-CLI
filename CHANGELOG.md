@@ -63,6 +63,12 @@ from before for `mcp serve`:
   restart, and the credential hint says a credential supplied through `MOODLE_WS_TOKEN` or
   `MOODLE_SESSION` is only replaced by restarting.
 
+## Fixed
+
+Values in page requests are now URL-encoded. A course or activity reference containing `&`, `#`, a
+space or `%` used to be pasted into the query string of a request that carries the browser session,
+so it could add parameters or change the request; one with a space produced a malformed request.
+
 ## New-release notice
 
 At an interactive terminal, a command that succeeds prints one notice on stderr when a newer release

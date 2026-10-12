@@ -3,6 +3,7 @@ package moodle
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
@@ -30,11 +31,15 @@ func NewPageReader(client *Client, cookie SessionCookie) *PageReader {
 func (p *PageReader) Get(ctx context.Context, path string, query map[string]string) (string, error) {
 	endpoint := p.client.Site().Endpoint(path)
 	if len(query) > 0 {
-		values := make([]string, 0, len(query))
+		// Encoded, because a value can come from a caller that is not trusted
+		// with this session: an `&` or `#` in a course reference would
+		// otherwise add parameters to, or cut short, a request that carries the
+		// browser session's cookie.
+		values := make(url.Values, len(query))
 		for name, value := range query {
-			values = append(values, name+"="+value)
+			values.Set(name, value)
 		}
-		endpoint += "?" + strings.Join(values, "&")
+		endpoint += "?" + values.Encode()
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
