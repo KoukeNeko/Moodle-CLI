@@ -115,22 +115,47 @@ func Run(ctx context.Context, build Build, args []string) int {
 	// connected.
 	mcpTools := func(session cli.MCPSession) *mcp.Registry {
 		client, token := session.Session.Client(), session.Session.Token()
+		courseBackends := []course.Backend{
+			moodle.NewCourseBackend(client, token, session.Capabilities),
+		}
+		assignmentBackends := []assignment.Backend{
+			moodle.NewAssignmentBackend(client, token),
+		}
+		quizBackends := []quiz.Backend{
+			moodle.NewQuizBackend(client, token, session.Capabilities),
+		}
+		cookie := session.Session.Cookie()
+		if cookie.Value != "" {
+			ajax := moodle.NewAjaxSession(client, cookie)
+			pages := moodle.NewPageReader(client, cookie)
+			listCourses := func(ctx context.Context) ([]course.Summary, error) {
+				result, err := moodle.NewCourseAjaxBackend(ajax).List(ctx, course.ListQuery{})
+				return result.Courses, err
+			}
+			courseBackends = append(courseBackends, moodle.NewCourseAjaxBackend(ajax))
+			assignmentBackends = append(assignmentBackends,
+				moodle.NewAssignHTMLBackend(pages, ajax, listCourses))
+			quizBackends = append(quizBackends,
+				moodle.NewQuizHTMLBackend(pages, ajax, listCourses))
+		}
 		return mcp.Register(mcp.Deps{
 			// Asked per tool call rather than captured: this process
 			// outlives the answer, and the session expires it on a timer.
 			Capabilities: session.Session.Capabilities,
 			SiteName:     session.SiteName,
 			AccountName:  session.AccountName,
-			Courses: course.NewService(
-				moodle.NewCourseBackend(client, token, session.Capabilities)),
+			// The cookie is read once, here: see mcp.Deps.
+			BrowserSession: cookie.Value != "",
+			Courses:        course.NewService(courseBackends...),
 			Assignments: assignment.NewService(
 				moodle.NewAssignmentWriter(client, token),
 				// The server's own read-only state is separate from the
 				// tool surface: a writing tool that somehow ran without
 				// being offered would still be stopped here.
 				safety.Mode{ReadOnly: !session.AllowWrite},
-				moodle.NewAssignmentBackend(client, token),
+				assignmentBackends...,
 			),
+			Quizzes: quiz.NewService(quizBackends...),
 			Grades: grade.NewService(
 				moodle.NewGradeBackend(client, token, session.Capabilities)),
 			Calendar:   calendar.NewService(moodle.NewCalendarBackend(client, token)),

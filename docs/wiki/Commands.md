@@ -37,8 +37,11 @@ moodle calendar upcoming
 moodle grade overview
 moodle grade list --course <id|url>
 moodle assignment list
+moodle assignment overview
 moodle assignment show <id|url>
 moodle assignment status <id|url>
+moodle quiz list
+moodle quiz show <id|url>
 moodle forum list
 moodle forum discussions <id|url>
 moodle forum read <id|url>
@@ -48,6 +51,12 @@ moodle resolve <url>
 
 `doctor` explains the available backend and missing capability instead of assuming every site has
 the same functions. Forum reads do not mark discussions as read.
+
+`assignment overview` checks each submission in one CLI invocation. If a status is unreadable,
+`submission` is null and `status_error` explains why; that does not mean the assignment is unsubmitted.
+`quiz list` reads the visible quizzes in your courses, not only calendar events. With a browser
+session, some quiz settings may remain unknown; check `meta.missing` before interpreting a null date.
+The MCP tools `assignment_overview`, `quiz_list`, and `quiz_show` offer the same read-only use cases.
 
 ## Assignment submission
 

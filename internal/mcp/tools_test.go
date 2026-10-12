@@ -14,6 +14,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/mcp"
+	"github.com/KoukeNeko/moodle-cli/internal/quiz"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
@@ -82,6 +83,24 @@ func (f *fakeAssignments) SubmitForGrading(context.Context, string, bool) error 
 }
 
 type fakeGrades struct{}
+
+type fakeQuizzes struct{}
+
+func (fakeQuizzes) Name() site.BackendKind        { return site.BackendWS }
+func (fakeQuizzes) Requirement() site.Requirement { return site.Requirement{} }
+func (fakeQuizzes) List(context.Context, []string) (quiz.ListResult, error) {
+	return quiz.ListResult{
+		Quizzes:    []quiz.Quiz{{ID: "8", CMID: "31", CourseID: "2", Name: "Weekly quiz"}},
+		Provenance: site.NewProvenance(site.BackendWS),
+	}, nil
+}
+func (fakeQuizzes) Show(context.Context, string) (quiz.Detail, error) {
+	return quiz.Detail{
+		Quiz:       quiz.Quiz{ID: "8", CMID: "31", CourseID: "2", Name: "Weekly quiz"},
+		Attempts:   []quiz.Attempt{},
+		Provenance: site.NewProvenance(site.BackendWS),
+	}, nil
+}
 
 func (fakeGrades) Name() site.BackendKind        { return site.BackendWS }
 func (fakeGrades) Requirement() site.Requirement { return site.Requirement{} }
@@ -158,6 +177,7 @@ func build(t *testing.T, allowWrite bool) (*mcp.Registry, *fakeAssignments, *fak
 		Courses:      course.NewService(fakeCourses{}),
 		Assignments: assignment.NewService(assignments,
 			safety.Mode{ReadOnly: !allowWrite}, assignments),
+		Quizzes:    quiz.NewService(fakeQuizzes{}),
 		Grades:     grade.NewService(fakeGrades{}),
 		Calendar:   calendar.NewService(clock),
 		Forums:     forum.NewService(fakeForums{}),
@@ -218,6 +238,30 @@ func TestAReadOnlySessionDoesNotOfferTheWritingTool(t *testing.T) {
 		if annotations["readOnlyHint"] != true {
 			t.Errorf("%v is offered in a read-only session but is not marked read-only", tool["name"])
 		}
+	}
+}
+
+func TestAssignmentOverviewAndQuizToolsAnswerWithoutWriting(t *testing.T) {
+	tools := testTools(t, false)
+	assignments := data(t, callTool(t, tools, "assignment_overview", map[string]any{}))
+	if assignments["kind"] != "assignment.overview" {
+		t.Fatalf("unexpected assignment response: %v", assignments)
+	}
+	rows, ok := assignments["data"].([]any)
+	if !ok || len(rows) != 1 {
+		t.Fatalf("missing assignment row: %v", assignments)
+	}
+	submission := rows[0].(map[string]any)["submission"].(map[string]any)
+	if submission["status"] != "new" || submission["handed_in"] != false {
+		t.Errorf("incorrect submission state: %v", submission)
+	}
+	quizzes := data(t, callTool(t, tools, "quiz_list", map[string]any{}))
+	if quizzes["kind"] != "quiz.list" {
+		t.Fatalf("unexpected quiz response: %v", quizzes)
+	}
+	quizDetail := data(t, callTool(t, tools, "quiz_show", map[string]any{"quiz": "8"}))
+	if quizDetail["kind"] != "quiz.show" {
+		t.Fatalf("unexpected quiz detail: %v", quizDetail)
 	}
 }
 
@@ -470,6 +514,41 @@ func TestAnAgentIsNotToldToDoWhatItCannotDo(t *testing.T) {
 	}
 	if !strings.Contains(hint, "--site school") {
 		t.Errorf("the hint does not name the site to sign in to:\n%s", hint)
+	}
+}
+
+func TestABrowserSessionIsNotPromisedToBePickedUpOnItsOwn(t *testing.T) {
+	// A browser session is read once, when the server starts: the page and
+	// AJAX routes hold the cookie they were given. Telling an agent that the
+	// server "reads the new credential itself" would send it, and the person
+	// behind it, round a renewal that can never take effect.
+	deps := mcp.Deps{
+		Capabilities:   staticCapabilities(site.NewCapabilities()),
+		SiteName:       "school",
+		AccountName:    "student1",
+		BrowserSession: true,
+		Courses:        course.NewService(rejectingCourses{}),
+		Assignments: assignment.NewService(&fakeAssignments{},
+			safety.Mode{ReadOnly: true}, &fakeAssignments{}),
+		Grades:   grade.NewService(fakeGrades{}),
+		Calendar: calendar.NewService(&fakeCalendar{}),
+		Forums:   forum.NewService(fakeForums{}),
+	}
+
+	result := callTool(t, mcp.Register(deps, false), "course_list", nil)
+	failure := data(t, result)["error"].(map[string]any)
+	hint, _ := failure["hint"].(string)
+
+	for _, want := range []string{"cannot be fixed from here", "by a person", "restarted",
+		"import-browser --site school", "MOODLE_SESSION"} {
+		if !strings.Contains(hint, want) {
+			t.Errorf("the hint does not say %q:\n%s", want, hint)
+		}
+	}
+	for _, wrong := range []string{"does not need restarting", "reads the new credential itself", "moodle auth login"} {
+		if strings.Contains(hint, wrong) {
+			t.Errorf("the hint says %q, which is not true of a browser session:\n%s", wrong, hint)
+		}
 	}
 }
 

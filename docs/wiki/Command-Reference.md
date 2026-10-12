@@ -13,7 +13,7 @@ This page is generated from `moodle commands --json`; every public command must 
 | `--read-only` | Hide and refuse every command that may mutate Moodle. |
 | `--backend auto|ws-only` | Allow automatic fallback routes, or restrict the run to Web Services. |
 
-## Commands (109)
+## Commands (110)
 
 ### `moodle api`
 
@@ -129,6 +129,21 @@ Lock selected submissions
 | `--params-json` | structured parameters as a JSON object; see `moodle ws describe mod_assign_lock_submissions` |
 | `--site` | site to call mod_assign_lock_submissions on |
 | `--yes` | confirm this Moodle write |
+
+### `moodle assignment overview`
+
+List assignments with your saved or handed-in state
+
+- Synopsis: `moodle assignment overview [flags]`
+- JSON response kind: `assignment.overview`
+- Data effect: **read-only**
+
+| Flag | Meaning |
+| --- | --- |
+| `--account` | account to act as |
+| `--course` | limit to these course ids (repeatable); every course by default |
+| `--current` | only courses running now: started, and not yet past their end date |
+| `--site` | site to read assignments from |
 
 ### `moodle assignment reveal-identities`
 

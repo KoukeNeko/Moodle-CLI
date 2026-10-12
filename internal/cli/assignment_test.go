@@ -191,6 +191,61 @@ func TestAssignmentListSaysWhichOnesNeedHandingIn(t *testing.T) {
 	}
 }
 
+func TestAssignmentOverviewReadsSubmissionInOneCommand(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+	a.status = lastAttempt("draft", nil)
+	stdout, stderr, code := a.run("assignment", "overview", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	validate(t, "assignment.overview", stdout)
+	var doc struct {
+		Data []v1.AssignmentOverviewItem `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Data) != 1 || doc.Data[0].Submission == nil {
+		t.Fatalf("missing assignment or submission: %s", stdout)
+	}
+	if got := doc.Data[0].Submission.Status; got != "draft" {
+		t.Errorf("status = %q, want draft", got)
+	}
+	if doc.Data[0].Submission.HandedIn {
+		t.Error("saved draft was reported as handed in")
+	}
+	if got := a.server.CallsTo(moodle.FunctionSubmissionStatus); got != 1 {
+		t.Errorf("status reads = %d, want one", got)
+	}
+}
+
+func TestAssignmentOverviewKeepsUnreadableStatusUnknown(t *testing.T) {
+	a := newAssignmentFixture(t, true, false)
+	a.server.FailException(moodle.FunctionSubmissionStatus,
+		"required_capability_exception", "nopermission", "error/nopermission")
+	stdout, stderr, code := a.run("assignment", "overview", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	validate(t, "assignment.overview", stdout)
+	var doc struct {
+		Data []v1.AssignmentOverviewItem `json:"data"`
+		Meta v1.Meta                     `json:"meta"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Data) != 1 || doc.Data[0].Submission != nil || doc.Data[0].StatusError == nil {
+		t.Fatalf("unreadable state was not marked unknown: %s", stdout)
+	}
+	if !doc.Meta.Partial {
+		t.Error("unreadable status was reported as a complete answer")
+	}
+	if doc.Data[0].StatusError.Code != "permission_denied" {
+		t.Errorf("error = %q, want permission_denied", doc.Data[0].StatusError.Code)
+	}
+}
+
 func TestSubmitDryRunSendsNothingAtAll(t *testing.T) {
 	// Asserted against the wire, not against the report. The enforcement sits
 	// in one place so this is a property of the program rather than of each

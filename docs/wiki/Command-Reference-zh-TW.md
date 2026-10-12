@@ -13,7 +13,7 @@
 | `--read-only` | 隱藏並拒絕所有可能變更 Moodle 的命令。 |
 | `--backend auto|ws-only` | 允許自動 fallback，或將本次執行限制為 Web Services。 |
 
-## 命令 (109)
+## 命令 (110)
 
 ### `moodle api`
 
@@ -129,6 +129,21 @@
 | `--params-json` | 以 JSON object 提供巢狀參數 |
 | `--site` | 指定 Moodle 站台 |
 | `--yes` | 確認執行 Moodle 寫入 |
+
+### `moodle assignment overview`
+
+查看、提交與管理作業：顯示總覽。
+
+- 用法: `moodle assignment overview [flags]`
+- JSON 輸出 kind: `assignment.overview`
+- 資料效果: **唯讀**
+
+| Flag | 說明 |
+| --- | --- |
+| `--account` | 指定代為操作的帳號 |
+| `--course` | 限制或指定課程 |
+| `--current` | only courses running now: started, and not yet past their end date |
+| `--site` | 指定 Moodle 站台 |
 
 ### `moodle assignment reveal-identities`
 

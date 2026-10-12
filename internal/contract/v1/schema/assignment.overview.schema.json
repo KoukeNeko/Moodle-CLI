@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.overview.schema.json",
+  "title": "moodle-cli assignment.overview",
+  "type": "object",
+  "required": ["schema_version", "kind", "data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "assignment.overview"},
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assignment", "submission", "status_error"],
+        "additionalProperties": false,
+        "properties": {
+          "assignment": {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.list.schema.json#/$defs/assignment"},
+          "submission": {
+            "oneOf": [
+              {"type": "null"},
+              {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/assignment.status.schema.json#/properties/data"}
+            ],
+            "description": "Null when this assignment's submission state could not be read, not evidence of no submission."
+          },
+          "status_error": {
+            "oneOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "required": ["code", "reason"],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {"type": "string"},
+                  "reason": {"type": ["string", "null"]}
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "meta": {"$ref": "https://github.com/KoukeNeko/moodle-cli/schema/v1/meta.schema.json"}
+  }
+}

@@ -60,8 +60,9 @@ from before for `mcp serve`:
   results stay under the roughly 150,000 characters Claude accepts. `structuredContent` is unchanged.
   The `ws_list` description now says an unfiltered call is very large.
 - The server's instructions no longer name `mcp serve` when telling an agent that writing needs a
-  restart, and the credential hint says a credential supplied through `MOODLE_WS_TOKEN` or
-  `MOODLE_SESSION` is only replaced by restarting.
+  restart, and the credential hint says a credential supplied through `MOODLE_WS_TOKEN`, and a
+  browser session whether stored or from `MOODLE_SESSION`, is only replaced by restarting. A stored
+  web service token is still read again without one.
 
 ## Fixed
 

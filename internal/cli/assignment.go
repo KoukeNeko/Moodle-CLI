@@ -27,11 +27,54 @@ func newAssignmentCommand(r *Renderer, deps Deps, mode *safety.Mode) *cobra.Comm
 	}
 	cmd.AddCommand(
 		newAssignmentListCommand(r, deps),
+		newAssignmentOverviewCommand(r, deps),
 		newAssignmentShowCommand(r, deps),
 		newAssignmentStatusCommand(r, deps),
 		newAssignmentSubmitCommand(r, deps, mode),
 	)
 	addWorkflowCommands(cmd, r, deps, mode, assignmentWorkflowSpecs()...)
+	return cmd
+}
+
+func newAssignmentOverviewCommand(r *Renderer, deps Deps) *cobra.Command {
+	var (
+		flags     sessionFlags
+		courseIDs []string
+		current   bool
+	)
+	cmd := &cobra.Command{
+		Use:         "overview",
+		Short:       "List assignments with your saved or handed-in state",
+		Long:        "Lists assignments and checks each submission in one command. A missing status is shown as unknown, never as unsubmitted.",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{annotationKind: "assignment.overview"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			service, session, err := openAssignments(cmd, deps, flags, safety.Mode{})
+			if err != nil {
+				return err
+			}
+			scope, err := scopeCourses(cmd, deps, session, courseIDs, current)
+			if err != nil {
+				return err
+			}
+			result, err := service.Overview(cmd.Context(), session.capabilities, scope)
+			if err != nil {
+				return err
+			}
+			envelope := v1.AssignmentOverview(result,
+				session.resolved.SiteName, session.resolved.AccountName)
+			items, _ := envelope.Data.([]v1.AssignmentOverviewItem)
+			return r.Render(Result{
+				Envelope:      envelope,
+				PartialReason: result.Provenance.PartialReason,
+				Human:         func(w io.Writer) error { return writeAssignmentOverview(w, items, len(scope) > 0) },
+			})
+		},
+	}
+	flags.bind(cmd, "read assignments from")
+	cmd.Flags().StringSliceVar(&courseIDs, "course", nil,
+		"limit to these course ids (repeatable); every course by default")
+	cmd.Flags().BoolVar(&current, "current", false, currentFlagUsage)
 	return cmd
 }
 
@@ -339,6 +382,30 @@ func writeAssignmentTable(w io.Writer, items []v1.Assignment, named bool) error 
 		}
 		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n",
 			item.ID, course, item.Name, due, handIn)
+	}
+	return table.Flush()
+}
+
+func writeAssignmentOverview(w io.Writer, items []v1.AssignmentOverviewItem, named bool) error {
+	if len(items) == 0 {
+		return writeAssignmentTable(w, nil, named)
+	}
+	table := newTable(w)
+	fmt.Fprintln(table, "ID\tCOURSE\tNAME\tDUE\tSUBMISSION")
+	for _, item := range items {
+		course := item.Assignment.CourseID
+		if item.Assignment.CourseShortName != nil {
+			course = *item.Assignment.CourseShortName
+		}
+		state := "unknown"
+		if item.Submission != nil {
+			state = item.Submission.Status
+		} else if item.StatusError != nil {
+			state += " (" + string(item.StatusError.Code) + ")"
+		}
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n",
+			item.Assignment.ID, course, item.Assignment.Name,
+			when(item.Assignment.DueDate), state)
 	}
 	return table.Flush()
 }

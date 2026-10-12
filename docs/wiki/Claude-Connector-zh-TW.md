@@ -156,8 +156,9 @@ origin，必須是 `https`；唯一例外是 `localhost`、`127.0.0.1` 與 `::1`
 - 登入不會跨重啟保留。任何重啟（包含為了加上 `--allow-write`，或因而產生新的 passphrase）都會使 connector 失效：
   請在 Claude 移除後重新新增。
 - Refresh token 只能用一次，所以重送一次回應已遺失的 refresh 的用戶端，必須重新登入。若重送發生在十秒之後，整個登入都會結束，而不只是那個 token。
-- Host 執行期間 Moodle 憑證若過期，工具結果會要求以 `moodle auth login` 重新登入。以 `MOODLE_WS_TOKEN` 或
-  `MOODLE_SESSION` 啟動的 host，只有重啟才會換成新值。
+- Host 執行期間 Moodle 憑證若過期，工具結果會說明需要由人做什麼。儲存的 web service token 不必重啟就會重新讀取；
+  瀏覽器 session（無論是儲存的或來自 `MOODLE_SESSION`）與 `MOODLE_WS_TOKEN` 只在 host 啟動時讀一次，所以要換成新值就得
+  重啟，而重啟會讓 connector 登出（見上）。
 
 ## 疑難排解
 

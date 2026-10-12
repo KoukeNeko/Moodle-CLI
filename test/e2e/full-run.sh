@@ -424,6 +424,8 @@ note "進行中的學期是 CS5006（id $CSSEM）；grad1 在 CS1001（id $CSTA�
 say "7. 作業：跨四個學期"
 run assignment list
 run assignment list --json
+run assignment overview --json
+run quiz list --json
 note "只看進行中那一學期"
 run assignment list --course "$CSSEM"
 note "助教課那份也在列表裡——他看得到，但那不是他的作業"
@@ -700,6 +702,8 @@ if [ -n "$UG_TOKEN" ]; then
   SECRETS+=("$UG_TOKEN")
   runenv "MOODLE_WS_TOKEN=$UG_TOKEN" course list
   runenv "MOODLE_WS_TOKEN=$UG_TOKEN" assignment list
+  runenv "MOODLE_WS_TOKEN=$UG_TOKEN" assignment overview --json
+  runenv "MOODLE_WS_TOKEN=$UG_TOKEN" quiz list --json
   runenv "MOODLE_WS_TOKEN=$UG_TOKEN" calendar upcoming
   note "別人的課程成績：站台自己會擋"
   runenv "MOODLE_WS_TOKEN=$UG_TOKEN" grade list --course "$CSSEM"
@@ -1090,6 +1094,8 @@ if [ $WITH_NOWS = 1 ]; then
     note "作業、成績與論壇清單在那個端點上不存在（實測 servicenotavailable），只能讀頁面"
     runenv "$NOWSENV" assignment list --site nows
     runenv "$NOWSENV" assignment list --site nows --json
+    runenv "$NOWSENV" assignment overview --site nows --json
+    runenv "$NOWSENV" quiz list --site nows --json
     NOWS_ASSIGN=$(env $NOWSENV "$BIN" assignment list --site nows --json 2>/dev/null \
       | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];print(d[0]["id"] if d else "")' 2>/dev/null)
     NOWS_COURSE=$(env $NOWSENV "$BIN" course list --site nows --json 2>/dev/null \

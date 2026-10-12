@@ -37,7 +37,7 @@ moodle ws describe core_course_get_contents
 
 Moodle CLI talks to the Moodle site you configure, preferring its official Web Service API and
 falling back to read-only AJAX or HTML adapters when a site does not expose the required function.
-It handles courses, participants, groups, assignments, calendars, grades, forums, completion,
+It handles courses, participants, groups, assignments, quizzes, calendars, grades, forums, completion,
 academic workload, and files without pretending that every role or Moodle installation has the
 same capabilities.
 
@@ -80,6 +80,8 @@ moodle schema assignment.submit
 moodle schema assignment submit --json
 moodle course list --json
 moodle assignment list --current --json --fields name,due_date --no-input
+moodle assignment overview --current --json  # includes each submission state
+moodle quiz list --current --json              # quizzes are not inferred from calendar events
 moodle ws list --version v52 --effect write --json
 moodle ws describe core_course_update_courses --json
 moodle ws call core_course_get_contents --params-json '{"courseid":42}'
@@ -284,8 +286,11 @@ moodle grade overview                 # course totals
 moodle grade list --course 2          # one course's gradebook
 
 moodle assignment list
+moodle assignment overview             # all assignments and your submission states
 moodle assignment show 42             # IDs and pasted Moodle URLs both work
 moodle assignment status 42
+moodle quiz list                       # visible quizzes, even without calendar events
+moodle quiz show 31                    # settings and attempts visible to this account
 moodle assignment submit 42 report.pdf --dry-run
 moodle assignment submit 42 report.pdf --yes
 moodle assignment submit 42 report.pdf --draft --yes

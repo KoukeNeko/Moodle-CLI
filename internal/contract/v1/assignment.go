@@ -2,6 +2,7 @@ package v1
 
 import (
 	"github.com/KoukeNeko/moodle-cli/internal/assignment"
+	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/file"
 )
 
@@ -44,6 +45,41 @@ func AssignmentList(result assignment.ListResult, siteName, accountName string) 
 		items = append(items, newAssignment(item))
 	}
 	return NewEnvelope("assignment.list", items,
+		MetaFrom(result.Provenance, siteName, accountName))
+}
+
+// AssignmentOverviewItem includes the signed-in account's state. A null
+// submission and a non-null status_error mean that state could not be read;
+// neither is evidence that no work was submitted.
+type AssignmentOverviewItem struct {
+	Assignment  Assignment           `json:"assignment"`
+	Submission  *SubmissionState     `json:"submission"`
+	StatusError *OverviewStatusError `json:"status_error"`
+}
+
+type OverviewStatusError struct {
+	Code   errs.Code    `json:"code"`
+	Reason *errs.Reason `json:"reason"`
+}
+
+func AssignmentOverview(result assignment.OverviewResult, siteName, accountName string) Envelope {
+	items := make([]AssignmentOverviewItem, 0, len(result.Items))
+	for _, item := range result.Items {
+		entry := AssignmentOverviewItem{Assignment: newAssignment(item.Assignment)}
+		if item.Submission != nil {
+			state := newSubmissionState(item.Assignment.ID, *item.Submission)
+			entry.Submission = &state
+		} else if item.StatusErrorCode != "" {
+			failure := OverviewStatusError{Code: item.StatusErrorCode}
+			if item.StatusErrorReason != "" {
+				reason := item.StatusErrorReason
+				failure.Reason = &reason
+			}
+			entry.StatusError = &failure
+		}
+		items = append(items, entry)
+	}
+	return NewEnvelope("assignment.overview", items,
 		MetaFrom(result.Provenance, siteName, accountName))
 }
 

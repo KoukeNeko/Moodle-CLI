@@ -40,6 +40,10 @@ moodle schema assignment submit --json
 裡，它就是答案本身，例如沒有截止日的作業、沒有關閉時間的測驗。把 `null` 解讀成「沒有」之前，
 先檢查 `meta.missing`。
 
+`assignment.overview` 回傳 `{assignment, submission, status_error}` 陣列；`submission` 是目前帳號的
+繳交狀態，內含 `handed_in`。若某份作業的狀態讀取失敗，該列會是 `submission: null`，並有結構化的
+`status_error`，同時 `meta.partial: true`；其餘作業仍會回傳。瀏覽器 session 可能需要逐份讀取作業頁面。
+
 ## 欄位選擇
 
 `--fields` 只保留 `data` 中指定的頂層欄位：清單的每一列，或單一物件。只能與 `--json` 一起使用。

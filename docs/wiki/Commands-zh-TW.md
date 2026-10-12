@@ -36,8 +36,11 @@ moodle calendar upcoming
 moodle grade overview
 moodle grade list --course <id|url>
 moodle assignment list
+moodle assignment overview
 moodle assignment show <id|url>
 moodle assignment status <id|url>
+moodle quiz list
+moodle quiz show <id|url>
 moodle forum list
 moodle forum discussions <id|url>
 moodle forum read <id|url>
@@ -47,6 +50,11 @@ moodle resolve <url>
 
 `doctor` 會說明可用 backend 與缺少的 capability，不假設每個站台都有相同函式。論壇讀取不會把文章
 標示為已讀。
+
+`assignment overview` 在一次 CLI 呼叫中逐筆查詢繳交狀態。讀不到的狀態會以 `submission: null`
+和 `status_error` 表示，不能解讀成「尚未繳交」。`quiz list` 列出課程中可見的測驗，並非只查行事曆事件。
+使用瀏覽器 session 時，有些測驗設定可能未知；解讀空白日期前先看 `meta.missing`。
+MCP 另提供對應的唯讀工具：`assignment_overview`、`quiz_list` 和 `quiz_show`。
 
 ## 交作業
 

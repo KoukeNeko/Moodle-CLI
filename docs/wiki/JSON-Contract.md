@@ -43,6 +43,11 @@ field, `meta.partial` is `true` and `meta.missing` names the field, and its valu
 `null` whose name is *not* in `meta.missing` is an answer: an assignment with no due date, a quiz
 with no closing time. Check `meta.missing` before reading a `null` as "none".
 
+`assignment.overview` returns an array of `{assignment, submission, status_error}`. Each
+`submission` is the signed-in account's state and includes `handed_in`. If one status read fails,
+that row has `submission: null`, a structured `status_error`, and `meta.partial: true`; the other
+rows are still returned. A browser-session route may need one page read per assignment.
+
 ## Field selection
 
 `--fields` keeps only the named top-level fields of `data` — of each row in a list, or of the one

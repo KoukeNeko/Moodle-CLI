@@ -141,6 +141,8 @@ type Registry struct {
 	allowWrite bool
 	// siteName names the site in the one message an agent cannot act on.
 	siteName string
+	// browserSession changes what that message promises: see humanReadable.
+	browserSession bool
 }
 
 func newRegistry(allowWrite bool, siteName string) *Registry {
@@ -254,10 +256,24 @@ func successResult(envelope v1.Envelope) callToolResult {
 // afterwards this process picks the new credential up on its own. The last one
 // is only true because the session re-reads its credential when Moodle rejects
 // the one it has — without that, a restart really would be required.
+//
+// A browser session is the exception. The routes that use it were handed the
+// cookie when the server started and never read it again, so for those the
+// honest third fact is the opposite: a restart is what picks it up.
 func (r *Registry) humanReadable(err error) error {
 	e := errs.From(err)
 	if e.Code != errs.CodeAuthentication {
 		return err
+	}
+	if r.browserSession {
+		command := "`moodle auth import-browser --store`"
+		if r.siteName != "" {
+			command = "`moodle auth import-browser --site " + r.siteName + " --store`"
+		}
+		return e.WithHint("this cannot be fixed from here — the browser session has to be " +
+			"renewed by a person: sign in to Moodle in the browser again, then run " +
+			command + " in a terminal (or set a new MOODLE_SESSION). This server reads a " +
+			"browser session once, when it starts, so it has to be restarted afterwards.")
 	}
 	where := "in a terminal"
 	if r.siteName != "" {
@@ -266,7 +282,7 @@ func (r *Registry) humanReadable(err error) error {
 	return e.WithHint("this cannot be fixed from here — the credential has to be " +
 		"renewed by a person " + where + ". Once it is, retry: this server reads " +
 		"the new credential itself and does not need restarting — unless it was " +
-		"started with MOODLE_WS_TOKEN or MOODLE_SESSION, which only a restart replaces.")
+		"started with MOODLE_WS_TOKEN, which only a restart replaces.")
 }
 
 // errorResult reports a failed tool.

@@ -14,6 +14,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/errs"
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
+	"github.com/KoukeNeko/moodle-cli/internal/quiz"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
 	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 )
@@ -33,9 +34,14 @@ type Deps struct {
 	Capabilities func(context.Context) (*site.Capabilities, error)
 	SiteName     string
 	AccountName  string
+	// BrowserSession says the account is signed in with a browser session. The
+	// page and AJAX routes hold the cookie they were built with, so unlike a
+	// web service token a renewed session is only picked up by a restart.
+	BrowserSession bool
 
 	Courses     *course.Service
 	Assignments *assignment.Service
+	Quizzes     *quiz.Service
 	Grades      *grade.Service
 	Calendar    *calendar.Service
 	Forums      *forum.Service
@@ -58,6 +64,7 @@ const noArguments = `{"type":"object","properties":{},"additionalProperties":fal
 // never sees a tool it would be refused.
 func Register(deps Deps, allowWrite bool) *Registry {
 	r := newRegistry(allowWrite, deps.SiteName)
+	r.browserSession = deps.BrowserSession
 	registerWSTools(r, deps)
 
 	r.add(definition{
@@ -103,6 +110,32 @@ func Register(deps Deps, allowWrite bool) *Registry {
 				return v1.Envelope{}, err
 			}
 			return v1.AssignmentList(result, deps.SiteName, deps.AccountName), nil
+		},
+	})
+
+	r.add(definition{
+		Name:  "assignment_overview",
+		Title: "Assignments and submission states",
+		Description: "List assignments and check this account's submission state for each. " +
+			"A null submission with status_error means that state was unavailable, not unsubmitted.",
+		Schema: schema(`{
+			"type": "object",
+			"properties": {
+				"course_ids": {"type": "array", "items": {"type": "string"},
+					"description": "Limit to these courses; every enrolled course when omitted"}
+			},
+			"additionalProperties": false
+		}`),
+		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			result, err := deps.Assignments.Overview(ctx, capabilities, args.Strings("course_ids"))
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			return v1.AssignmentOverview(result, deps.SiteName, deps.AccountName), nil
 		},
 	})
 
@@ -181,6 +214,58 @@ func Register(deps Deps, allowWrite bool) *Registry {
 				return v1.Envelope{}, err
 			}
 			return v1.AssignmentStatus(id, state, deps.SiteName, deps.AccountName), nil
+		},
+	})
+
+	r.add(definition{
+		Name:        "quiz_list",
+		Title:       "List quizzes",
+		Description: "Quizzes visible in this account's courses. Null open/close dates are not proof that no dates were set; check meta.missing.",
+		Schema: schema(`{
+			"type": "object",
+			"properties": {
+				"course_ids": {"type": "array", "items": {"type": "string"},
+					"description": "Limit to these courses; every enrolled course when omitted"}
+			},
+			"additionalProperties": false
+		}`),
+		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			result, err := deps.Quizzes.List(ctx, capabilities, args.Strings("course_ids"))
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			return v1.QuizList(result, deps.SiteName, deps.AccountName), nil
+		},
+	})
+
+	r.add(definition{
+		Name:        "quiz_show",
+		Title:       "Show one quiz",
+		Description: "Show a quiz's dates, limits and visible attempts. Unknown fields are marked in meta.missing.",
+		Schema: schema(`{
+			"type": "object",
+			"properties": {"quiz": {"type": "string", "description": "A quiz id or Moodle URL"}},
+			"required": ["quiz"],
+			"additionalProperties": false
+		}`),
+		Handler: func(ctx context.Context, args Arguments) (v1.Envelope, error) {
+			capabilities, err := deps.Capabilities(ctx)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			ref, err := args.Required("quiz")
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			result, err := deps.Quizzes.Show(ctx, capabilities, ref)
+			if err != nil {
+				return v1.Envelope{}, err
+			}
+			return v1.QuizShow(result, deps.SiteName, deps.AccountName), nil
 		},
 	})
 

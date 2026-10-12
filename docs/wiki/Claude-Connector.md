@@ -198,9 +198,10 @@ approving.
   generates a new passphrase, invalidates the connector: remove it in Claude and add it again.
 - A refresh token works once, so a client that repeats a refresh whose reply was lost has to sign in
   again. If the repeat comes more than ten seconds later, the whole sign-in ends, not just the token.
-- If the Moodle credential expires while the host runs, a tool result says to sign in again with
-  `moodle auth login`. A host started with `MOODLE_WS_TOKEN` or `MOODLE_SESSION` only picks up a new
-  value on restart.
+- If the Moodle credential expires while the host runs, a tool result says what a person has to do. A
+  stored web service token is read again without a restart. A browser session, stored or from
+  `MOODLE_SESSION`, and a `MOODLE_WS_TOKEN` are read once, when the host starts, so renewing either
+  takes a restart, which signs the connector out as above.
 
 ## Troubleshooting
 
