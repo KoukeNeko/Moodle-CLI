@@ -1375,6 +1375,99 @@ func TestAConcurrentBurstOfGuessesStillStopsAtTheLimit(t *testing.T) {
 	}
 }
 
+// refreshWith presents a refresh token.
+func (h *testHost) refreshWith(clientID, refresh string) (*http.Response, map[string]any) {
+	return h.tokenRequest(url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {refresh}, "client_id": {clientID},
+	})
+}
+
+func (h *testHost) accessWorks(access string) bool {
+	response, _ := h.callMCP(access)
+	return response.StatusCode == http.StatusOK
+}
+
+func TestAReusedRefreshTokenEndsTheWholeSignIn(t *testing.T) {
+	// If a thief refreshes first, the owner's next refresh fails, and the owner
+	// signs in again. Without this the thief's chain would carry on beside it.
+	h := newTestHost(t)
+	clientID, first := h.signIn()
+	spent, _ := first["refresh_token"].(string)
+	_, second := h.refreshWith(clientID, spent)
+	laterAccess, _ := second["access_token"].(string)
+	laterRefresh, _ := second["refresh_token"].(string)
+	h.host.authority.now = func() time.Time { return time.Now().Add(reuseAllowance + time.Second) }
+
+	reuse, _ := h.refreshWith(clientID, spent)
+	descendant, _ := h.refreshWith(clientID, laterRefresh)
+
+	if reuse.StatusCode != http.StatusBadRequest {
+		t.Errorf("reuse: status %d, want 400", reuse.StatusCode)
+	}
+	if descendant.StatusCode != http.StatusBadRequest {
+		t.Errorf("the refresh token that replaced the spent one still works (%d): the thief's chain would survive", descendant.StatusCode)
+	}
+	if h.accessWorks(laterAccess) {
+		t.Error("an access token issued from the compromised sign-in still works")
+	}
+}
+
+func TestTwoRequestsRefreshingAtOnceDoNotEndTheSignIn(t *testing.T) {
+	// A client that refreshes from two places sends the same token twice. The
+	// second loses, and the first carries on.
+	h := newTestHost(t)
+	clientID, first := h.signIn()
+	spent, _ := first["refresh_token"].(string)
+	_, winner := h.refreshWith(clientID, spent)
+	winnersRefresh, _ := winner["refresh_token"].(string)
+	winnersAccess, _ := winner["access_token"].(string)
+
+	loser, _ := h.refreshWith(clientID, spent)
+
+	if loser.StatusCode != http.StatusBadRequest {
+		t.Errorf("the second use of one token: status %d, want 400", loser.StatusCode)
+	}
+	if !h.accessWorks(winnersAccess) {
+		t.Error("the sign-in that won the race was ended by the one that lost it")
+	}
+	if again, _ := h.refreshWith(clientID, winnersRefresh); again.StatusCode != http.StatusOK {
+		t.Errorf("the winner could not refresh afterwards: status %d", again.StatusCode)
+	}
+}
+
+func TestAReplayedCodeEndsTheSignInItStarted(t *testing.T) {
+	h := newTestHost(t)
+	clientID := h.register(claudeCallback)
+	code := h.approve(h.consent(clientID), passphrase)
+	_, tokens := h.exchange(clientID, code)
+	access, _ := tokens["access_token"].(string)
+
+	replay, _ := h.exchange(clientID, code)
+
+	if replay.StatusCode != http.StatusBadRequest {
+		t.Errorf("replay: status %d, want 400", replay.StatusCode)
+	}
+	if h.accessWorks(access) {
+		t.Error("an access token from a code that was later replayed still works")
+	}
+}
+
+func TestEndingOneSignInLeavesAnotherAlone(t *testing.T) {
+	h := newTestHost(t)
+	clientID, mine := h.signIn()
+	_, theirs := h.signIn()
+	theirAccess, _ := theirs["access_token"].(string)
+	spent, _ := mine["refresh_token"].(string)
+	h.refreshWith(clientID, spent)
+	h.host.authority.now = func() time.Time { return time.Now().Add(reuseAllowance + time.Second) }
+
+	h.refreshWith(clientID, spent) // reused: ends only the first sign-in
+
+	if !h.accessWorks(theirAccess) {
+		t.Error("ending one sign-in ended another that had nothing to do with it")
+	}
+}
+
 func TestAThousandGuessesAtOnceStillGetOnlyTheLimit(t *testing.T) {
 	// The lockout check and the recording of a miss are one step. Run apart,
 	// every guess in a burst passes the check before any has been recorded, and

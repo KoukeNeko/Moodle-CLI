@@ -19,6 +19,11 @@ const (
 	// requestLifetime is how long the consent page stays valid once shown.
 	requestLifetime = 10 * time.Minute
 
+	// reuseAllowance is how soon after a refresh token is used a second use is
+	// taken for two requests that raced, and not for a copy. A client that
+	// refreshes from two places at once sends the same token twice.
+	reuseAllowance = 10 * time.Second
+
 	// A wrong passphrase is the one guess an outsider can make, so guesses are
 	// counted across the whole process. Behind a tunnel every caller arrives
 	// from the same address, so counting per address would count nothing.
@@ -51,6 +56,7 @@ type authority struct {
 	codes    map[string]authCode
 	access   map[string]grant
 	refresh  map[string]grant
+	spent    map[string]spentToken
 	failures []time.Time
 }
 
@@ -58,12 +64,27 @@ type authCode struct {
 	clientID  string
 	redirect  string
 	challenge string
-	expires   time.Time
+	// family names the sign-in this code starts, so that everything issued from
+	// it can be ended together.
+	family  string
+	expires time.Time
 }
 
 type grant struct {
 	clientID string
+	family   string
 	expires  time.Time
+}
+
+// spentToken remembers a code or a refresh token that has been used, and the
+// sign-in it belonged to. Using one a second time is what a copy of it looks
+// like, and the sign-in it came from can no longer be trusted.
+type spentToken struct {
+	family string
+	// forgiveUntil is when using it again stops looking like two requests that
+	// raced and starts looking like a copy.
+	forgiveUntil time.Time
+	expires      time.Time
 }
 
 func newAuthority(origin, passphrase, site string, allowWrite bool) *authority {
@@ -78,6 +99,7 @@ func newAuthority(origin, passphrase, site string, allowWrite bool) *authority {
 		codes:      map[string]authCode{},
 		access:     map[string]grant{},
 		refresh:    map[string]grant{},
+		spent:      map[string]spentToken{},
 	}
 }
 

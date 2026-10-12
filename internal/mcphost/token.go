@@ -38,6 +38,11 @@ func (a *authority) exchangeCode(w http.ResponseWriter, r *http.Request, clientI
 	// Spent whether or not the rest checks out: a code that was presented once
 	// by the wrong party must not be there for a second try.
 	delete(a.codes, key)
+	if found {
+		a.spent[key] = spentToken{family: held.family, forgiveUntil: a.now(), expires: held.expires}
+	} else {
+		a.endIfReused(key)
+	}
 	a.mu.Unlock()
 
 	if !found || !a.now().Before(held.expires) ||
@@ -47,17 +52,28 @@ func (a *authority) exchangeCode(w http.ResponseWriter, r *http.Request, clientI
 		oauthError(w, http.StatusBadRequest, "invalid_grant", "the code is wrong, used or expired")
 		return
 	}
-	a.issue(w, clientID)
+	a.issue(w, clientID, held.family)
 }
 
 // exchangeRefresh rotates: the token presented stops working the moment it is
 // used, and the reply carries its replacement. A client that is still holding
-// the old one has been copied, and its next attempt fails.
+// the old one has been copied: its attempt fails, and once it is past the
+// allowance for two requests racing, the whole sign-in ends, so a thief who
+// refreshed first does not keep going while the owner signs in again.
 func (a *authority) exchangeRefresh(w http.ResponseWriter, r *http.Request, clientID string) {
 	key := digest(r.PostFormValue("refresh_token"))
 	a.mu.Lock()
 	held, found := a.refresh[key]
-	delete(a.refresh, key)
+	if found {
+		delete(a.refresh, key)
+		a.spent[key] = spentToken{
+			family:       held.family,
+			forgiveUntil: a.now().Add(reuseAllowance),
+			expires:      held.expires,
+		}
+	} else {
+		a.endIfReused(key)
+	}
 	a.mu.Unlock()
 
 	if !found || !a.now().Before(held.expires) || held.clientID != clientID {
@@ -66,17 +82,37 @@ func (a *authority) exchangeRefresh(w http.ResponseWriter, r *http.Request, clie
 		oauthError(w, http.StatusBadRequest, "invalid_grant", "the refresh token is wrong, used or expired")
 		return
 	}
-	a.issue(w, clientID)
+	a.issue(w, clientID, held.family)
 }
 
-func (a *authority) issue(w http.ResponseWriter, clientID string) {
+// endIfReused ends the sign-in a code or refresh token belonged to, when it is
+// being used again and not just racing its first use. It expects mu to be held.
+func (a *authority) endIfReused(key string) {
+	used, known := a.spent[key]
+	now := a.now()
+	if !known || !now.Before(used.expires) || now.Before(used.forgiveUntil) {
+		return
+	}
+	for token, held := range a.access {
+		if held.family == used.family {
+			delete(a.access, token)
+		}
+	}
+	for token, held := range a.refresh {
+		if held.family == used.family {
+			delete(a.refresh, token)
+		}
+	}
+}
+
+func (a *authority) issue(w http.ResponseWriter, clientID, family string) {
 	access, refresh := randomToken(), randomToken()
 	now := a.now()
 
 	a.mu.Lock()
 	a.forgetExpired()
-	a.access[digest(access)] = grant{clientID: clientID, expires: now.Add(accessLifetime)}
-	a.refresh[digest(refresh)] = grant{clientID: clientID, expires: now.Add(refreshLifetime)}
+	a.access[digest(access)] = grant{clientID: clientID, family: family, expires: now.Add(accessLifetime)}
+	a.refresh[digest(refresh)] = grant{clientID: clientID, family: family, expires: now.Add(refreshLifetime)}
 	a.mu.Unlock()
 
 	w.Header().Set("Pragma", "no-cache")
@@ -105,6 +141,11 @@ func (a *authority) forgetExpired() {
 	for key, held := range a.refresh {
 		if !now.Before(held.expires) {
 			delete(a.refresh, key)
+		}
+	}
+	for key, held := range a.spent {
+		if !now.Before(held.expires) {
+			delete(a.spent, key)
 		}
 	}
 }

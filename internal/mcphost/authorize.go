@@ -114,6 +114,7 @@ func (a *authority) decide(w http.ResponseWriter, r *http.Request) {
 		clientID:  request.ClientID,
 		redirect:  request.Redirect,
 		challenge: request.Challenge,
+		family:    randomToken(),
 		expires:   a.now().Add(codeLifetime),
 	}
 	a.mu.Unlock()
