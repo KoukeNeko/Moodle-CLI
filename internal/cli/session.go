@@ -16,6 +16,7 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
+	"github.com/KoukeNeko/moodle-cli/internal/update"
 	"github.com/KoukeNeko/moodle-cli/internal/workload"
 	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 )
@@ -87,6 +88,11 @@ type Deps struct {
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.
 	Interactive func() bool
+	// NewerRelease reports a release newer than this build. Nil turns the check
+	// off, which is how a build that is not a release, an opt-out, and a run
+	// with no person at the terminal are all expressed. It is injected because
+	// answering means asking the network, which this layer does not do.
+	NewerRelease func(context.Context) (update.Release, bool)
 }
 
 // HandlerRegistration is the presentation layer's view of an installed

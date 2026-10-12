@@ -392,6 +392,7 @@ func Run(ctx context.Context, build Build, args []string) int {
 			return served
 		},
 		Interactive:     func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
+		NewerRelease:    updateCheck(version, os.Getenv, term.IsTerminal(int(os.Stderr.Fd()))),
 		Verbose:         verbose,
 		CredentialStore: credentialStore,
 	}

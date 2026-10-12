@@ -62,9 +62,22 @@ Host 執行期間持有該帳號的 Moodle 憑證，且任何通過的人都以�
 其他人撰寫的課程內容會送到 Claude，開啟寫入時尤其要留意。日誌記錄每次工具呼叫的名稱、結果與耗時，不記錄參數。
 所有控制與限制見 [Claude connector](Claude-Connector-zh-TW)。
 
+## 新版提示
+
+在互動式終端機中，成功的指令可能在 stderr 印出一則提示，告知有較新的版本。為了知道這件事，程式最多每天
+向 github.com 送出一次對 `https://github.com/KoukeNeko/Moodle-CLI/releases/latest` 的 `HEAD` 請求，
+只讀取它轉址到哪裡；答案保存在使用者 cache 目錄的 `update-check.json`。請求不帶帳號、站台或憑證，
+只有 user agent `moodle-cli/<version>`；GitHub 看得到這個與請求的來源位址，與下載檔案時相同。
+只接受本 repository 自己頁面上 `vX.Y.Z` 形式的 tag，提示中的網址由該 tag 組出，不是照抄回應。
+不會因此下載、安裝或執行任何東西。
+
+使用 `--json` 或 `--no-input`、執行 `mcp`、completion 與 help、stderr 不是終端機、設有 `CI`、
+非 release 的版本，或 `MOODLE_CLI_NO_UPDATE_CHECK` 設為 `0`、`false`、`no`、`off` 以外的任何值時，
+都不會送出請求。網路一直沒有回應時，指令最多延後一秒，且一天只發生一次。
+
 ## 不在保護範圍內
 
 CLI 無法防護已遭入侵的作業系統、未鎖定的 user keychain、惡意 Moodle server，或可被其他 process 讀取的
-browser profile。它不提供遙測、自動更新、提權、process injection 或遠端憑證備份。
+browser profile。它不提供遙測、自行更新程式、提權、process injection 或遠端憑證備份。
 
 若漏洞揭露會暴露使用者或憑證，請先私下通知 repository owner，不要直接開公開 issue。

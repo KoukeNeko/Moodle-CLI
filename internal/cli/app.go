@@ -81,6 +81,8 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 		deps.Verbose = new(bool)
 	}
 
+	notice := &updateNotice{newer: deps.NewerRelease, current: build.Version, out: streams.Err}
+
 	root := &cobra.Command{
 		Use:           "moodle",
 		Short:         "A Moodle client for learners, educators, administrators, scripts and agents",
@@ -117,6 +119,13 @@ func New(build BuildInfo, streams Streams, deps Deps) *App {
 					fmt.Sprintf("unknown backend %q", *backend)).
 					WithHint("use " + config.BackendAuto + " or " + config.BackendWSOnly)
 			}
+			// Machine-readable output and --no-input both say that no person is
+			// reading, so neither is told anything.
+			notice.begin(cmd, asJSON || noInput)
+			return nil
+		},
+		PersistentPostRunE: func(*cobra.Command, []string) error {
+			notice.end()
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

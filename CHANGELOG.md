@@ -1,4 +1,4 @@
-# Unreleased — Claude connector host
+# Unreleased — Claude connector host and a new-release notice
 
 ## Added
 
@@ -63,6 +63,22 @@ from before for `mcp serve`:
   restart, and the credential hint says a credential supplied through `MOODLE_WS_TOKEN` or
   `MOODLE_SESSION` is only replaced by restarting.
 
+## New-release notice
+
+At an interactive terminal, a command that succeeds prints one notice on stderr when a newer release
+exists, and nothing else changes: nothing is downloaded or installed. At most once a day the program
+sends github.com a `HEAD` request for the repository's `releases/latest` link and reads where it
+redirects, the same question the install script asks, and keeps the answer in `update-check.json` in
+the user cache directory. The request carries the user agent `moodle-cli/<version>` and no account,
+site, or credential. It is not made with `--json` or `--no-input`, for `mcp`, completion, or help,
+when stderr is not a terminal, when `CI` is set, in a build that is not a release, or when
+`MOODLE_CLI_NO_UPDATE_CHECK` is set to anything but `0`, `false`, `no`, or `off`. A command waits
+at most one second for the answer; an attempt that fails or is abandoned still counts as the day's.
+
+The README and the security model said the program contacts only the configured Moodle site and has
+no updater; they now name this request. The notice is a person's note, so it goes to stderr and the
+envelope is unchanged.
+
 ## Documentation and limitations
 
 New wiki page, [Claude connector](docs/wiki/Claude-Connector.md): what a connector is relative to MCP,
@@ -88,7 +104,7 @@ JSON with no event stream, session, or batching.
 
 ## Contract
 
-`schema_version` stays `1`; no fields were added to the JSON contract.
+`schema_version` stays `1`; no fields were added to the JSON contract. `moodle version` is unchanged.
 
 # Moodle CLI v0.3.0 — automatic browser sign-in on macOS
 

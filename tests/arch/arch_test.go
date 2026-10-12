@@ -42,6 +42,14 @@ var forbidden = map[string][]string{
 		"internal/auth", "internal/secret", "internal/webread", "internal/contract...",
 		"github.com/spf13/cobra", "net/http"},
 
+	// The release check asks one question of one host and knows nothing of
+	// Moodle, accounts or presentation. It is the only code besides the Moodle
+	// adapters that opens a connection by itself, so what it may import is
+	// kept as small as what it does.
+	"internal/update": {"internal/cli", "internal/mcp", "internal/mcphost", "internal/moodle...",
+		"internal/auth", "internal/secret", "internal/webread", "internal/contract...",
+		"internal/config", "github.com/spf13/cobra"},
+
 	// MCP must call the same use cases as the CLI, never the CLI itself.
 	"internal/mcp": {"internal/cli", "github.com/spf13/cobra"},
 

@@ -331,8 +331,9 @@ you know. See [Claude connector](https://github.com/KoukeNeko/Moodle-CLI/wiki/Cl
 
 This program reads credentials and connects to a server, so its boundary should be explicit:
 
-- It contacts only the Moodle site configured for the active profile. The exception is `mcp host`
-  without `--public-url`, which also runs `cloudflared`, and that talks to Cloudflare.
+- It contacts only the Moodle site configured for the active profile. The exceptions are `mcp host`
+  without `--public-url`, which also runs `cloudflared`, and that talks to Cloudflare, and the release
+  check below.
 - It accesses only credentials stored under Moodle CLI's own keychain entries. A machine with no
   keychain — headless Linux, SSH, WSL, a container — can opt into a `0600` file with
   `--credential-store file`; nothing falls back to a file on its own.
@@ -345,7 +346,12 @@ This program reads credentials and connects to a server, so its boundary should 
   and keeps sign-ins in memory until it stops. Without `--public-url` it starts a `cloudflared` quick
   tunnel, and anyone who has the address can reach the sign-in page until it stops; Cloudflare relays
   the traffic.
-- It has no telemetry, updater, privilege escalation, process injection, or credential export.
+- At an interactive terminal it asks github.com, at most once a day, whether a newer release exists,
+  and says so on stderr. It downloads and installs nothing. The request is a `HEAD` for the
+  repository's "latest release" link and carries the program's name and version; GitHub sees that and
+  the address it came from. It never runs with `--json`, `--no-input`, or `mcp`, when stderr is not a
+  terminal, when `CI` is set, or in a development build, and `MOODLE_CLI_NO_UPDATE_CHECK=1` turns it off.
+- It has no telemetry, self-update, privilege escalation, process injection, or credential export.
 
 See the [security model](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-Model) for the full
 threat boundary and callback design.

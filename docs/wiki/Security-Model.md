@@ -80,11 +80,27 @@ and Anthropic can see the traffic, and course content written by other people re
 matters most when writing is on. The log records each tool call's name, outcome, and duration, never
 its arguments. [Claude connector](Claude-Connector) lists every control and limit.
 
+## New-release notice
+
+At an interactive terminal, a command that succeeds may print one notice on stderr when a newer
+release exists. To know that, the program sends github.com a `HEAD` request for
+`https://github.com/KoukeNeko/Moodle-CLI/releases/latest` and reads where it redirects, at most once
+a day. The answer is kept in `update-check.json` in the user cache directory. The request carries no
+account, site, or credential, only the user agent `moodle-cli/<version>`; GitHub sees that and the
+address it came from, as it would for a download. Only a `vX.Y.Z` tag on this repository's own page is
+accepted, and the address in the notice is built from that tag rather than copied from the response.
+Nothing is downloaded, installed, or run because of it.
+
+No request is made with `--json` or `--no-input`, for `mcp`, completion and help, when stderr is not a
+terminal, when `CI` is set, in a build that is not a release, or when `MOODLE_CLI_NO_UPDATE_CHECK` is
+set to anything but `0`, `false`, `no`, or `off`. A network that never answers delays a command by at
+most one second, once a day.
+
 ## Out of scope
 
 The CLI cannot protect a compromised operating system, an unlocked user keychain, a malicious
 Moodle server, or a browser profile readable by another local process. It provides no telemetry,
-automatic updater, privilege escalation, process injection, or remote credential backup.
+self-update, privilege escalation, process injection, or remote credential backup.
 
 Report a suspected vulnerability privately to the repository owner before opening a public issue
 when disclosure would expose users or credentials.

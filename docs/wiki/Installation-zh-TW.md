@@ -55,6 +55,10 @@ SHA-256，再將解壓後的 `moodle`（Windows 為 `moodle.exe`）放進 `PATH`
 套件倉庫只會在 stable release 通過真正的 macOS 簽章及 notarization 驗證後更新。若最新 tag
 暫時不在 tap 或 bucket，可先用上一個穩定版，或等待發布流程完成。
 
+在互動式終端機執行 `moodle` 時，若有較新的版本會在 stderr 提示，最多每天檢查一次。
+送出什麼、如何關閉見[安全模型](Security-Model-zh-TW)。提示在 release 發布時就會出現，
+可能早於套件管理器取得該版本的時間。
+
 ## 從原始碼建置
 
 請準備 Git、GNU Make 與 Go 1.26 以上版本：

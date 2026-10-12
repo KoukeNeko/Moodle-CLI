@@ -60,6 +60,10 @@ Package repositories update only after the stable release passes real-macOS sign
 notarization verification. If the newest tag is not yet in the tap or bucket, use the previous
 stable package or wait for the release workflow to complete.
 
+An interactive `moodle` run says on stderr when a newer release exists, checked at most once a day.
+The [security model](Security-Model) lists what is sent and how to turn it off. The notice appears
+when the release is published, which can be before your package manager has it.
+
 ## Build from source
 
 Use Git, GNU Make, and Go 1.26 or newer:

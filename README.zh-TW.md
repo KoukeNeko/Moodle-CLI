@@ -299,8 +299,8 @@ HTTPS 的 tunnel 或 proxy 後面，並以 `--public-url` 傳入。登入頁由 
 
 這支程式會讀取憑證並連線到伺服器，因此邊界必須明確：
 
-- 只連線到目前 profile 設定的 Moodle 站台。例外是沒有 `--public-url` 的 `mcp host`，它還會執行 `cloudflared`，
-  而 cloudflared 會連到 Cloudflare。
+- 只連線到目前 profile 設定的 Moodle 站台。例外有兩個：沒有 `--public-url` 的 `mcp host`，它還會執行
+  `cloudflared`，而 cloudflared 會連到 Cloudflare；以及下方的新版檢查。
 - 只存取 Moodle CLI 自己建立的 keychain 項目。完全沒有 keychain 的機器（headless Linux、SSH、WSL、
   容器）可以主動選用權限 `0600` 的檔案：`--credential-store file`；不會自動退回檔案。
 - 只有明確執行 browser import 才讀取指定 profile；只回傳或保存指定站台的 cookie，絕不寫入 log。
@@ -308,7 +308,11 @@ HTTPS 的 tunnel 或 proxy 後面，並以 `--public-url` 傳入。登入頁由 
 - 只有 `mcp host` 會接受網路連線。除非用 `--listen` 另外指定，它監聽 loopback（quick tunnel 要求必須是
   loopback），輸入 passphrase 後才放行用戶端，登入只存在記憶體，停止即消失。沒有 `--public-url` 時它會啟動
   `cloudflared` quick tunnel，知道位址的人在它停止前都連得到登入頁，流量由 Cloudflare 轉送。
-- 沒有遙測、自動更新、提權、process injection 或憑證匯出。
+- 在互動式終端機中，最多每天向 github.com 詢問一次是否有新版，有的話只在 stderr 提示；不下載也不安裝任何東西。
+  請求是對 repository「latest release」連結的 `HEAD`，帶有程式名稱與版本，GitHub 看得到這些與來源位址。
+  使用 `--json`、`--no-input`、`mcp`、stderr 不是終端機、設有 `CI` 或為開發版時一律不執行；
+  設定 `MOODLE_CLI_NO_UPDATE_CHECK=1` 可關閉。
+- 沒有遙測、自行更新程式、提權、process injection 或憑證匯出。
 
 完整 threat boundary 與 callback 設計見[安全模型](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-Model-zh-TW)。
 
