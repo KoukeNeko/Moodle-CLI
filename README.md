@@ -340,10 +340,11 @@ This program reads credentials and connects to a server, so its boundary should 
   stores only the named site's cookie, and never logs it.
 - `auth logout` removes the local credential but does not revoke the Moodle token, because the same
   token may also belong to Moodle's mobile app.
-- Only `mcp host` accepts network connections. It listens on loopback, admits a client only after you
-  enter its passphrase, and keeps sign-ins in memory until it stops. Without `--public-url` it starts a
-  `cloudflared` quick tunnel, and anyone who has the address can reach the sign-in page until it
-  stops; Cloudflare relays the traffic.
+- Only `mcp host` accepts network connections. It listens on loopback unless `--listen` says
+  otherwise (a quick tunnel requires loopback), admits a client only after you enter its passphrase,
+  and keeps sign-ins in memory until it stops. Without `--public-url` it starts a `cloudflared` quick
+  tunnel, and anyone who has the address can reach the sign-in page until it stops; Cloudflare relays
+  the traffic.
 - It has no telemetry, updater, privilege escalation, process injection, or credential export.
 
 See the [security model](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-Model) for the full

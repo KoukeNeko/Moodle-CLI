@@ -23,10 +23,15 @@ discovery documents, dynamic client registration, PKCE (S256), rotating refresh 
 page that asks the owner for a host passphrase and names the application, site, access, and return
 address. Read-only unless `--allow-write`, exactly as for `mcp serve`.
 
-Protections: the host listens on loopback only (but without `--public-url` it is published by a quick tunnel), constant-time passphrase comparison with a global limit of five
-wrong tries per ten minutes, a 12-character minimum for a chosen passphrase, exact redirect matching
+Protections: the host listens on loopback by default (`127.0.0.1:8787`, or a free port without
+`--public-url`), and a quick tunnel requires a loopback `--listen`; with `--public-url` any `--listen`
+is accepted, since a proxy on another machine or a container needs one. Constant-time passphrase
+comparison, with the check, the comparison and the recording of a miss as one step so a burst of
+guesses cannot get past the global limit of five wrong tries per ten minutes, a 12-character minimum for a chosen passphrase, exact redirect matching
 (HTTPS or loopback only, any port on loopback), signed client ids and sign-in requests so
-unauthenticated calls store nothing, tokens held as hashes in memory only, a refusal of foreign
+unauthenticated calls store nothing, tokens held as hashes in memory only, every sign-in ended when
+a spent authorization code or refresh token is used again (a second use within ten seconds of a
+refresh is taken for two requests racing and only fails), a refusal of foreign
 `Origin` headers on `/mcp`, and a log that never records a query string, an argument, or a token.
 The sign-in page is open to anyone who knows the address, so it omits the account, shows the return
 address as punycode, and says the application's name is not verified.
@@ -78,7 +83,7 @@ and a connector whose host has restarted.
 Claude opens each connection with a `server/discover` request under revision 2026-07-28 and falls
 back to `initialize` when the host answers `400`, so every connection logs one `POST /mcp 400`. The
 host speaks 2025-06-18 and older. Sign-ins do not survive a restart and the connector then has to be
-removed and added again; one host serves one account; a refresh token works once; responses are plain
+removed and added again; one host serves one account; a refresh token works once, and using a spent one again ends the sign-in; responses are plain
 JSON with no event stream, session, or batching.
 
 ## Contract

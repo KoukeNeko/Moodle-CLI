@@ -159,6 +159,8 @@ approving.
   is not verified, so the return address is the row to check; it is shown as a browser resolves it, so
   a look-alike letter appears as `xn--` text.
 - PKCE with S256 is required. A code works once and for five minutes. A refresh token works once.
+  Using a spent code or refresh token again ends that sign-in, so everything issued from it stops
+  working, unless it follows within ten seconds of the refresh, which is taken for two requests racing.
 - Client ids and pending sign-ins are signed rather than stored, so unauthenticated requests do not
   use memory.
 - Access and refresh tokens live in memory only, as hashes. Stopping the host ends every sign-in and
@@ -195,7 +197,7 @@ approving.
 - Sign-ins do not survive a restart. Any restart, including one to add `--allow-write` or one that
   generates a new passphrase, invalidates the connector: remove it in Claude and add it again.
 - A refresh token works once, so a client that repeats a refresh whose reply was lost has to sign in
-  again.
+  again. If the repeat comes more than ten seconds later, the whole sign-in ends, not just the token.
 - If the Moodle credential expires while the host runs, a tool result says to sign in again with
   `moodle auth login`. A host started with `MOODLE_WS_TOKEN` or `MOODLE_SESSION` only picks up a new
   value on restart.

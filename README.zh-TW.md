@@ -305,9 +305,9 @@ HTTPS 的 tunnel 或 proxy 後面，並以 `--public-url` 傳入。登入頁由 
   容器）可以主動選用權限 `0600` 的檔案：`--credential-store file`；不會自動退回檔案。
 - 只有明確執行 browser import 才讀取指定 profile；只回傳或保存指定站台的 cookie，絕不寫入 log。
 - `auth logout` 只刪本機憑證，不撤銷 Moodle token，因為同一個 token 可能也供 Moodle mobile app 使用。
-- 只有 `mcp host` 會接受網路連線。它監聽 loopback，輸入 passphrase 後才放行用戶端，登入只存在記憶體，
-  停止即消失。沒有 `--public-url` 時它會啟動 `cloudflared` quick tunnel，知道位址的人在它停止前都連得到登入頁，
-  流量由 Cloudflare 轉送。
+- 只有 `mcp host` 會接受網路連線。除非用 `--listen` 另外指定，它監聽 loopback（quick tunnel 要求必須是
+  loopback），輸入 passphrase 後才放行用戶端，登入只存在記憶體，停止即消失。沒有 `--public-url` 時它會啟動
+  `cloudflared` quick tunnel，知道位址的人在它停止前都連得到登入頁，流量由 Cloudflare 轉送。
 - 沒有遙測、自動更新、提權、process injection 或憑證匯出。
 
 完整 threat boundary 與 callback 設計見[安全模型](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-Model-zh-TW)。

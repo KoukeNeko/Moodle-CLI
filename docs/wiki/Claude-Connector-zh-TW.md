@@ -129,7 +129,8 @@ origin，必須是 `https`；唯一例外是 `localhost`、`127.0.0.1` 與 `::1`
   必須是 `https`，或 loopback 位址上的 `http`，且必須與註冊時完全相符；loopback 的 redirect 可以使用任何埠。
 - 登入頁對任何知道位址的人開放。它列出站台、存取範圍與瀏覽器返回的位置，但不列帳號。應用程式的名稱由應用程式自行決定、
   未經驗證，所以要看的是返回位置；它以瀏覽器解析的方式顯示，因此長得像的字母會顯示成 `xn--` 文字。
-- 必須使用 PKCE S256。授權碼只能用一次、五分鐘內有效。Refresh token 只能用一次。
+- 必須使用 PKCE S256。授權碼只能用一次、五分鐘內有效。Refresh token 只能用一次。再次使用已用過的授權碼或 refresh token
+  會結束那次登入，由它發出的一切都會失效；但若在 refresh 之後十秒內，則視為兩個請求同時競爭，不會結束登入。
 - Client id 與進行中的登入是「簽章」而非「儲存」，所以未驗證的請求不會佔用記憶體。
 - Access token 與 refresh token 只存在記憶體並以雜湊保存。Host 停止就結束所有登入，並使 connector 的註冊失效。
 - 對 `/mcp` 帶有外來 `Origin` 標頭的請求會被拒絕，避免網頁碰到跑在 loopback 的 host。Anthropic 的請求不帶 `Origin`
@@ -154,7 +155,7 @@ origin，必須是 `https`；唯一例外是 `localhost`、`127.0.0.1` 與 `::1`
   `moodle --moodle-tunnel-guard …`。
 - 登入不會跨重啟保留。任何重啟（包含為了加上 `--allow-write`，或因而產生新的 passphrase）都會使 connector 失效：
   請在 Claude 移除後重新新增。
-- Refresh token 只能用一次，所以重送一次回應已遺失的 refresh 的用戶端，必須重新登入。
+- Refresh token 只能用一次，所以重送一次回應已遺失的 refresh 的用戶端，必須重新登入。若重送發生在十秒之後，整個登入都會結束，而不只是那個 token。
 - Host 執行期間 Moodle 憑證若過期，工具結果會要求以 `moodle auth login` 重新登入。以 `MOODLE_WS_TOKEN` 或
   `MOODLE_SESSION` 啟動的 host，只有重啟才會換成新值。
 
