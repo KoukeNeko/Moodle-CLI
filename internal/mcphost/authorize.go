@@ -94,15 +94,14 @@ func (a *authority) decide(w http.ResponseWriter, r *http.Request) {
 			map[string]string{"error": "access_denied"})
 		return
 	}
-	if a.lockedOut() {
+	switch a.tryPassphrase(r.PostFormValue("passphrase")) {
+	case attemptLocked:
 		render(w, http.StatusTooManyRequests, page{
 			Title:   "Too many attempts",
 			Message: "Wrong passphrases were entered too often. Try again in a few minutes.",
 		})
 		return
-	}
-	if !a.passphraseMatches(r.PostFormValue("passphrase")) {
-		a.recordFailure()
+	case attemptWrong:
 		render(w, http.StatusForbidden,
 			a.consentPage(client, request.Redirect, sealed, "Wrong passphrase."))
 		return

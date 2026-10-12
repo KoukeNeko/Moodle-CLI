@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1331,5 +1332,82 @@ func TestListenReportsAConfigurationError(t *testing.T) {
 
 	if got := errs.From(err); got.Code != errs.CodeConfiguration {
 		t.Errorf("code = %s, want configuration", got.Code)
+	}
+}
+
+func TestAConcurrentBurstOfGuessesStillStopsAtTheLimit(t *testing.T) {
+	// The limit has to hold against guesses sent at the same moment, not only
+	// one after another. Anyone who has a quick tunnel's address can send a burst.
+	h := newTestHost(t)
+	request := h.consent(h.register(claudeCallback))
+	const burst = 40
+	gate := make(chan struct{})
+	statuses := make(chan int, burst)
+	var wg sync.WaitGroup
+	for range burst {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			form := url.Values{"request": {request}, "passphrase": {"a wrong guess"}, "decision": {"allow"}}
+			req, _ := http.NewRequest(http.MethodPost, h.url("/authorize"), strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			<-gate
+			response, err := h.client.Do(req)
+			if err != nil {
+				statuses <- -1
+				return
+			}
+			response.Body.Close()
+			statuses <- response.StatusCode
+		}()
+	}
+	close(gate)
+	wg.Wait()
+	close(statuses)
+
+	counts := map[int]int{}
+	for status := range statuses {
+		counts[status]++
+	}
+	if counts[http.StatusForbidden] != maxFailures || counts[http.StatusTooManyRequests] != burst-maxFailures {
+		t.Errorf("of %d simultaneous guesses, %d were compared and %d were refused; want %d and %d",
+			burst, counts[http.StatusForbidden], counts[http.StatusTooManyRequests], maxFailures, burst-maxFailures)
+	}
+}
+
+func TestAThousandGuessesAtOnceStillGetOnlyTheLimit(t *testing.T) {
+	// The lockout check and the recording of a miss are one step. Run apart,
+	// every guess in a burst passes the check before any has been recorded, and
+	// far more than the limit is compared. This is the check at its sharpest:
+	// no network between the guesses, nothing to spread them out.
+	a := newAuthority("https://moodle.example.com", passphrase, "school", false)
+	const burst = 3000
+	gate := make(chan struct{})
+	var wrong, locked, right atomic.Int64
+	var wg sync.WaitGroup
+	for range burst {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-gate
+			switch a.tryPassphrase("a wrong guess") {
+			case attemptWrong:
+				wrong.Add(1)
+			case attemptLocked:
+				locked.Add(1)
+			case attemptRight:
+				right.Add(1)
+			}
+		}()
+	}
+	close(gate)
+	wg.Wait()
+
+	if wrong.Load() != maxFailures || locked.Load() != burst-maxFailures || right.Load() != 0 {
+		t.Errorf("of %d guesses at once, %d were compared and %d refused; want %d and %d",
+			burst, wrong.Load(), locked.Load(), maxFailures, burst-maxFailures)
+	}
+	if a.tryPassphrase(passphrase) != attemptLocked {
+		t.Error("the right passphrase was accepted while locked out")
 	}
 }

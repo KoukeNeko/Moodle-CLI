@@ -150,18 +150,35 @@ func (a *authority) passphraseMatches(guess string) bool {
 	return subtle.ConstantTimeCompare(got[:], a.passphrase[:]) == 1
 }
 
-// lockedOut reports whether guessing has gone on too long to allow another try.
-func (a *authority) lockedOut() bool {
+// attempt is the outcome of one try at the passphrase.
+type attempt int
+
+const (
+	attemptWrong attempt = iota
+	attemptRight
+	attemptLocked
+)
+
+// tryPassphrase checks the lockout, compares the guess, and records a miss, as
+// one step.
+//
+// They have to be one step. Apart, every request in a burst reads the count
+// before any of them has added to it, so all of them pass the check and all of
+// their guesses are compared: the limit would hold for guesses sent one at a
+// time and for nothing faster. The comparison is a hash and a constant-time
+// compare, which is cheap enough to do while holding the lock.
+func (a *authority) tryPassphrase(guess string) attempt {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.forgetOldFailures()
-	return len(a.failures) >= maxFailures
-}
-
-func (a *authority) recordFailure() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	if len(a.failures) >= maxFailures {
+		return attemptLocked
+	}
+	if a.passphraseMatches(guess) {
+		return attemptRight
+	}
 	a.failures = append(a.failures, a.now())
+	return attemptWrong
 }
 
 // forgetOldFailures expects mu to be held.
