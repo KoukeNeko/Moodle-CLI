@@ -13,7 +13,7 @@ This page is generated from `moodle commands --json`; every public command must 
 | `--read-only` | Hide and refuse every command that may mutate Moodle. |
 | `--backend auto|ws-only` | Allow automatic fallback routes, or restrict the run to Web Services. |
 
-## Commands (108)
+## Commands (109)
 
 ### `moodle api`
 
@@ -1181,6 +1181,23 @@ Serve Moodle to an AI agent
 - Synopsis: `moodle mcp [command]`
 - Type: command group; select a subcommand
 - Data effect: **read-only**
+
+### `moodle mcp host`
+
+Serve Moodle to Claude as a connector, over HTTPS
+
+- Synopsis: `moodle mcp host [flags]`
+- JSON response kind: `mcp.host`
+- Data effect: **read-only**
+
+| Flag | Meaning |
+| --- | --- |
+| `--account` | account to act as |
+| `--allow-write` | offer the tools that can change things on the site |
+| `--listen` | address to listen on, kept on loopback for a tunnel or proxy to reach (default 127.0.0.1:8787 with --public-url, otherwise a free port) |
+| `--passphrase-file` | file holding the host passphrase; a generated one is printed when none is given |
+| `--public-url` | HTTPS address Claude connects to, with no path; without it a Cloudflare quick tunnel is started |
+| `--site` | site to serve |
 
 ### `moodle mcp serve`
 
