@@ -10,6 +10,7 @@ import (
 	"io"
 	"slices"
 	"sync"
+	"time"
 )
 
 // Streams are the process streams the server speaks over.
@@ -35,6 +36,13 @@ type Server struct {
 	// initialized records the handshake. A client that calls a tool before
 	// initializing is a client with a bug, and answering anyway would hide it.
 	initialized bool
+	// stateless drops the handshake check. Over HTTP every request arrives on
+	// its own, so there is no session to remember a handshake in.
+	stateless bool
+	// callMu serialises tool calls. The session behind the tools keeps its
+	// capability answer and credential in plain fields, and over HTTP two
+	// requests can be in flight at once.
+	callMu sync.Mutex
 }
 
 // BuildInfo identifies this binary to the client.
@@ -48,6 +56,16 @@ func NewServer(streams Streams, build BuildInfo, tools *Registry) *Server {
 		streams.Log = io.Discard
 	}
 	return &Server{streams: streams, build: build, tools: tools}
+}
+
+// NewHTTPServer builds a server for the Streamable HTTP transport.
+//
+// It keeps no session between requests: every POST stands alone, so a client
+// can reconnect after a restart without a handshake to replay.
+func NewHTTPServer(log io.Writer, build BuildInfo, tools *Registry) *Server {
+	server := NewServer(Streams{Out: io.Discard, Log: log}, build, tools)
+	server.stateless = true
+	return server
 }
 
 // maxMessageBytes caps one message.
@@ -80,27 +98,11 @@ func (s *Server) Serve(ctx context.Context) error {
 		if len(line) == 0 {
 			continue
 		}
-
-		var message request
-		if err := json.Unmarshal(line, &message); err != nil {
-			// The id is unknown, so the reply carries a null id as the
-			// protocol requires. The next line is still read: one bad message
-			// has not ended the session.
-			if s.write(response{
-				JSONRPC: "2.0",
-				ID:      json.RawMessage("null"),
-				Error:   &rpcError{Code: codeParseError, Message: "invalid JSON"},
-			}) != nil {
-				return nil
-			}
-			continue
+		// A malformed line is answered and the next one is still read: one
+		// bad message has not ended the session.
+		if reply := s.exchange(ctx, line); reply != nil && s.write(*reply) != nil {
+			return nil
 		}
-
-		if message.JSONRPC != "2.0" {
-			s.fail(message, codeInvalidRequest, "jsonrpc must be \"2.0\"", nil)
-			continue
-		}
-		s.handle(ctx, message)
 	}
 
 	if err := lines.Err(); err != nil && !errors.Is(err, io.EOF) {
@@ -111,47 +113,77 @@ func (s *Server) Serve(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) handle(ctx context.Context, message request) {
+// exchange answers one message, whatever carried it. It returns nil when the
+// message needs no reply.
+//
+// The transports only differ in how a message arrives and where the reply
+// goes; what the server says back is decided here, once.
+func (s *Server) exchange(ctx context.Context, raw []byte) *response {
+	var message request
+	if err := json.Unmarshal(raw, &message); err != nil {
+		// The id is unknown, so the reply carries a null id as the protocol
+		// requires.
+		return &response{
+			JSONRPC: "2.0",
+			ID:      json.RawMessage("null"),
+			Error:   &rpcError{Code: codeParseError, Message: "invalid JSON"},
+		}
+	}
+	if message.JSONRPC != "2.0" {
+		return failure(message, codeInvalidRequest, "jsonrpc must be \"2.0\"", nil)
+	}
+	return s.answer(ctx, message)
+}
+
+func (s *Server) answer(ctx context.Context, message request) *response {
 	switch message.Method {
 	case "initialize":
-		s.handleInitialize(message)
+		return s.handleInitialize(message)
 	case "notifications/initialized":
 		// Nothing to do, and nothing to answer: it is a notification.
+		return nil
 	case "ping":
-		s.reply(message, map[string]any{})
+		return reply(message, map[string]any{})
 	case "tools/list":
-		if !s.ready(message) {
-			return
+		if refused := s.refuseBeforeHandshake(message); refused != nil {
+			return refused
 		}
-		s.reply(message, toolsListResult{Tools: s.tools.describe()})
+		return reply(message, toolsListResult{Tools: s.tools.describe()})
 	case "tools/call":
-		if !s.ready(message) {
-			return
+		if message.isNotification() {
+			// A call is a request. Without an id its result could never be
+			// reported, so running it would be a write nobody can see the
+			// outcome of — and the handshake check below cannot refuse it,
+			// because refusing a notification is silent.
+			return nil
 		}
-		s.handleCall(ctx, message)
+		if refused := s.refuseBeforeHandshake(message); refused != nil {
+			return refused
+		}
+		return s.handleCall(ctx, message)
 	default:
 		if message.isNotification() {
 			// An unknown notification is ignored rather than answered: the
 			// protocol forbids a reply, and refusing to run is worse than
 			// carrying on.
-			return
+			return nil
 		}
-		s.fail(message, codeMethodNotFound,
+		return failure(message, codeMethodNotFound,
 			fmt.Sprintf("unknown method %q", message.Method), nil)
 	}
 }
 
-// ready refuses work before the handshake.
-func (s *Server) ready(message request) bool {
-	if s.initialized {
-		return true
+// refuseBeforeHandshake answers work that arrived before the handshake, and
+// returns nil when the work may go ahead.
+func (s *Server) refuseBeforeHandshake(message request) *response {
+	if s.stateless || s.initialized {
+		return nil
 	}
-	s.fail(message, codeInvalidRequest,
+	return failure(message, codeInvalidRequest,
 		"the session has not been initialized", nil)
-	return false
 }
 
-func (s *Server) handleInitialize(message request) {
+func (s *Server) handleInitialize(message request) *response {
 	var params struct {
 		ProtocolVersion string `json:"protocolVersion"`
 	}
@@ -168,8 +200,10 @@ func (s *Server) handleInitialize(message request) {
 		version = params.ProtocolVersion
 	}
 
-	s.initialized = true
-	s.reply(message, initializeResult{
+	if !s.stateless {
+		s.initialized = true
+	}
+	return reply(message, initializeResult{
 		ProtocolVersion: version,
 		Capabilities:    capabilities{Tools: &toolsCapability{ListChanged: false}},
 		ServerInfo: serverInfo{
@@ -179,36 +213,58 @@ func (s *Server) handleInitialize(message request) {
 	})
 }
 
-func (s *Server) handleCall(ctx context.Context, message request) {
+func (s *Server) handleCall(ctx context.Context, message request) *response {
 	var params callToolParams
 	if err := json.Unmarshal(message.Params, &params); err != nil {
-		s.fail(message, codeInvalidParams, "params must be an object with a name", nil)
-		return
+		return failure(message, codeInvalidParams, "params must be an object with a name", nil)
 	}
 
+	s.callMu.Lock()
+	defer s.callMu.Unlock()
+	started := time.Now()
 	result := s.tools.call(ctx, params.Name, params.Arguments)
-	s.reply(message, result)
-}
-
-func (s *Server) reply(message request, result any) {
-	if message.isNotification() {
-		return
+	if s.stateless {
+		s.audit(params.Name, result.IsError, time.Since(started))
 	}
-	_ = s.write(response{JSONRPC: "2.0", ID: message.ID, Result: result})
+	return reply(message, result)
 }
 
-func (s *Server) fail(message request, code int, text string, data any) {
+// audit notes one tool call on the log: which tool, whether it worked, and how
+// long it took. Arguments are left out because they carry what a person asked
+// about.
+//
+// Only a host needs it. Whoever runs one is not watching the conversation, and
+// with writing enabled "what did Claude do to my account" has to have an
+// answer; a stdio server's client shows each call to the person using it.
+func (s *Server) audit(name string, failed bool, took time.Duration) {
+	outcome := "ok"
+	if failed {
+		outcome = "error"
+	}
+	fmt.Fprintf(s.streams.Log, "moodle: tool %q %s %s\n", name, outcome, took.Round(time.Millisecond))
+}
+
+// reply wraps a result, or returns nil for a notification.
+func reply(message request, result any) *response {
 	if message.isNotification() {
-		return
+		return nil
+	}
+	return &response{JSONRPC: "2.0", ID: message.ID, Result: result}
+}
+
+// failure wraps an error, or returns nil for a notification.
+func failure(message request, code int, text string, data any) *response {
+	if message.isNotification() {
+		return nil
 	}
 	id := message.ID
 	if len(id) == 0 {
 		id = json.RawMessage("null")
 	}
-	_ = s.write(response{
+	return &response{
 		JSONRPC: "2.0", ID: id,
 		Error: &rpcError{Code: code, Message: text, Data: data},
-	})
+	}
 }
 
 func (s *Server) write(message response) error {

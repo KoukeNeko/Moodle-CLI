@@ -444,9 +444,10 @@ func registerWSTools(r *Registry, deps Deps) {
 		return
 	}
 	r.add(definition{
-		Name:        "ws_list",
-		Title:       "List typed core web services",
-		Description: "List the generated union of Moodle 4.5, 5.1 and 5.2 core external functions, including effects and supported versions.",
+		Name:  "ws_list",
+		Title: "List typed core web services",
+		Description: "List the generated union of Moodle 4.5, 5.1 and 5.2 core external functions, including effects and supported versions. " +
+			"Unfiltered, the answer is very large: narrow it with version, component, effect or match.",
 		Schema: schema(`{
 			"type":"object",
 			"properties":{
