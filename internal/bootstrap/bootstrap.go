@@ -7,7 +7,12 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net"
 	"os"
+	"strconv"
+	"strings"
 
 	"golang.org/x/term"
 
@@ -30,11 +35,13 @@ import (
 	"github.com/KoukeNeko/moodle-cli/internal/forum"
 	"github.com/KoukeNeko/moodle-cli/internal/grade"
 	"github.com/KoukeNeko/moodle-cli/internal/mcp"
+	"github.com/KoukeNeko/moodle-cli/internal/mcphost"
 	"github.com/KoukeNeko/moodle-cli/internal/moodle"
 	"github.com/KoukeNeko/moodle-cli/internal/quiz"
 	"github.com/KoukeNeko/moodle-cli/internal/safety"
 	"github.com/KoukeNeko/moodle-cli/internal/secret"
 	"github.com/KoukeNeko/moodle-cli/internal/site"
+	"github.com/KoukeNeko/moodle-cli/internal/tunnel"
 	"github.com/KoukeNeko/moodle-cli/internal/workload"
 	"github.com/KoukeNeko/moodle-cli/internal/wsregistry"
 )
@@ -49,6 +56,13 @@ type Build struct {
 // Run assembles the application and executes it, returning the process exit
 // code. It is the only entry point cmd/moodle needs.
 func Run(ctx context.Context, build Build, args []string) int {
+	// The program starts itself as the guard of a tunnel it runs. That has
+	// nothing to do with the command line below, and must not touch the
+	// configuration or the keychain.
+	if len(args) > 0 && args[0] == tunnel.GuardArg {
+		return tunnel.RunGuard(ctx, args[1:])
+	}
+
 	version := valueOr(build.Version, "dev")
 	streams := cli.Streams{In: os.Stdin, Out: os.Stdout, Err: os.Stderr}
 
@@ -94,6 +108,41 @@ func Run(ctx context.Context, build Build, args []string) int {
 	if err != nil {
 		renderer := cli.Renderer{Streams: streams, Format: cli.FormatTable}
 		return renderer.RenderError(err)
+	}
+
+	// mcpTools assembles the tool surface for a session. Both transports
+	// serve this one, so what an agent can do does not depend on how it
+	// connected.
+	mcpTools := func(session cli.MCPSession) *mcp.Registry {
+		client, token := session.Session.Client(), session.Session.Token()
+		return mcp.Register(mcp.Deps{
+			// Asked per tool call rather than captured: this process
+			// outlives the answer, and the session expires it on a timer.
+			Capabilities: session.Session.Capabilities,
+			SiteName:     session.SiteName,
+			AccountName:  session.AccountName,
+			Courses: course.NewService(
+				moodle.NewCourseBackend(client, token, session.Capabilities)),
+			Assignments: assignment.NewService(
+				moodle.NewAssignmentWriter(client, token),
+				// The server's own read-only state is separate from the
+				// tool surface: a writing tool that somehow ran without
+				// being offered would still be stopped here.
+				safety.Mode{ReadOnly: !session.AllowWrite},
+				moodle.NewAssignmentBackend(client, token),
+			),
+			Grades: grade.NewService(
+				moodle.NewGradeBackend(client, token, session.Capabilities)),
+			Calendar:   calendar.NewService(moodle.NewCalendarBackend(client, token)),
+			Forums:     forum.NewService(moodle.NewForumBackend(client, token)),
+			WSRegistry: registry,
+			WS: wsregistry.NewService(
+				registry,
+				moodle.NewRawCaller(client, token),
+				safety.Mode{ReadOnly: !session.AllowWrite},
+				session.AllowWrite,
+			),
+		}, session.AllowWrite)
 	}
 
 	deps := cli.Deps{
@@ -236,43 +285,111 @@ func Run(ctx context.Context, build Build, args []string) int {
 			return workload.NewService(moodle.NewWorkloadBackend(session.Client(), session.Token()))
 		},
 		ServeMCP: func(ctx context.Context, session cli.MCPSession) error {
-			client, token := session.Session.Client(), session.Session.Token()
-			deps := mcp.Deps{
-				// Asked per tool call rather than captured: this process
-				// outlives the answer, and the session expires it on a timer.
-				Capabilities: session.Session.Capabilities,
-				SiteName:     session.SiteName,
-				AccountName:  session.AccountName,
-				Courses: course.NewService(
-					moodle.NewCourseBackend(client, token, session.Capabilities)),
-				Assignments: assignment.NewService(
-					moodle.NewAssignmentWriter(client, token),
-					// The server's own read-only state is separate from the
-					// tool surface: a writing tool that somehow ran without
-					// being offered would still be stopped here.
-					safety.Mode{ReadOnly: !session.AllowWrite},
-					moodle.NewAssignmentBackend(client, token),
-				),
-				Grades: grade.NewService(
-					moodle.NewGradeBackend(client, token, session.Capabilities)),
-				Calendar:   calendar.NewService(moodle.NewCalendarBackend(client, token)),
-				Forums:     forum.NewService(moodle.NewForumBackend(client, token)),
-				WSRegistry: registry,
-				WS: wsregistry.NewService(
-					registry,
-					moodle.NewRawCaller(client, token),
-					safety.Mode{ReadOnly: !session.AllowWrite},
-					session.AllowWrite,
-				),
-			}
 			server := mcp.NewServer(
 				// stdout is the protocol. Everything this server says to a
 				// person goes to stderr, or the client cannot parse the stream.
 				mcp.Streams{In: os.Stdin, Out: os.Stdout, Log: os.Stderr},
 				mcp.BuildInfo{Version: version},
-				mcp.Register(deps, session.AllowWrite),
+				mcpTools(session),
 			)
 			return server.Serve(ctx)
+		},
+		ServeMCPHost: func(ctx context.Context, session cli.MCPSession, remote cli.MCPHost) error {
+			// A passphrase that will be refused is refused now, not after a
+			// tunnel has been brought up and a public address created.
+			if err := mcphost.CheckPassphrase(remote.Passphrase); err != nil {
+				return err
+			}
+			// Bind first. A tunnel is pointed at this listener, so what the
+			// internet is given is known to be this host and not whatever else
+			// happens to hold a port.
+			listener, err := mcphost.Listen(remote.Addr)
+			if err != nil {
+				return err
+			}
+			defer listener.Close()
+
+			serving, stop := context.WithCancel(ctx)
+			defer stop()
+			publicURL := remote.PublicURL
+			var quick *tunnel.Tunnel
+			if publicURL == "" {
+				if err := requireLoopback(listener.Addr()); err != nil {
+					return err
+				}
+				fmt.Fprintln(os.Stderr, "moodle: no --public-url, so starting a Cloudflare quick tunnel")
+				quick, err = tunnel.Start(serving, localURL(listener.Addr()), tunnel.Options{
+					// cloudflared is a third party's program and does not need
+					// the credentials this process was given.
+					Env: withoutPrefix(os.Environ(), "MOODLE_"),
+				})
+				if err != nil {
+					if ctx.Err() != nil {
+						// Stopped while it was coming up: that is an interrupt,
+						// not a tunnel that failed.
+						return ctx.Err()
+					}
+					return tunnelUnavailable(err)
+				}
+				defer quick.Close()
+				publicURL = quick.URL
+				fmt.Fprintln(os.Stderr, "moodle: the tunnel is up; anyone with its address can reach the "+
+					"sign-in page until this host stops, and Cloudflare relays all traffic")
+				// The address goes with the tunnel, so a tunnel that dies
+				// takes the host down with it rather than serving to no one.
+				go func() {
+					select {
+					case <-quick.Done():
+						stop()
+					case <-serving.Done():
+					}
+				}()
+			}
+			host, err := mcphost.New(mcphost.Config{
+				PublicURL:   publicURL,
+				Passphrase:  remote.Passphrase,
+				SiteName:    named(session.SiteName, session.Capabilities.SiteName),
+				AccountName: named(session.AccountName, accountOnSite(session.Capabilities)),
+				AllowWrite:  session.AllowWrite,
+				// stdout stays free for whatever a caller pipes; the host talks
+				// to the person who started it on stderr.
+				Log: os.Stderr,
+			}, mcp.NewHTTPServer(os.Stderr, mcp.BuildInfo{Version: version}, mcpTools(session)).Handler())
+			if err != nil {
+				return err
+			}
+
+			finished := make(chan error, 1)
+			go func() { finished <- host.Serve(serving, listener) }()
+			if quick != nil {
+				// The tunnel printed an address; whether it leads here is a
+				// separate question, and the answer decides whether the person
+				// is told to use it.
+				if err := verifyPublicAddress(serving, host); err != nil {
+					stop()
+					<-finished
+					if ctx.Err() != nil {
+						return ctx.Err()
+					}
+					// A tunnel that died while it was being checked is not one
+					// that leads elsewhere, and its last words are the cause.
+					if died := quick.Err(); died != nil {
+						return tunnelStopped(died)
+					}
+					return errs.Wrap(errs.CodeUnavailable, err,
+						"the Cloudflare quick tunnel does not lead to this host").
+						WithHint("check for a cloudflared configuration that sends traffic elsewhere, or pass --public-url with an address of your own")
+				}
+			}
+			host.Announce(listener.Addr())
+
+			served := <-finished
+			if quick != nil {
+				if err := quick.Err(); err != nil {
+					return tunnelStopped(err)
+				}
+			}
+			return served
 		},
 		Interactive:     func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
 		Verbose:         verbose,
@@ -289,6 +406,85 @@ func Run(ctx context.Context, build Build, args []string) int {
 		deps,
 	)
 	return app.Execute(ctx, args)
+}
+
+// tunnelStopped reports a quick tunnel that ended while the host ran.
+func tunnelStopped(err error) error {
+	return errs.Wrap(errs.CodeUnavailable, err, "the Cloudflare quick tunnel stopped").
+		WithHint("start the host again for a new address, and add the connector again")
+}
+
+// verifyPublicAddress is how the host checks a tunnel's address. It is a
+// variable so the wiring can be tested without a tunnel that really leads
+// anywhere.
+var verifyPublicAddress = func(ctx context.Context, host *mcphost.Host) error {
+	return host.Verify(ctx)
+}
+
+// requireLoopback refuses a listener a tunnel should not be pointed at.
+//
+// A wildcard address is reached through loopback, but on some systems a
+// wildcard bind succeeds while another program holds the loopback address, and
+// the tunnel would then publish that program. A specific loopback address has
+// no such gap, and it keeps the plain-HTTP sign-in page off the local network.
+func requireLoopback(address net.Addr) error {
+	if tcp, ok := address.(*net.TCPAddr); ok && tcp.IP.IsLoopback() {
+		return nil
+	}
+	return errs.New(errs.CodeUsage, "a Cloudflare quick tunnel needs --listen on a loopback address").
+		WithHint("use 127.0.0.1, or pass --public-url with a tunnel or proxy of your own")
+}
+
+// localURL is how a process on this machine reaches a loopback listener.
+func localURL(address net.Addr) string {
+	tcp := address.(*net.TCPAddr)
+	return "http://" + net.JoinHostPort(tcp.IP.String(), strconv.Itoa(tcp.Port))
+}
+
+// withoutPrefix drops the environment entries whose names start with prefix.
+func withoutPrefix(environment []string, prefix string) []string {
+	kept := make([]string, 0, len(environment))
+	for _, entry := range environment {
+		name, _, _ := strings.Cut(entry, "=")
+		if !strings.HasPrefix(strings.ToUpper(name), prefix) {
+			kept = append(kept, entry)
+		}
+	}
+	return kept
+}
+
+// tunnelUnavailable says what to do about a quick tunnel that could not start,
+// in the terms of the flags the person has.
+func tunnelUnavailable(err error) error {
+	if errors.Is(err, tunnel.ErrNotInstalled) {
+		return errs.Wrap(errs.CodeUnavailable, err, "cannot start a Cloudflare quick tunnel").
+			WithHint("install cloudflared (https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/), or pass --public-url with an address of your own")
+	}
+	return errs.Wrap(errs.CodeUnavailable, err, "cannot start a Cloudflare quick tunnel").
+		WithHint("read cloudflared's lines above; if the network blocks Cloudflare, or Cloudflare is limiting quick tunnels, pass --public-url with a tunnel or proxy of your own")
+}
+
+// named says who or what something is the way the person will recognise it:
+// what the site calls it, with the local label beside it when they differ.
+func named(label, reported string) string {
+	if reported == "" || reported == label {
+		return label
+	}
+	return reported + " (" + label + ")"
+}
+
+// accountOnSite is the account as Moodle knows it. The host's startup banner
+// names the account it serves, and a local label such as "env" does not tell
+// the owner which one that is.
+func accountOnSite(capabilities *site.Capabilities) string {
+	switch {
+	case capabilities.FullName != "" && capabilities.Username != "":
+		return capabilities.FullName + ", " + capabilities.Username
+	case capabilities.Username != "":
+		return capabilities.Username
+	default:
+		return capabilities.FullName
+	}
 }
 
 // courseIDs lists the caller's courses for a route that cannot enumerate them.

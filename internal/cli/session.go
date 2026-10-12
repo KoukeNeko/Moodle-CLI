@@ -80,6 +80,9 @@ type Deps struct {
 	// ServeMCP runs the agent server. It is injected rather than built here
 	// because the server speaks a protocol, and this layer does not.
 	ServeMCP func(context.Context, MCPSession) error
+	// ServeMCPHost runs the same server for remote clients. It is injected for
+	// the same reason: HTTP is a transport, and this layer builds none.
+	ServeMCPHost func(context.Context, MCPSession, MCPHost) error
 	// Interactive reports whether there is a person at the other end to
 	// answer a confirmation prompt. It is injected because deciding that means
 	// inspecting the real process streams, which this layer does not own.
@@ -117,6 +120,16 @@ type MCPSession struct {
 	AccountName  string
 	// AllowWrite decides whether the writing tools exist at all.
 	AllowWrite bool
+}
+
+// MCPHost is how the host reaches its clients.
+type MCPHost struct {
+	// Addr is where to listen.
+	Addr string
+	// PublicURL is the address clients connect to.
+	PublicURL string
+	// Passphrase admits a client. Empty asks the host to generate one.
+	Passphrase string
 }
 
 // targetSite converts a configuration entry into the domain type.

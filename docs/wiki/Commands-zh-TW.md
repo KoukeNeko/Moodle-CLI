@@ -82,6 +82,8 @@ moodle schema assignment submit --json
 moodle assignment list --current --json --fields name,due_date --no-input
 moodle mcp serve
 moodle mcp serve --allow-write
+moodle mcp host                # 啟動對外公開的 Cloudflare quick tunnel
+moodle mcp host --public-url https://moodle-mcp.example.com
 moodle course list --read-only
 moodle course list -v          # 去敏感化的 HTTP 診斷，輸出到 stderr
 moodle shell-completion zsh   # tab 補全；名稱不是 completion，那是 Moodle 的活動完成度

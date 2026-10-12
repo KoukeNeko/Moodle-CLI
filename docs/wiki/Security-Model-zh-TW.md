@@ -51,6 +51,17 @@ Windows 自動 callback 仍未支援。
 - 作業寫入後會回讀狀態；仍無法判定時回報 `ambiguous`，禁止自動重送。
 - 有 request throttling，並遵守 Moodle 的 `Retry-After`。
 
+## Host 模式
+
+`moodle mcp host` 是唯一會接受網路連線的命令。它監聽 `--listen` 指定的位址（應為 loopback），並預期放在終止
+HTTPS 的 tunnel 或 proxy 後面；沒有 `--public-url` 時，它會自己啟動 Cloudflare quick tunnel，在停止前以隨機位址對外公開。它先綁定埠、再讓
+tunnel 指向那個 listener，以自己的設定檔且不帶 `MOODLE_*` 與 `TUNNEL_*` 環境變數執行 `cloudflared`，在守衛程序底下執行它（host 被強制終止時守衛會停止它），並在公告位址前確認公開位址
+通到自己。用戶端必須持有 access token 才能使用工具；token 只在擁有者於頁面輸入 host
+passphrase 後發出，而該頁面會列出站台、授予的存取範圍與瀏覽器返回的位置。登入只保存在記憶體，process 停止即結束。
+Host 執行期間持有該帳號的 Moodle 憑證，且任何通過的人都以該帳號行事。Tunnel 供應商與 Anthropic 看得到流量；
+其他人撰寫的課程內容會送到 Claude，開啟寫入時尤其要留意。日誌記錄每次工具呼叫的名稱、結果與耗時，不記錄參數。
+所有控制與限制見 [Claude connector](Claude-Connector-zh-TW)。
+
 ## 不在保護範圍內
 
 CLI 無法防護已遭入侵的作業系統、未鎖定的 user keychain、惡意 Moodle server，或可被其他 process 讀取的

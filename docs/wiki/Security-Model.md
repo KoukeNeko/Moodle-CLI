@@ -64,6 +64,22 @@ Windows automatic callbacks remain unsupported.
   outcome is `ambiguous` and automatic retry is forbidden.
 - Request throttling and Moodle's `Retry-After` are respected.
 
+## Host mode
+
+`moodle mcp host` is the one command that accepts network connections. It listens on the address
+given by `--listen`, which should be loopback, and is meant to sit behind a tunnel or proxy that
+terminates HTTPS. Without `--public-url` it starts a Cloudflare quick tunnel itself, which publishes it
+at a random address until it stops. It binds the port first and points the tunnel at that listener,
+runs `cloudflared` with a configuration file of its own and without `MOODLE_*` and `TUNNEL_*`
+environment variables, runs it under a guard process that stops it if the host is killed, and checks that the public address
+reaches it before announcing it. A client reaches the tools only with an access token issued after the owner enters
+the host passphrase on a page that names the site, the access being granted, and where the browser
+returns. Sign-ins are held in memory and end when the process stops. While it runs, the host holds
+the account's Moodle credential, and anyone it has admitted acts as that account. The tunnel provider
+and Anthropic can see the traffic, and course content written by other people reaches Claude, which
+matters most when writing is on. The log records each tool call's name, outcome, and duration, never
+its arguments. [Claude connector](Claude-Connector) lists every control and limit.
+
 ## Out of scope
 
 The CLI cannot protect a compromised operating system, an unlocked user keychain, a malicious

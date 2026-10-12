@@ -36,8 +36,19 @@ var forbidden = map[string][]string{
 	"internal/moodle":  {"internal/cli", "internal/mcp", "internal/contract..."},
 	"internal/webread": {"internal/cli", "internal/mcp", "internal/contract..."},
 
+	// The tunnel is a subprocess and nothing more: it takes an address to point
+	// at and knows nothing of what is behind it.
+	"internal/tunnel": {"internal/cli", "internal/mcp", "internal/mcphost", "internal/moodle...",
+		"internal/auth", "internal/secret", "internal/webread", "internal/contract...",
+		"github.com/spf13/cobra", "net/http"},
+
 	// MCP must call the same use cases as the CLI, never the CLI itself.
 	"internal/mcp": {"internal/cli", "github.com/spf13/cobra"},
+
+	// The host decides who may reach the protocol and knows nothing about what
+	// it carries: no Moodle, no credentials, no presentation.
+	"internal/mcphost": {"internal/cli", "internal/mcp", "github.com/spf13/cobra", "internal/moodle...",
+		"internal/auth", "internal/secret", "internal/webread", "internal/contract..."},
 
 	// The presentation layer must not build HTTP requests itself.
 	"internal/cli": {"internal/moodle...", "internal/webread", "internal/callback", "net/http"},

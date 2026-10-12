@@ -129,7 +129,7 @@ available through the explicitly untyped `api call` escape hatch.
   are treated as writes and are never retried automatically.
 - `--dry-run` validates typed and high-level writes and describes the plan without sending it.
 - `--read-only` removes write commands from the command tree.
-- `moodle mcp serve` is read-only by default; `--allow-write` must be explicit.
+- `moodle mcp serve` and `moodle mcp host` are read-only by default; `--allow-write` must be explicit.
 - HTML fallback is read-only. If Moodle cannot prove a submission's semantics, the CLI refuses it.
 
 ## Getting started
@@ -309,16 +309,30 @@ moodle ws call core_enrol_get_users_courses --param userid=4
 moodle api call local_example_function --params-json '{}'  # third-party/unregistered
 moodle mcp serve                      # read-only tools
 moodle mcp serve --allow-write        # opt in to write tools
+moodle mcp host                       # serve a Claude connector; starts a public Cloudflare quick tunnel
+moodle mcp host --public-url https://moodle-mcp.example.com   # ...or at an address of your own
 ```
 
 Run `moodle <command> --help`, use the generated [complete command reference](https://github.com/KoukeNeko/Moodle-CLI/wiki/Command-Reference),
 or inspect all 780 core functions in [feature coverage](https://github.com/KoukeNeko/Moodle-CLI/wiki/Feature-Coverage).
 
+## Claude without the CLI on your machine
+
+`moodle mcp serve` needs Claude to start a program on the same machine. Claude on the web, on a
+phone, and in Cowork reaches tools through connectors added by URL instead, so `moodle mcp host`
+serves the same tools over HTTPS. In Claude it is a custom connector: a remote MCP server that
+Claude reaches from Anthropic's servers. With `cloudflared` installed, `moodle mcp host` starts a
+Cloudflare quick tunnel itself and prints a connector URL to add under
+**Customize > Connectors**; for an address that stays, put the host behind a tunnel or proxy with
+HTTPS and pass it as `--public-url`. The host serves the sign-in page and asks for a passphrase only
+you know. See [Claude connector](https://github.com/KoukeNeko/Moodle-CLI/wiki/Claude-Connector).
+
 ## Security boundary
 
 This program reads credentials and connects to a server, so its boundary should be explicit:
 
-- It contacts only the Moodle site configured for the active profile.
+- It contacts only the Moodle site configured for the active profile. The exception is `mcp host`
+  without `--public-url`, which also runs `cloudflared`, and that talks to Cloudflare.
 - It accesses only credentials stored under Moodle CLI's own keychain entries. A machine with no
   keychain — headless Linux, SSH, WSL, a container — can opt into a `0600` file with
   `--credential-store file`; nothing falls back to a file on its own.
@@ -326,6 +340,11 @@ This program reads credentials and connects to a server, so its boundary should 
   stores only the named site's cookie, and never logs it.
 - `auth logout` removes the local credential but does not revoke the Moodle token, because the same
   token may also belong to Moodle's mobile app.
+- Only `mcp host` accepts network connections. It listens on loopback unless `--listen` says
+  otherwise (a quick tunnel requires loopback), admits a client only after you enter its passphrase,
+  and keeps sign-ins in memory until it stops. Without `--public-url` it starts a `cloudflared` quick
+  tunnel, and anyone who has the address can reach the sign-in page until it stops; Cloudflare relays
+  the traffic.
 - It has no telemetry, updater, privilege escalation, process injection, or credential export.
 
 See the [security model](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-Model) for the full

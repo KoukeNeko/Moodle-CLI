@@ -113,4 +113,5 @@ When using the moodle CLI:
 ```
 
 支援 Model Context Protocol 的 agent 也可以改用 `moodle mcp serve`，直接取得結構化結果，不需要經過
-shell。
+shell。無法啟動本機程式的用戶端（網頁版或手機上的 Claude）則透過 `moodle mcp host` 使用同一組工具，
+見 [Claude connector](Claude-Connector-zh-TW)。

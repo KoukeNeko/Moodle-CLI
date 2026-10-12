@@ -13,7 +13,7 @@
 | `--read-only` | 隱藏並拒絕所有可能變更 Moodle 的命令。 |
 | `--backend auto|ws-only` | 允許自動 fallback，或將本次執行限制為 Web Services。 |
 
-## 命令 (108)
+## 命令 (109)
 
 ### `moodle api`
 
@@ -1181,6 +1181,23 @@
 - 用法: `moodle mcp [command]`
 - 類型：命令群組，請選擇子命令
 - 資料效果: **唯讀**
+
+### `moodle mcp host`
+
+以 Model Context Protocol 將 Moodle 提供給 agent：以 HTTPS 提供 Claude connector（MCP host）。
+
+- 用法: `moodle mcp host [flags]`
+- JSON 輸出 kind: `mcp.host`
+- 資料效果: **唯讀**
+
+| Flag | 說明 |
+| --- | --- |
+| `--account` | 指定代為操作的帳號 |
+| `--allow-write` | 允許呼叫已知寫入函式 |
+| `--listen` | 監聽位址，應維持在 loopback；有 --public-url 時預設 127.0.0.1:8787，否則為空閒埠 |
+| `--passphrase-file` | 存放 host passphrase 的檔案；未指定時產生一組並印出 |
+| `--public-url` | Claude 連線所用的 HTTPS 位址，不含路徑；未指定時自行啟動 Cloudflare quick tunnel |
+| `--site` | 指定 Moodle 站台 |
 
 ### `moodle mcp serve`
 

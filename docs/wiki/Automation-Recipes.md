@@ -119,4 +119,6 @@ When using the moodle CLI:
 ```
 
 An agent that speaks the Model Context Protocol can use `moodle mcp serve` instead, which returns
-structured results without the shell in between.
+structured results without the shell in between. A client that cannot start a local program — Claude
+on the web or on a phone — reaches the same tools through `moodle mcp host`; see
+[Claude connector](Claude-Connector).

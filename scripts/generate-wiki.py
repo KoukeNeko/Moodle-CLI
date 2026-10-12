@@ -44,7 +44,7 @@ ACTION_ZH = {
     "logout": "刪除本機保存的憑證", "mark": "手動標記完成", "member-add": "加入群組成員",
     "member-remove": "移除群組成員", "methods": "列出可用方法", "overview": "顯示總覽",
     "pin": "置頂", "read": "讀取", "register-handler": "安裝瀏覽器登入 handler",
-    "remove": "移除", "reply": "回覆", "reveal-identities": "揭露匿名評分身分",
+    "host": "以 HTTPS 提供 Claude connector（MCP host）", "remove": "移除", "reply": "回覆", "reveal-identities": "揭露匿名評分身分",
     "revert": "退回草稿", "search": "搜尋", "serve": "在 stdin/stdout 執行 MCP server",
     "show": "顯示詳細資料", "status": "顯示目前狀態", "submit": "提交作業並回讀狀態",
     "submissions": "列出作業繳交", "subscribe": "訂閱", "unfavourite": "移出最愛",
@@ -81,6 +81,9 @@ FLAG_ZH = {
     "list-profiles": "只列出此電腦找到的瀏覽器 profile",
     "store": "驗證後將 session 存入作業系統鑰匙圈",
     "stdin": "從標準輸入讀取單一 session cookie；未指定時使用隱藏輸入提示",
+    "listen": "監聽位址，應維持在 loopback；有 --public-url 時預設 127.0.0.1:8787，否則為空閒埠",
+    "public-url": "Claude 連線所用的 HTTPS 位址，不含路徑；未指定時自行啟動 Cloudflare quick tunnel",
+    "passphrase-file": "存放 host passphrase 的檔案；未指定時產生一組並印出",
 }
 
 GLOBAL_FLAGS_EN = [

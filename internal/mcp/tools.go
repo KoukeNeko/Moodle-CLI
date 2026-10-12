@@ -195,8 +195,8 @@ func (r *Registry) instructions() string {
 		b.WriteString("for destructive and idempotency properties. Some writes cannot be undone.")
 	} else {
 		b.WriteString("This session is read-only: no tool here can change anything on the ")
-		b.WriteString("site. If a write is needed, a person must restart it explicitly with ")
-		b.WriteString("`moodle mcp serve --allow-write`.")
+		b.WriteString("site. If a write is needed, a person must restart the server ")
+		b.WriteString("explicitly with `--allow-write`.")
 	}
 	return b.String()
 }
@@ -227,7 +227,10 @@ func (r *Registry) call(ctx context.Context, name string, args Arguments) callTo
 // successResult carries the envelope both ways: as structured data for the
 // agent to read, and as text for a model that only sees the transcript.
 func successResult(envelope v1.Envelope) callToolResult {
-	encoded, err := json.MarshalIndent(envelope, "", "  ")
+	// Compact on purpose: this text is read by a model, and indentation made
+	// the largest answers 73% longer — enough to cross the roughly 150,000
+	// characters Claude accepts for one result.
+	encoded, err := json.Marshal(envelope)
 	if err != nil {
 		return callToolResult{
 			Content: textContent("cannot encode the answer: " + err.Error()),
@@ -262,7 +265,8 @@ func (r *Registry) humanReadable(err error) error {
 	}
 	return e.WithHint("this cannot be fixed from here — the credential has to be " +
 		"renewed by a person " + where + ". Once it is, retry: this server reads " +
-		"the new credential itself and does not need restarting.")
+		"the new credential itself and does not need restarting — unless it was " +
+		"started with MOODLE_WS_TOKEN or MOODLE_SESSION, which only a restart replaces.")
 }
 
 // errorResult reports a failed tool.
@@ -272,7 +276,7 @@ func (r *Registry) humanReadable(err error) error {
 // it must not treat as a plain failure to retry.
 func errorResult(err error) callToolResult {
 	envelope := v1.NewErrorEnvelope(err)
-	encoded, marshalErr := json.MarshalIndent(envelope, "", "  ")
+	encoded, marshalErr := json.Marshal(envelope)
 	if marshalErr != nil {
 		return callToolResult{Content: textContent(err.Error()), IsError: true}
 	}

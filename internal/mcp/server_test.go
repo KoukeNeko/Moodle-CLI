@@ -137,6 +137,21 @@ func TestToolsAreRefusedBeforeTheHandshake(t *testing.T) {
 	}
 }
 
+func TestACallWithNoIdIsNotRunBeforeTheHandshake(t *testing.T) {
+	// A call is a request. With no id its result could never be reported, and
+	// the handshake check cannot refuse it out loud, so it must not run.
+	registry, _, clock := build(t, false)
+
+	run(t, registry,
+		`{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calendar_upcoming","arguments":{}}}`,
+		handshake, initialized,
+	)
+
+	if clock.calls != 0 {
+		t.Error("a tools/call sent as a notification was run")
+	}
+}
+
 func TestAStringIdIsEchoedBackAsAString(t *testing.T) {
 	// JSON-RPC allows either, and rewriting 	"3" as 3 makes the client wait
 	// forever for a reply it will not recognise.

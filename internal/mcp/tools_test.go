@@ -92,12 +92,17 @@ func (fakeGrades) Overview(context.Context) (grade.OverviewResult, error) {
 	return grade.OverviewResult{Provenance: site.NewProvenance(site.BackendWS)}, nil
 }
 
-type fakeCalendar struct{ query calendar.Query }
+type fakeCalendar struct {
+	query calendar.Query
+	// calls counts how often the tool really ran.
+	calls int
+}
 
 func (fakeCalendar) Name() site.BackendKind        { return site.BackendWS }
 func (fakeCalendar) Requirement() site.Requirement { return site.Requirement{} }
 func (f *fakeCalendar) Upcoming(_ context.Context, q calendar.Query) (calendar.Result, error) {
 	f.query = q
+	f.calls++
 	due := time.Unix(1789000000, 0).UTC()
 	return calendar.Result{
 		Events: []calendar.Event{{
@@ -472,4 +477,19 @@ func TestAnAgentIsNotToldToDoWhatItCannotDo(t *testing.T) {
 // which is every test here but the one about expiry.
 func staticCapabilities(c *site.Capabilities) func(context.Context) (*site.Capabilities, error) {
 	return func(context.Context) (*site.Capabilities, error) { return c, nil }
+}
+
+func TestAToolsTextIsCompact(t *testing.T) {
+	// The text is read by a model, and indentation made the largest answers 73%
+	// longer — enough to cross the roughly 150,000 characters Claude accepts.
+	result := callTool(t, testTools(t, false), "course_list", nil)
+	content, _ := result["content"].([]any)
+	text, _ := content[0].(map[string]any)["text"].(string)
+
+	if strings.Contains(text, "\n") {
+		t.Errorf("the text part is indented:\n%s", text)
+	}
+	if !strings.Contains(text, `"kind":"course.list"`) {
+		t.Errorf("the text part is not the answer: %s", text)
+	}
 }

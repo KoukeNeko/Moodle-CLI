@@ -279,20 +279,35 @@ moodle ws call core_enrol_get_users_courses --param userid=4
 moodle api call local_example_function --params-json '{}'  # 第三方／未登錄
 moodle mcp serve                      # 唯讀工具
 moodle mcp serve --allow-write        # 明確開放寫入工具
+moodle mcp host                       # 提供 Claude connector；會啟動對外公開的 Cloudflare quick tunnel
+moodle mcp host --public-url https://moodle-mcp.example.com   # ……或用你自己的位址
 ```
 
 完整介面請執行 `moodle <command> --help`、閱讀自動產生的[完整命令參考](https://github.com/KoukeNeko/Moodle-CLI/wiki/Command-Reference-zh-TW)，
 或在[功能覆蓋](https://github.com/KoukeNeko/Moodle-CLI/wiki/Feature-Coverage-zh-TW)查閱全部 780 個 core function。
 
+## 不必在本機執行 CLI 的 Claude
+
+`moodle mcp serve` 需要 Claude 在同一台機器上啟動程式。網頁版、手機與 Cowork 裡的 Claude 改用以 URL 新增的
+connector 取得工具，所以 `moodle mcp host` 以 HTTPS 提供同一組工具。在 Claude 裡它是自訂 connector：由
+Anthropic 的伺服器連出去的遠端 MCP server。已安裝 `cloudflared` 時，`moodle mcp host` 會自己啟動 Cloudflare
+quick tunnel 並印出 connector URL，再到 **Customize > Connectors** 新增它；要穩定的位址，請把 host 放在提供
+HTTPS 的 tunnel 或 proxy 後面，並以 `--public-url` 傳入。登入頁由 host 提供，只問一組只有你知道的 passphrase。見
+[Claude connector](https://github.com/KoukeNeko/Moodle-CLI/wiki/Claude-Connector-zh-TW)。
+
 ## 安全邊界
 
 這支程式會讀取憑證並連線到伺服器，因此邊界必須明確：
 
-- 只連線到目前 profile 設定的 Moodle 站台。
+- 只連線到目前 profile 設定的 Moodle 站台。例外是沒有 `--public-url` 的 `mcp host`，它還會執行 `cloudflared`，
+  而 cloudflared 會連到 Cloudflare。
 - 只存取 Moodle CLI 自己建立的 keychain 項目。完全沒有 keychain 的機器（headless Linux、SSH、WSL、
   容器）可以主動選用權限 `0600` 的檔案：`--credential-store file`；不會自動退回檔案。
 - 只有明確執行 browser import 才讀取指定 profile；只回傳或保存指定站台的 cookie，絕不寫入 log。
 - `auth logout` 只刪本機憑證，不撤銷 Moodle token，因為同一個 token 可能也供 Moodle mobile app 使用。
+- 只有 `mcp host` 會接受網路連線。除非用 `--listen` 另外指定，它監聽 loopback（quick tunnel 要求必須是
+  loopback），輸入 passphrase 後才放行用戶端，登入只存在記憶體，停止即消失。沒有 `--public-url` 時它會啟動
+  `cloudflared` quick tunnel，知道位址的人在它停止前都連得到登入頁，流量由 Cloudflare 轉送。
 - 沒有遙測、自動更新、提權、process injection 或憑證匯出。
 
 完整 threat boundary 與 callback 設計見[安全模型](https://github.com/KoukeNeko/Moodle-CLI/wiki/Security-Model-zh-TW)。
