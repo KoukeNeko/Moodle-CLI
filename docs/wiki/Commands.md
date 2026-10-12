@@ -85,6 +85,8 @@ moodle schema assignment submit --json
 moodle assignment list --current --json --fields name,due_date --no-input
 moodle mcp serve
 moodle mcp serve --allow-write
+moodle mcp host                # starts a public Cloudflare quick tunnel
+moodle mcp host --public-url https://moodle-mcp.example.com
 moodle course list --read-only
 moodle course list -v          # redacted HTTP diagnostics on stderr
 moodle shell-completion zsh   # tab completion; not "completion", which is Moodle's

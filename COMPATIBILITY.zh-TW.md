@@ -86,6 +86,7 @@ macOS archive 本質上無法可重現：公證需要安全時間戳。
 | JSON contract v1 | 已驗證 | 每個 response kind 都有內嵌 JSON Schema，並在測試中斷言。Exit code 固定。 |
 | `moodle schema <命令>` | 已驗證 | 每個命令的 `safety` 與 `idempotency`，供無人看管的呼叫者判斷。 |
 | MCP server | 已驗證 | `moodle mcp serve`，除非 `--allow-write` 否則唯讀。目前還沒有測驗相關工具。 |
+| MCP host（Claude connector） | 已用瀏覽器中的 claude.ai、Claude Code 與 MCP Inspector 驗證；尚未用 Claude Desktop、手機或 Cowork | `moodle mcp host`。2026-10-12，對 Moodle 4.5.12：在 claude.ai（Max 方案）經 Cloudflare quick tunnel 新增的自訂 connector 完成登入、列出 14 個工具，並呼叫其中兩個來回答問題；Claude Code 2.1.267 對 loopback host 完成探索、動態註冊、PKCE 登入與連線檢查；官方 MCP Inspector 列出並呼叫工具。host 自己啟動的 quick tunnel（不帶 `--public-url`）在 Linux 上以 cloudflared 2026.9.0 與最終版程式成功啟動，公告前先確認通到 host，對外提供探索文件、乾淨停止，且不會被帶有 `ingress:` 規則的 `config.yml` 導向別處；尚未重做經由它的 claude.ai 登入。尚未實測 macOS 與 Windows。尚未實測 Claude Desktop、手機 App、Cowork、以 Team 或 Enterprise Owner 新增 connector，以及 connector 存在時 host 重啟的情況。 |
 | Shell 補全 | 由本專案測試驗證 | bash、zsh、fish、PowerShell，透過 `moodle shell-completion`。安裝腳本本身的往返由變更時觸發的 workflow 執行。 |
 
 Moodle CLI 與 Moodle 及 Moodle HQ 無關。「Moodle」是 Moodle Pty Ltd 的商標。

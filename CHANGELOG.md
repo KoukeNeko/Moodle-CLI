@@ -1,3 +1,90 @@
+# Unreleased — Claude connector host
+
+## Added
+
+```sh
+moodle mcp host
+moodle mcp host --public-url https://moodle-mcp.example.com
+```
+
+Serves the MCP tools over Streamable HTTP, so Claude can use Moodle as a custom connector without
+the CLI running on the machine Claude runs on. With no `--public-url` the host starts a Cloudflare
+quick tunnel itself (`cloudflared` must be installed): it binds a free loopback port first and points
+the tunnel at that listener, waits until the tunnel carries traffic, checks that the public address
+answers with the host's own sign-in metadata before announcing it, and stops when the tunnel does.
+`cloudflared` runs with a configuration file of the host's own, because a `config.yml` of the user's
+with `ingress:` rules otherwise replaces `--url` and publishes another service, and without `MOODLE_*`
+and `TUNNEL_*` environment variables. A quick tunnel requires a loopback `--listen`. `cloudflared` runs
+under a guard, a second copy of `moodle` started with a hidden argument, which stops it when the host
+exits for any reason: the host holds the write end of the guard's input, the operating system closes
+it when the host dies, and the guard stops `cloudflared` on end of input. Verified with `kill -9` on
+Linux; macOS and Windows use the same mechanism but were not tried. The host is its own OAuth 2.1 authorization server:
+discovery documents, dynamic client registration, PKCE (S256), rotating refresh tokens, and a sign-in
+page that asks the owner for a host passphrase and names the application, site, access, and return
+address. Read-only unless `--allow-write`, exactly as for `mcp serve`.
+
+Protections: the host listens on loopback only (but without `--public-url` it is published by a quick tunnel), constant-time passphrase comparison with a global limit of five
+wrong tries per ten minutes, a 12-character minimum for a chosen passphrase, exact redirect matching
+(HTTPS or loopback only, any port on loopback), signed client ids and sign-in requests so
+unauthenticated calls store nothing, tokens held as hashes in memory only, a refusal of foreign
+`Origin` headers on `/mcp`, and a log that never records a query string, an argument, or a token.
+The sign-in page is open to anyone who knows the address, so it omits the account, shows the return
+address as punycode, and says the application's name is not verified.
+
+The host logs each tool call's name, outcome, and duration on stderr, so someone running it with
+`--allow-write` can see what was done. A dropped connection does not cancel a call in flight;
+stopping the host does, after a five-second grace period.
+
+`moodle commands` now classes `mcp host` as `local`, not `read`: it starts a program, binds a port, and
+without `--public-url` publishes the account. An empty `--public-url=` is an error rather than a
+request for a quick tunnel. Interrupting the host while the tunnel comes up exits `130`.
+
+New flags: `--listen` (default `127.0.0.1:8787` with `--public-url`, a free port without), `--public-url`
+(optional), `--passphrase-file`. New environment variable: `MOODLE_HOST_PASSPHRASE`.
+
+## Changed
+
+The MCP server now answers through one transport-independent path that stdio and HTTP share. Tool
+calls are serialised, because the session behind them is not safe to share. Behaviour that differs
+from before for `mcp serve`:
+
+- A `tools/call` with no `id` is not run. It would be a write nobody can see the outcome of.
+- The server stops reading when a reply cannot be written, where it used to keep running requests
+  whose answers could not be delivered.
+- The text part of a tool result is compact JSON, about 73% smaller on the largest answers, so
+  results stay under the roughly 150,000 characters Claude accepts. `structuredContent` is unchanged.
+  The `ws_list` description now says an unfiltered call is very large.
+- The server's instructions no longer name `mcp serve` when telling an agent that writing needs a
+  restart, and the credential hint says a credential supplied through `MOODLE_WS_TOKEN` or
+  `MOODLE_SESSION` is only replaced by restarting.
+
+## Documentation and limitations
+
+New wiki page, [Claude connector](docs/wiki/Claude-Connector.md): what a connector is relative to MCP,
+how the connection works, setup with a Cloudflare quick tunnel, controls, limits, and troubleshooting.
+
+Verified on 2026-10-12 against Moodle 4.5.12: the host's own quick tunnel with cloudflared 2026.9.0 on
+Linux and the final code (up, address checked before it is announced, discovery documents served
+through the public address, stops with the host leaving nothing behind; with a `config.yml` whose
+`ingress:` points at another local service the tunnel still reached the host and that service
+received no requests; the host stopping when the tunnel is killed was run with an earlier version, and
+the final code is covered by a test with a stand-in for cloudflared; a claude.ai sign-in through a
+host-started tunnel was not repeated), claude.ai in the browser (custom connector added, signed
+in, 14 tools listed, two tool calls answered), Claude Code 2.1.267 on loopback, the official MCP
+Inspector through a Cloudflare quick tunnel, and an independent client for the full sign-in. Not
+tried: Claude Desktop, the phone apps, Cowork, adding the connector as a Team or Enterprise Owner,
+and a connector whose host has restarted.
+
+Claude opens each connection with a `server/discover` request under revision 2026-07-28 and falls
+back to `initialize` when the host answers `400`, so every connection logs one `POST /mcp 400`. The
+host speaks 2025-06-18 and older. Sign-ins do not survive a restart and the connector then has to be
+removed and added again; one host serves one account; a refresh token works once; responses are plain
+JSON with no event stream, session, or batching.
+
+## Contract
+
+`schema_version` stays `1`; no fields were added to the JSON contract.
+
 # Moodle CLI v0.3.0 — automatic browser sign-in on macOS
 
 ## Added
