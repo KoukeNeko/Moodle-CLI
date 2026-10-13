@@ -63,6 +63,16 @@ from before for `mcp serve`:
   restart, and the credential hint says a credential supplied through `MOODLE_WS_TOKEN`, and a
   browser session whether stored or from `MOODLE_SESSION`, is only replaced by restarting. A stored
   web service token is still read again without one.
+- `moodle ws call`, the MCP `ws_read` tool and `moodle mcp host` now treat ten core functions as
+  writes, because each records something although Moodle declares it read: `tool_mobile_get_content`
+  (it runs whichever plugin's mobile view it is given, and mod_attendance's can record the student's
+  own attendance), the seven `core_competency_*_viewed` functions, `core_blog_view_entries` and
+  `mod_lti_view_lti`. They now need `--allow-write`, are never retried, are refused under
+  `--read-only`, and a read-only MCP session, including a remote client of `mcp host`, can no longer
+  reach them through `ws_read`. The registry snapshots were regenerated from Moodle 4.5.12, 5.1.7 and
+  5.2.3 with an explicit override list in `test/e2e/export-ws-registry.php`; only those ten entries
+  changed. `core_get_fragment` is still a read: it dispatches to any component's fragment callback,
+  which is a maintainer decision this change does not make.
 
 ## Fixed
 
@@ -86,6 +96,9 @@ from before for `mcp serve`:
   `sesskey`, `passport` or `password` before it is cut, so a secret that straddles the limit is hidden
   whole. A request parameter named `key` or `autologinurl` is now redacted in the trace too, and a
   calendar or forum link carrying one of these names is no longer shown.
+- `moodle api call` no longer demands `--allow-write` for `tool_mobile_get_plugins_supporting_mobile`
+  and `core_calendar_get_calendar_events`, which only read. `tool_mobile_get_content` is on the
+  reviewed list as a write, so it is reported as reviewed rather than unreviewed.
 
 ## New-release notice
 

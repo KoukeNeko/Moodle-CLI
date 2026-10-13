@@ -26,7 +26,14 @@ func apiResult(t *testing.T, stdout string) v1.APICallResult {
 // withPlugin adds a function nobody has reviewed to the fake site.
 func (f *fixture) withPlugin(t *testing.T) {
 	t.Helper()
-	f.functions = append(f.functions, unreviewed)
+	f.withFunctions(t, unreviewed)
+	f.server.HandleValue(unreviewed, map[string]any{"done": true})
+}
+
+// withFunctions makes the fake site offer more functions.
+func (f *fixture) withFunctions(t *testing.T, names ...string) {
+	t.Helper()
+	f.functions = append(f.functions, names...)
 	declared := make([]any, 0, len(f.functions))
 	for _, name := range f.functions {
 		declared = append(declared, map[string]any{"name": name, "version": "2026091800"})
@@ -36,7 +43,6 @@ func (f *fixture) withPlugin(t *testing.T) {
 		"lastname": "Student", "userid": 4, "release": "5.2.3",
 		"downloadfiles": 1, "uploadfiles": 1, "functions": declared,
 	})
-	f.server.HandleValue(unreviewed, map[string]any{"done": true})
 }
 
 func TestAnUnreviewedFunctionIsTreatedAsOneThatWrites(t *testing.T) {
@@ -131,6 +137,75 @@ func TestAPlainReadNeedsNoPermission(t *testing.T) {
 	}
 	if !result.Reviewed {
 		t.Error("a function in the registry was reported as unreviewed")
+	}
+}
+
+func TestTheMobileAppsPlainReadsNeedNoPermission(t *testing.T) {
+	// Both only read. Unlisted, they were treated as unreviewed writes and
+	// demanded --allow-write, which --read-only users could never give.
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	reads := []string{
+		"tool_mobile_get_plugins_supporting_mobile",
+		"core_calendar_get_calendar_events",
+	}
+	f.withFunctions(t, reads...)
+	for _, name := range reads {
+		f.server.HandleValue(name, map[string]any{"events": []any{}})
+	}
+
+	for _, name := range reads {
+		stdout, stderr, code := f.run("api", "call", name, "--json")
+		if code != v1.ExitOK {
+			t.Fatalf("%s: exit %d, %s", name, code, stderr)
+		}
+		result := apiResult(t, stdout)
+		if !result.Reviewed || result.Mutates {
+			t.Errorf("%s: reviewed=%v mutates=%v, want a reviewed read",
+				name, result.Reviewed, result.Mutates)
+		}
+		if f.server.CallsTo(name) != 1 {
+			t.Errorf("%s: %d calls reached the site, want 1", name, f.server.CallsTo(name))
+		}
+	}
+}
+
+func TestMobileContentIsRefusedWithoutAllowWrite(t *testing.T) {
+	// It runs whichever plugin's mobile view the caller names, and
+	// mod_attendance's can record the student's attendance.
+	const name = "tool_mobile_get_content"
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	f.withFunctions(t, name)
+	f.server.HandleValue(name, map[string]any{"templates": []any{}})
+
+	_, stderr, code := f.run("api", "call", name)
+	if code != v1.ExitUsage {
+		t.Fatalf("exit %d, want %d", code, v1.ExitUsage)
+	}
+	if !strings.Contains(stderr, "--allow-write") {
+		t.Errorf("the refusal does not say how to go on:\n%s", stderr)
+	}
+	// Reviewed as a write, not assumed to be one for want of a review.
+	if strings.Contains(stderr, "not been reviewed") {
+		t.Errorf("a reviewed function is refused as an unreviewed one:\n%s", stderr)
+	}
+	if f.server.CallsTo(name) != 0 {
+		t.Error("the call was made anyway")
+	}
+
+	// A dry run still describes it, and says what a real run would need.
+	stdout, stderr, code := f.run("api", "call", name, "--dry-run", "--json")
+	if code != v1.ExitOK {
+		t.Fatalf("dry run: exit %d, %s", code, stderr)
+	}
+	result := apiResult(t, stdout)
+	if !result.Reviewed || !result.Mutates || !result.NeedsAllowWrite {
+		t.Errorf("dry run: reviewed=%v mutates=%v needs_allow_write=%v",
+			result.Reviewed, result.Mutates, result.NeedsAllowWrite)
+	}
+	if f.server.CallsTo(name) != 0 {
+		t.Error("a dry run reached the site")
 	}
 }
 

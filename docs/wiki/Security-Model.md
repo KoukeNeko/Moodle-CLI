@@ -57,8 +57,17 @@ Windows automatic callbacks remain unsupported.
 ## Network and writes
 
 - Requests go only to the configured Moodle origin. Credentials are not forwarded cross-origin.
-- Official Web Service functions use a reviewed mutation/retry registry. Unknown functions are
-  classified as writes and never retried.
+- `moodle api call` classifies functions with a manually reviewed mutation/retry registry. A
+  function that is not on it is classified as a write and never retried.
+- `moodle ws call`, `ws_read` and `ws_write` use the effect in the generated registry instead. It
+  comes from the type Moodle declares for the function, a rule that makes credential-issuing
+  functions writes, and an explicit list of functions that Moodle declares read but that log a view
+  or run plugin code: `tool_mobile_get_content`, the seven `core_competency_*_viewed` functions,
+  `core_blog_view_entries` and `mod_lti_view_lti`. `--read-only` and a read-only MCP session,
+  including a remote client of `mcp host`, refuse them.
+- `core_get_fragment` is declared read and dispatches to any component's `output_fragment_*`
+  callback, so whether a call writes depends on the callback. The registry deliberately leaves it a
+  read; treating it as a write is a decision for the maintainer.
 - AJAX and HTML adapters are read-only.
 - Assignment writes are reconciled by reading the resulting state. If the state remains unknown, the
   outcome is `ambiguous` and automatic retry is forbidden.

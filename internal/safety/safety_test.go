@@ -35,9 +35,48 @@ func TestReadsThatAreNotReads(t *testing.T) {
 		"tool_mobile_get_autologin_key",
 		"tool_mobile_get_tokens_for_qr_login",
 		"core_calendar_get_calendar_export_token",
+		"tool_mobile_get_content",
 	} {
 		if !safety.Mutates(function) {
 			t.Errorf("%s reads like a query but has an effect; it must be a write", function)
+		}
+	}
+}
+
+func TestMobileContentRunsPluginCodeThatCanRecordAttendance(t *testing.T) {
+	// tool_mobile_get_content hands the call to whichever plugin the caller
+	// names, and a plugin's mobile view can write: mod_attendance's records
+	// the student's own attendance when a session is open to student marking
+	// with an auto-assigned status and no student password. So it is
+	// reviewed, it is a write, and it is never repeated.
+	policy, reviewed := safety.Lookup("tool_mobile_get_content")
+	if !reviewed {
+		t.Fatal("tool_mobile_get_content is not in the reviewed list")
+	}
+	if !policy.Mutates {
+		t.Error("tool_mobile_get_content must count as a write")
+	}
+	if policy.Retry != safety.RetryNever {
+		t.Errorf("retry = %q, want never", policy.Retry)
+	}
+}
+
+func TestMobileReadsThatOnlyReadAreReviewedReads(t *testing.T) {
+	// Both are plain reads. Leaving them unreviewed made `api call` demand
+	// --allow-write for a call that changes nothing.
+	for _, function := range []string{
+		"tool_mobile_get_plugins_supporting_mobile",
+		"core_calendar_get_calendar_events",
+	} {
+		policy, reviewed := safety.Lookup(function)
+		if !reviewed {
+			t.Errorf("%s is not in the reviewed list", function)
+		}
+		if policy.Mutates {
+			t.Errorf("%s only reads and must not count as a write", function)
+		}
+		if policy.Retry != safety.RetrySafe {
+			t.Errorf("%s: retry = %q, want safe", function, policy.Retry)
 		}
 	}
 }
@@ -94,9 +133,14 @@ func TestEveryEntryExplainsItself(t *testing.T) {
 		"core_webservice_get_site_info",
 		"mod_assign_save_submission",
 		"core_files_get_unused_draft_itemid",
+		"tool_mobile_get_content",
+		"tool_mobile_get_plugins_supporting_mobile",
+		"core_calendar_get_calendar_events",
 	} {
-		policy, _ := safety.Lookup(function)
-		if strings.TrimSpace(policy.Why) == "" {
+		policy, reviewed := safety.Lookup(function)
+		// An unlisted function carries a reason too, but it is the generic
+		// "not reviewed", which is no review of this function.
+		if !reviewed || strings.TrimSpace(policy.Why) == "" {
 			t.Errorf("%s has no recorded reasoning", function)
 		}
 	}

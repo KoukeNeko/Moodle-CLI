@@ -98,6 +98,38 @@ func TestWSWriteDryRunAndReadOnlyAreEnforcedFromRegistry(t *testing.T) {
 	}
 }
 
+func TestWSCallOfAFunctionThatRunsPluginCodeNeedsAllowWrite(t *testing.T) {
+	// Moodle declares tool_mobile_get_content read, but it runs whichever
+	// plugin's mobile view it is given, and some of those record attendance.
+	f := newFixture(t)
+	f.addSiteAndLogin()
+	name := "tool_mobile_get_content"
+	f.functions = append(f.functions, name)
+	f.server.HandleValue(name, map[string]any{"templates": []any{}})
+	refreshFunctions(f)
+
+	params := `{"component":"mod_attendance","method":"mobile_view_activity"}`
+	_, _, code := f.run("ws", "call", name, "--params-json", params)
+	if code != v1.ExitUsage {
+		t.Fatalf("without --allow-write exit %d, want %d", code, v1.ExitUsage)
+	}
+	_, _, code = f.run("ws", "call", name, "--params-json", params, "--read-only")
+	if code != v1.ExitPermissionDenied {
+		t.Fatalf("read-only exit %d, want %d", code, v1.ExitPermissionDenied)
+	}
+	if f.server.CallsTo(name) != 0 {
+		t.Fatal("a refused call reached Moodle")
+	}
+
+	_, stderr, code := f.run("ws", "call", name, "--params-json", params, "--allow-write")
+	if code != v1.ExitOK {
+		t.Fatalf("with --allow-write exit %d: %s", code, stderr)
+	}
+	if f.server.CallsTo(name) != 1 {
+		t.Fatal("an allowed call did not reach Moodle exactly once")
+	}
+}
+
 func TestWSUnknownCoreFunctionPointsAtThePluginEscapeHatch(t *testing.T) {
 	f := newFixture(t)
 	f.addSiteAndLogin()

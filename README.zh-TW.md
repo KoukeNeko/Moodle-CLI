@@ -111,7 +111,11 @@ non-editing teacher、student、一般 authenticated user 與自訂角色使用�
 
 ### 對寫入保持保守
 
-- 官方 Web Service 函式由人工審查過的 safety registry 分類；未知函式一律視為寫入，絕不自動重試。
+- `api call` 由人工審查過的 safety registry 分類；不在清單上的函式一律視為寫入，絕不自動重試。
+- `ws call`、`ws_read` 與 `ws_write` 改用產生的 registry 內的 effect：Moodle 宣告的類型、把簽發憑證的函式
+  視為寫入的規則，以及一份明確列出的函式清單。這些函式 Moodle 宣告為唯讀，但會記錄檢視或執行 plugin
+  程式碼（`tool_mobile_get_content`、`core_competency_*_viewed`、`core_blog_view_entries`、
+  `mod_lti_view_lti`）。`--read-only` 與唯讀的 MCP session 會拒絕它們。
 - Typed 與高階寫入的 `--dry-run` 會驗證並顯示計畫，但不送出寫入。
 - `--read-only` 會把寫入命令從命令樹移除。
 - `moodle mcp serve` 預設唯讀，必須明確加上 `--allow-write`。

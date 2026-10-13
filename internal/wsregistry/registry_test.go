@@ -44,6 +44,52 @@ func TestSnapshotsFormAVersionedUnion(t *testing.T) {
 	}
 }
 
+// recordingFunctions are declared read by Moodle's services.php but are
+// effects: each logs an event (which can complete an activity), and
+// tool_mobile_get_content runs a plugin's mobile view, which can write. The
+// exporter classifies them from an explicit list, test/e2e/export-ws-registry.php.
+//
+// core_get_fragment is not here on purpose. It is declared read and
+// dispatches to any component's output_fragment_* callback, so whether a call
+// writes depends on the callback, and treating all of it as a write is a
+// decision for the maintainer.
+var recordingFunctions = []string{
+	"tool_mobile_get_content",
+	"core_competency_competency_framework_viewed",
+	"core_competency_competency_viewed",
+	"core_competency_template_viewed",
+	"core_competency_user_competency_plan_viewed",
+	"core_competency_user_competency_viewed",
+	"core_competency_user_competency_viewed_in_course",
+	"core_competency_user_competency_viewed_in_plan",
+	"core_blog_view_entries",
+	"mod_lti_view_lti",
+}
+
+func TestFunctionsThatRecordSomethingAreWritesInEveryVersion(t *testing.T) {
+	registry := load(t)
+	for _, name := range recordingFunctions {
+		function, ok := registry.Lookup(name)
+		if !ok {
+			t.Errorf("%s is not in the registry; was it renamed?", name)
+			continue
+		}
+		if function.Effect != wsregistry.EffectWrite {
+			t.Errorf("%s: union effect = %q, want write", name, function.Effect)
+		}
+		for _, version := range function.Versions {
+			variant := function.Variants[version]
+			if variant.Effect != wsregistry.EffectWrite || variant.Retry != "never" {
+				t.Errorf("%s in %s: effect=%q retry=%q, want write and never",
+					name, version, variant.Effect, variant.Retry)
+			}
+			if variant.Destructive {
+				t.Errorf("%s in %s is marked destructive; recording is not deletion", name, version)
+			}
+		}
+	}
+}
+
 type caller struct {
 	called int
 	name   string
@@ -127,6 +173,29 @@ func TestTypedWriteRequiresExplicitPermissionAndDryRunSendsNothing(t *testing.T)
 	_, err = service.Call(context.Background(), capabilities(name), "5.2.3", name, params, false)
 	if err == nil || errs.From(err).Code != errs.CodeUsage {
 		t.Fatalf("write refusal = %v", err)
+	}
+}
+
+func TestTypedMobileContentIsRefusedInReadOnlyModeAndWithoutAllowWrite(t *testing.T) {
+	// The skeptic's case: this used to be a read, so a read-only session ran
+	// whichever plugin's mobile view it named.
+	name := "tool_mobile_get_content"
+	params := map[string]any{"component": "mod_attendance", "method": "mobile_view_activity"}
+
+	transport := &caller{}
+	readOnly := wsregistry.NewService(load(t), transport, safety.Mode{ReadOnly: true}, false)
+	_, err := readOnly.Call(context.Background(), capabilities(name), "5.2.3", name, params, false)
+	if err == nil || errs.From(err).Code != errs.CodePermissionDenied {
+		t.Fatalf("read-only: err = %v, want permission_denied", err)
+	}
+
+	withoutPermission := wsregistry.NewService(load(t), transport, safety.Mode{}, false)
+	_, err = withoutPermission.Call(context.Background(), capabilities(name), "5.2.3", name, params, false)
+	if err == nil || errs.From(err).Code != errs.CodeUsage {
+		t.Fatalf("without --allow-write: err = %v, want usage", err)
+	}
+	if transport.called != 0 {
+		t.Fatal("a refused call reached Moodle")
 	}
 }
 

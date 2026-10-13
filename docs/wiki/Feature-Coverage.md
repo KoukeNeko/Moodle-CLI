@@ -53,7 +53,7 @@ Registry presence does not mean every role may execute the function; Moodle rema
 | `core_blog_get_entries` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
 | `core_blog_prepare_entry_for_edition` | `moodle` | write | v45, v51, v52 | REST | no |
 | `core_blog_update_entry` | `moodle` | write | v45, v51, v52 | REST | no |
-| `core_blog_view_entries` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
+| `core_blog_view_entries` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_calendar_create_calendar_events` | `moodle` | write | v45, v51, v52 | REST | no |
 | `core_calendar_delete_calendar_events` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_calendar_delete_subscription` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
@@ -89,8 +89,8 @@ Registry presence does not mean every role may execute the function; Moodle rema
 | `core_competency_add_competency_to_template` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_add_related_competency` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_approve_plan` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
-| `core_competency_competency_framework_viewed` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
-| `core_competency_competency_viewed` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
+| `core_competency_competency_framework_viewed` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
+| `core_competency_competency_viewed` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_complete_plan` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_count_competencies` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_count_competencies_in_course` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
@@ -151,7 +151,7 @@ Registry presence does not mean every role may execute the function; Moodle rema
 | `core_competency_set_course_competency_ruleoutcome` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_set_parent_competency` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_template_has_related_data` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
-| `core_competency_template_viewed` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
+| `core_competency_template_viewed` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_unapprove_plan` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_unlink_plan_from_template` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_update_competency` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
@@ -160,13 +160,13 @@ Registry presence does not mean every role may execute the function; Moodle rema
 | `core_competency_update_plan` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_update_template` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_user_competency_cancel_review_request` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
-| `core_competency_user_competency_plan_viewed` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
+| `core_competency_user_competency_plan_viewed` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_user_competency_request_review` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_user_competency_start_review` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_competency_user_competency_stop_review` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
-| `core_competency_user_competency_viewed` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
-| `core_competency_user_competency_viewed_in_course` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
-| `core_competency_user_competency_viewed_in_plan` | `moodle` | read | v45, v51, v52 | AJAX, REST | no |
+| `core_competency_user_competency_viewed` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
+| `core_competency_user_competency_viewed_in_course` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
+| `core_competency_user_competency_viewed_in_plan` | `moodle` | write | v45, v51, v52 | AJAX, REST | no |
 | `core_completion_get_activities_completion_status` | `moodle` | read | v45, v51, v52 | REST | no |
 | `core_completion_get_course_completion_status` | `moodle` | read | v45, v51, v52 | REST | no |
 | `core_completion_mark_course_self_completed` | `moodle` | write | v45, v51, v52 | REST | no |
@@ -622,7 +622,7 @@ Registry presence does not mean every role may execute the function; Moodle rema
 | `mod_lti_is_cartridge` | `mod_lti` | read | v45, v51, v52 | AJAX, REST | no |
 | `mod_lti_toggle_showinactivitychooser` | `mod_lti` | write | v45, v51, v52 | AJAX, REST | no |
 | `mod_lti_update_tool_type` | `mod_lti` | write | v45, v51, v52 | AJAX, REST | no |
-| `mod_lti_view_lti` | `mod_lti` | read | v45, v51, v52 | REST | no |
+| `mod_lti_view_lti` | `mod_lti` | write | v45, v51, v52 | REST | no |
 | `mod_page_get_pages_by_courses` | `mod_page` | read | v45, v51, v52 | REST | no |
 | `mod_page_view_page` | `mod_page` | write | v45, v51, v52 | REST | no |
 | `mod_quiz_add_random_questions` | `mod_quiz` | write | v45, v51, v52 | AJAX, REST | no |
@@ -772,7 +772,7 @@ Registry presence does not mean every role may execute the function; Moodle rema
 | `tool_mobile_call_external_functions` | `tool_mobile` | write | v45, v51, v52 | REST | no |
 | `tool_mobile_get_autologin_key` | `tool_mobile` | write | v45, v51, v52 | REST | no |
 | `tool_mobile_get_config` | `tool_mobile` | read | v45, v51, v52 | REST | no |
-| `tool_mobile_get_content` | `tool_mobile` | read | v45, v51, v52 | REST | no |
+| `tool_mobile_get_content` | `tool_mobile` | write | v45, v51, v52 | REST | no |
 | `tool_mobile_get_plugins_supporting_mobile` | `tool_mobile` | read | v45, v51, v52 | AJAX, REST | no |
 | `tool_mobile_get_public_config` | `tool_mobile` | read | v45, v51, v52 | AJAX, REST | no |
 | `tool_mobile_get_tokens_for_qr_login` | `tool_mobile` | write | v45, v51, v52 | AJAX, REST | no |

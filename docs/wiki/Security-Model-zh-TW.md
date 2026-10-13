@@ -46,7 +46,14 @@ Windows 自動 callback 仍未支援。
 ## 網路與寫入
 
 - 只向設定的 Moodle origin 發 request，不把憑證帶往其他 origin。
-- 官方 Web Service 函式經人工審查的 mutation／retry registry；未知函式視為寫入且絕不重試。
+- `moodle api call` 使用人工審查的 mutation／retry registry；不在清單上的函式視為寫入且絕不重試。
+- `moodle ws call`、`ws_read` 與 `ws_write` 改用產生的 registry 內的 effect。它來自 Moodle 為函式宣告的
+  類型、把簽發憑證的函式視為寫入的規則，以及一份明確列出的函式清單：這些函式 Moodle 宣告為唯讀，但會
+  記錄檢視或執行 plugin 程式碼，即 `tool_mobile_get_content`、七個 `core_competency_*_viewed` 函式、
+  `core_blog_view_entries` 與 `mod_lti_view_lti`。`--read-only` 與唯讀的 MCP session（包含 `mcp host`
+  的遠端 client）會拒絕它們。
+- `core_get_fragment` 宣告為唯讀，但會轉交給任何元件的 `output_fragment_*` callback，寫不寫入取決於該
+  callback。registry 刻意保留它為唯讀；是否改視為寫入，需要維護者決定。
 - AJAX 與 HTML adapter 只讀。
 - 作業寫入後會回讀狀態；仍無法判定時回報 `ambiguous`，禁止自動重送。
 - 有 request throttling，並遵守 Moodle 的 `Retry-After`。

@@ -119,6 +119,44 @@ function registry_credential_effect(string $name): bool {
         || str_contains($name, '_private_key');
 }
 
+/**
+ * Functions services.php declares read that are effects anyway.
+ *
+ * This is a reviewed list, not a name pattern: nothing in a name says that
+ * calling a function leaves a trace, and a pattern would also catch functions
+ * that only read (mod_lesson_get_content_pages_viewed lists pages).
+ *
+ * - tool_mobile_get_content runs \<component>\output\mobile::<method> for
+ *   whichever plugin the caller names, and some of those methods write:
+ *   mod_attendance's view takes the student's own attendance when a session
+ *   is open to student marking with an auto-assigned status and no student
+ *   password, and mod_bigbluebuttonbn's view (Moodle 4.5) marks the module
+ *   viewed and joins the meeting.
+ * - The rest say in their own descriptions that they log an event ("Log event
+ *   ... viewed", "Trigger the ... viewed event"), which can also complete an
+ *   activity. Recording a view is a write, as safety.Lookup already holds for
+ *   *_view_ names.
+ *
+ * core_get_fragment is deliberately not listed. It is declared read and
+ * dispatches to any component's output_fragment_* callback, so whether a call
+ * writes depends on the callback and not on the function. Whether to treat all
+ * of it as a write is a maintainer decision; until then it stays a read.
+ */
+function registry_recording_effect(string $name): bool {
+    return in_array($name, [
+        'tool_mobile_get_content',
+        'core_competency_competency_framework_viewed',
+        'core_competency_competency_viewed',
+        'core_competency_template_viewed',
+        'core_competency_user_competency_plan_viewed',
+        'core_competency_user_competency_viewed',
+        'core_competency_user_competency_viewed_in_course',
+        'core_competency_user_competency_viewed_in_plan',
+        'core_blog_view_entries',
+        'mod_lti_view_lti',
+    ], true);
+}
+
 /** Conservative destructive classification used by generic clients and MCP. */
 function registry_destructive_effect(string $name, string $effect): bool {
     if ($effect !== 'write') {
@@ -151,8 +189,9 @@ foreach ($records as $record) {
     try {
         $info = \core_external\external_api::external_function_info($record);
         $credential = registry_credential_effect($info->name);
+        $recording = registry_recording_effect($info->name);
         $declaredtype = strtolower((string)($info->type ?? ''));
-        $effect = $declaredtype === 'read' && !$credential ? 'read' : 'write';
+        $effect = $declaredtype === 'read' && !$credential && !$recording ? 'read' : 'write';
         $component = (string)$info->component;
         $functions[] = [
             'name' => (string)$info->name,

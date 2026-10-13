@@ -127,8 +127,13 @@ available through the explicitly untyped `api call` escape hatch.
 
 ### Deliberately conservative writes
 
-- Official Web Service functions are classified by a reviewed safety registry. Unknown functions
-  are treated as writes and are never retried automatically.
+- `api call` classifies functions with a manually reviewed safety registry. A function that is not
+  on it is treated as a write and is never retried automatically.
+- `ws call`, `ws_read` and `ws_write` use the effect in the generated registry instead: the type
+  Moodle declares, a rule that makes credential-issuing functions writes, and an explicit list of
+  functions Moodle declares read but that log a view or run plugin code (`tool_mobile_get_content`,
+  `core_competency_*_viewed`, `core_blog_view_entries`, `mod_lti_view_lti`). `--read-only` and a
+  read-only MCP session refuse those.
 - `--dry-run` validates typed and high-level writes and describes the plan without sending it.
 - `--read-only` removes write commands from the command tree.
 - `moodle mcp serve` and `moodle mcp host` are read-only by default; `--allow-write` must be explicit.

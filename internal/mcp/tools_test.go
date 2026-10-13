@@ -450,6 +450,73 @@ func TestTypedWebServiceToolsAreCapabilityAndEffectSeparated(t *testing.T) {
 	}
 }
 
+func TestFunctionsThatLogAnEventAreNotReachableThroughWsRead(t *testing.T) {
+	// Moodle declares these read, but each one logs an event (or, for
+	// tool_mobile_get_content, runs a plugin's view that may record
+	// attendance). A read-only session, which includes every remote client of
+	// `mcp host`, must not be able to reach them through the read tool.
+	//
+	// core_get_fragment is left out on purpose. It is declared read and
+	// dispatches to any component's output_fragment_* callback, so it may or
+	// may not write; that needs a maintainer decision, not a guess here.
+	calls := map[string]map[string]any{
+		"tool_mobile_get_content":                     {"component": "mod_attendance", "method": "mobile_view_activity"},
+		"core_competency_competency_framework_viewed": {"id": float64(1)},
+		"core_competency_competency_viewed":           {"id": float64(1)},
+		"core_competency_template_viewed":             {"id": float64(1)},
+		"core_competency_user_competency_plan_viewed": {
+			"competencyid": float64(1), "planid": float64(1), "userid": float64(4)},
+		"core_competency_user_competency_viewed": {"usercompetencyid": float64(1)},
+		"core_competency_user_competency_viewed_in_course": {
+			"competencyid": float64(1), "courseid": float64(2), "userid": float64(4)},
+		"core_competency_user_competency_viewed_in_plan": {
+			"competencyid": float64(1), "planid": float64(1), "userid": float64(4)},
+		"core_blog_view_entries": {},
+		"mod_lti_view_lti":       {"ltiid": float64(1)},
+	}
+	registry, err := wsregistry.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	capabilities := site.NewCapabilities()
+	capabilities.Release = "5.2.3 (Build: 20260914)"
+	for name := range calls {
+		capabilities.Functions[name] = site.FunctionInfo{Name: name}
+	}
+	session := func(allowWrite bool) (*mcp.Registry, *fakeWS) {
+		ws := &fakeWS{}
+		return mcp.Register(mcp.Deps{
+			Capabilities: staticCapabilities(capabilities),
+			SiteName:     "school",
+			AccountName:  "student1",
+			WSRegistry:   registry,
+			WS: wsregistry.NewService(registry, ws,
+				safety.Mode{ReadOnly: !allowWrite}, allowWrite),
+		}, allowWrite), ws
+	}
+
+	readOnly, sent := session(false)
+	writing, _ := session(true)
+	for name, params := range calls {
+		refused := callTool(t, readOnly, "ws_read", map[string]any{"function": name, "params": params})
+		if refused["isError"] != true {
+			t.Errorf("a read-only session ran %s through ws_read", name)
+		}
+		// Withholding ws_write from a read-only session is covered above.
+		// What matters here is that the function is still there for a session
+		// that may write, so it is classified, not removed.
+		allowed := callTool(t, writing, "ws_write", map[string]any{
+			"function": name, "params": params, "dry_run": true,
+		})
+		if allowed["isError"] == true || data(t, allowed)["kind"] != "ws.call" {
+			t.Errorf("%s is not usable through ws_write: %v", name, allowed)
+		}
+	}
+	if len(sent.calls) != 0 {
+		t.Errorf("a read-only session reached the site for %v", sent.calls)
+	}
+}
+
 func TestDaysReachesTheUseCaseAsADeadline(t *testing.T) {
 	registry, _, clock := build(t, false)
 	if result := callTool(t, registry, "calendar_upcoming", map[string]any{

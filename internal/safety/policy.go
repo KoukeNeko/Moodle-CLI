@@ -77,6 +77,10 @@ var registry = map[string]Policy{
 		Why: "reads forum definitions"},
 	"core_calendar_get_calendar_monthly_view": {Retry: RetrySafe, Session: true,
 		Why: "renders the calendar's month; reads events, records nothing"},
+	"core_calendar_get_calendar_events": {Retry: RetrySafe,
+		Why: "reads calendar events"},
+	"tool_mobile_get_plugins_supporting_mobile": {Retry: RetrySafe,
+		Why: "lists the plugins that support the mobile app"},
 	"mod_quiz_get_quizzes_by_courses": {Retry: RetrySafe,
 		Why: "reads quiz settings"},
 	"mod_quiz_get_user_quiz_attempts": {Retry: RetrySafe,
@@ -98,6 +102,14 @@ var registry = map[string]Policy{
 		Why: "issues a credential and consumes a single-use key"},
 	"core_calendar_get_calendar_export_token": {Mutates: true, Retry: RetryNever,
 		Why: "issues a credential"},
+	// It runs \<component>\output\mobile::<method> for whichever plugin the
+	// caller names, so what it does is that plugin's choice.
+	"tool_mobile_get_content": {Mutates: true, Retry: RetryNever,
+		Why: "runs the named plugin's mobile view, which can write: " +
+			"mod_attendance's view takes the student's own attendance when a " +
+			"session is open to student marking with an auto-assigned status and " +
+			"no student password, and on Moodle 4.5 mod_bigbluebuttonbn's view " +
+			"marks the activity viewed and joins the meeting"},
 
 	// Writes.
 	//
