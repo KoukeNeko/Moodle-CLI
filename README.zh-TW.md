@@ -36,7 +36,7 @@ moodle ws describe core_course_get_contents
 ```
 
 Moodle CLI 連線到你指定的 Moodle 站台，優先使用官方 Web Service API；站台沒有開放所需函式時，
-才回退到唯讀 AJAX 或 HTML adapter。它處理課程、參與者、分組、作業、行事曆、成績、論壇、完成度、
+才回退到唯讀 AJAX 或 HTML adapter。它處理課程、參與者、分組、作業、測驗、行事曆、成績、論壇、完成度、
 學分負荷與檔案，也不假設每個角色或 Moodle 安裝都具備相同能力。
 
 同一支 binary 同時服務人與程式。一般輸出保持好讀；`--json` 輸出穩定的 `schema_version: 1`
@@ -74,6 +74,8 @@ moodle schema assignment.submit
 moodle schema assignment submit --json
 moodle course list --json
 moodle assignment list --current --json --fields name,due_date --no-input
+moodle assignment overview --current --json  # 含每份作業的繳交狀態
+moodle quiz list --current --json              # 測驗不是從行事曆事件推斷的
 moodle ws list --version v52 --effect write --json
 moodle ws describe core_course_update_courses --json
 moodle ws call core_course_get_contents --params-json '{"courseid":42}'
@@ -258,8 +260,11 @@ moodle grade overview                 # 各課程總分
 moodle grade list --course 2          # 單一課程成績簿
 
 moodle assignment list
+moodle assignment overview             # 全部作業與你的繳交狀態
 moodle assignment show 42             # ID 與貼上的 Moodle URL 都能用
 moodle assignment status 42
+moodle quiz list                       # 看得到的測驗，即使行事曆上沒有
+moodle quiz show 31                    # 此帳號看得到的設定與作答紀錄
 moodle assignment submit 42 report.pdf --dry-run
 moodle assignment submit 42 report.pdf --yes
 moodle assignment submit 42 report.pdf --draft --yes

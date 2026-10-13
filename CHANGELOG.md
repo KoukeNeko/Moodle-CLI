@@ -1,4 +1,4 @@
-# Unreleased — Claude connector host and a new-release notice
+# Moodle CLI v0.4.0 — Claude connector host, new-release notice and assignment overview
 
 ## Added
 
@@ -100,6 +100,24 @@ from before for `mcp serve`:
   and `core_calendar_get_calendar_events`, which only read. `tool_mobile_get_content` is on the
   reviewed list as a write, so it is reported as reviewed rather than unreviewed.
 
+## Assignment overview, and quizzes over MCP
+
+```sh
+moodle assignment overview --current --json
+```
+
+Lists assignments with the signed-in account's submission state in one command; `--course` and
+`--current` narrow it. The state is read once per assignment, four at a time. A status that could not
+be read comes back as a `null` submission with a `status_error` and `meta.partial`, never as an item
+that was not submitted. New kind `assignment.overview`, with its schema.
+
+The MCP server gains three read tools: `assignment_overview`, `quiz_list` and `quiz_show`. When the
+account is signed in with a browser session it now also falls back to the page and AJAX routes for
+courses, assignments and quizzes, as the CLI does, over both `mcp serve` and `mcp host`. That session
+is read once, when the server starts, so renewing it takes a restart, and the expired-session hint
+says so. `assignment overview` was run read-only against one real university site; the new MCP tools
+were tested against a fake site and have not been run against a real one.
+
 ## New-release notice
 
 At an interactive terminal, a command that succeeds prints one notice on stderr when a newer release
@@ -141,7 +159,8 @@ JSON with no event stream, session, or batching.
 
 ## Contract
 
-`schema_version` stays `1`; no fields were added to the JSON contract. `moodle version` is unchanged.
+`schema_version` stays `1`. One new kind was added, `assignment.overview`; no field was added to an existing
+kind. `moodle version` is unchanged.
 
 # Moodle CLI v0.3.0 — automatic browser sign-in on macOS
 
