@@ -22,6 +22,14 @@ import (
 func chromeProfile(t *testing.T) string {
 	t.Helper()
 	profile := t.TempDir()
+	writeChromeCookies(t, profile)
+	return profile
+}
+
+// writeChromeCookies puts the recorded database where Chrome keeps it inside
+// the profile directory named.
+func writeChromeCookies(t *testing.T, profile string) {
+	t.Helper()
 	raw, err := os.ReadFile("testdata/chrome-cookies.sqlite")
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +41,6 @@ func chromeProfile(t *testing.T) string {
 	if err := os.WriteFile(filepath.Join(network, "Cookies"), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return profile
 }
 
 func requireLinuxChromiumFixture(t *testing.T) {

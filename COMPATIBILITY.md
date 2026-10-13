@@ -80,7 +80,7 @@ timestamp.
 | Exchanging a browser session for a token | Verified against a real site | `auth login --method browser-session`. One paste of a fresh `MoodleSession` cookie becomes an ordinary web service token that outlives the session it came from. Measured on Moodle 4.5.3 behind SSO, 2026-09-26. |
 | Browser SSO with automatic callback | Verified end to end on macOS against one real site | `mobilelaunch` completed eCourse2 SSO, automatic callback, token verification/storage, and a subsequent Web Service course listing on 2026-10-09. Native Apple Event delivery is opt-in tested locally; Linux handler registration and callback transactions are tested, but a full Linux SSO round trip remains unverified. Token expiry for eCourse2 remains unknown. |
 | Manual callback paste | Verified | Every platform. |
-| Importing a browser session (Firefox, Safari, Chromium) | Parsers verified against captured stores | Windows Chrome/Edge/Brave v20 stores are unreadable; Safari needs Full Disk Access, and `auth import-session` is the route when the on-disk cookie is absent. |
+| Importing a browser session (Firefox, Safari, Chromium) | Parsers verified against captured stores | Windows Chrome/Edge/Brave v20 stores are unreadable; on macOS, Chromium cookies protected by the Keychain are refused rather than bypassed; Safari needs Full Disk Access, and `auth import-session` is the route when the on-disk cookie is absent. |
 | Pasting a session cookie | Verified against a real site | `auth import-session`, hidden input or `--stdin`. Measured on Moodle 4.5 behind SSO, 2026-09-25. |
 
 ## Interfaces

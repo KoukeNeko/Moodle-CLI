@@ -76,7 +76,7 @@ macOS archive 本質上無法可重現：公證需要安全時間戳。
 | 用瀏覽器 session 換 token | 真實站台已驗證 | `auth login --method browser-session`。貼一次新的 `MoodleSession` cookie 就換成一般的 web service token，且不隨原 session 過期。2026-09-26 在 SSO 後的 Moodle 4.5.3 量測。 |
 | 瀏覽器 SSO 自動 callback | macOS 單一真實站台端到端已驗證 | 2026-10-09 已以 `mobilelaunch` 完成 eCourse2 SSO、自動 callback、token 驗證與保存，以及後續 Web Service 課程讀取。原生 Apple Event 傳遞有本機主動啟用的測試；Linux handler 註冊與 callback transaction 有測試，但完整 Linux SSO 往返仍未驗證。eCourse2 token 到期時間仍未知。 |
 | 手動貼上 callback | 已驗證 | 所有平台。 |
-| 匯入瀏覽器 session（Firefox、Safari、Chromium） | Parser 以擷取的真實 store 驗證 | Windows 的 Chrome／Edge／Brave v20 無法讀取；Safari 需要完全磁碟存取權，若磁碟上沒有 cookie 則走 `auth import-session`。 |
+| 匯入瀏覽器 session（Firefox、Safari、Chromium） | Parser 以擷取的真實 store 驗證 | Windows 的 Chrome／Edge／Brave v20 無法讀取；macOS 上由 Keychain 保護的 Chromium cookie 會被拒絕，不嘗試繞過；Safari 需要完全磁碟存取權，若磁碟上沒有 cookie 則走 `auth import-session`。 |
 | 貼上 session cookie | 真實站台已驗證 | `auth import-session`，隱藏輸入或 `--stdin`。2026-09-25 在 SSO 後的 Moodle 4.5 量測。 |
 
 ## 介面

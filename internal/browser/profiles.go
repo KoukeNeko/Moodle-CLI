@@ -3,6 +3,7 @@ package browser
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -185,8 +186,8 @@ func PickProfile(profiles []Profile) (Profile, error) {
 	// landed upstream, and this is the caller needing to say which profile.
 	return Profile{}, errs.New(errs.CodeUsage,
 		"this machine has several browser profiles and no single default").
-		WithHint("they hold different sessions, so say which with --profile: " +
-			strings.Join(names, ", "))
+		WithHint("they hold different sessions (" + strings.Join(names, ", ") +
+			"); --list-profiles shows where each one is, and --profile takes its path")
 }
 
 // chromiumRoots are where the Chromium family keeps its user data, by browser.
@@ -195,15 +196,23 @@ func PickProfile(profiles []Profile) (Profile, error) {
 // settings. They are listed rather than generalised from Chrome, because
 // assuming one from another is how a reader ends up looking in the wrong
 // place and reporting that the user is not signed in.
+//
+// The Google Chrome channels (Beta, Dev, Canary) are separate installs too.
+// Their directory names follow Chromium's docs/user_data_dir.md and are not
+// all the obvious ones: Canary is "Chrome SxS" on Windows, and Dev is
+// "google-chrome-unstable" on Linux.
 func chromiumRoots(home, configHome string) map[string]string {
 	switch runtime.GOOS {
 	case "darwin":
 		support := filepath.Join(home, "Library", "Application Support")
 		return map[string]string{
-			"Chrome":   filepath.Join(support, "Google", "Chrome"),
-			"Chromium": filepath.Join(support, "Chromium"),
-			"Edge":     filepath.Join(support, "Microsoft Edge"),
-			"Brave":    filepath.Join(support, "BraveSoftware", "Brave-Browser"),
+			"Chrome":        filepath.Join(support, "Google", "Chrome"),
+			"Chrome Beta":   filepath.Join(support, "Google", "Chrome Beta"),
+			"Chrome Dev":    filepath.Join(support, "Google", "Chrome Dev"),
+			"Chrome Canary": filepath.Join(support, "Google", "Chrome Canary"),
+			"Chromium":      filepath.Join(support, "Chromium"),
+			"Edge":          filepath.Join(support, "Microsoft Edge"),
+			"Brave":         filepath.Join(support, "BraveSoftware", "Brave-Browser"),
 		}
 	case "windows":
 		local := configHome
@@ -214,20 +223,26 @@ func chromiumRoots(home, configHome string) map[string]string {
 			local = filepath.Join(home, "AppData", "Local")
 		}
 		return map[string]string{
-			"Chrome":   filepath.Join(local, "Google", "Chrome", "User Data"),
-			"Chromium": filepath.Join(local, "Chromium", "User Data"),
-			"Edge":     filepath.Join(local, "Microsoft", "Edge", "User Data"),
-			"Brave":    filepath.Join(local, "BraveSoftware", "Brave-Browser", "User Data"),
+			"Chrome":        filepath.Join(local, "Google", "Chrome", "User Data"),
+			"Chrome Beta":   filepath.Join(local, "Google", "Chrome Beta", "User Data"),
+			"Chrome Dev":    filepath.Join(local, "Google", "Chrome Dev", "User Data"),
+			"Chrome Canary": filepath.Join(local, "Google", "Chrome SxS", "User Data"),
+			"Chromium":      filepath.Join(local, "Chromium", "User Data"),
+			"Edge":          filepath.Join(local, "Microsoft", "Edge", "User Data"),
+			"Brave":         filepath.Join(local, "BraveSoftware", "Brave-Browser", "User Data"),
 		}
 	default:
 		if configHome == "" {
 			configHome = filepath.Join(home, ".config")
 		}
 		return map[string]string{
-			"Chrome":   filepath.Join(configHome, "google-chrome"),
-			"Chromium": filepath.Join(configHome, "chromium"),
-			"Edge":     filepath.Join(configHome, "microsoft-edge"),
-			"Brave":    filepath.Join(configHome, "BraveSoftware", "Brave-Browser"),
+			"Chrome":        filepath.Join(configHome, "google-chrome"),
+			"Chrome Beta":   filepath.Join(configHome, "google-chrome-beta"),
+			"Chrome Dev":    filepath.Join(configHome, "google-chrome-unstable"),
+			"Chrome Canary": filepath.Join(configHome, "google-chrome-canary"),
+			"Chromium":      filepath.Join(configHome, "chromium"),
+			"Edge":          filepath.Join(configHome, "microsoft-edge"),
+			"Brave":         filepath.Join(configHome, "BraveSoftware", "Brave-Browser"),
 		}
 	}
 }
@@ -246,7 +261,8 @@ type localState struct {
 //
 // A browser's profiles are named in its Local State file rather than in the
 // directory listing: the directories are called "Default", "Profile 1" and so
-// on, while the names people recognise live in that index.
+// on, while the names people recognise live in that index. A profile with no
+// cookie database is left out: there is nothing in it to import.
 func ChromiumProfiles(home, configHome string) []Profile {
 	var found []Profile
 	for browserName, root := range chromiumRoots(home, configHome) {
@@ -259,6 +275,15 @@ func ChromiumProfiles(home, configHome string) []Profile {
 			continue
 		}
 		for dir, info := range state.Profile.InfoCache {
+			// Local State outlives the data it indexes: a profile can be named
+			// there with no cookie database on disk. Offering it, let alone
+			// marking it the default, can only end in "no cookie database"
+			// while another profile holds the session. Only a missing file
+			// means that; any other error keeps the profile listed so an
+			// explicit import surfaces it, as SafariProfiles does.
+			if _, err := os.Stat(chromiumCookiesPath(filepath.Join(root, dir))); errors.Is(err, os.ErrNotExist) {
+				continue
+			}
 			label := browserName
 			if info.Name != "" && info.Name != browserName {
 				label = browserName + " — " + info.Name

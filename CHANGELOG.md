@@ -66,9 +66,16 @@ from before for `mcp serve`:
 
 ## Fixed
 
-Values in page requests are now URL-encoded. A course or activity reference containing `&`, `#`, a
-space or `%` used to be pasted into the query string of a request that carries the browser session,
-so it could add parameters or change the request; one with a space produced a malformed request.
+- Values in page requests are now URL-encoded. A course or activity reference containing `&`, `#`, a
+  space or `%` used to be pasted into the query string of a request that carries the browser session,
+  so it could add parameters or change the request; one with a space produced a malformed request.
+- `auth import-browser` now finds Chrome Beta, Dev and Canary, listed as "Chrome Beta", "Chrome Dev"
+  and "Chrome Canary". A Chromium-family profile with no cookie database is no longer listed or
+  chosen as the default, so an emptied `Chromium/Default` no longer hides the profile that holds the
+  session. Only a missing database hides a profile: if it cannot be looked up for another reason,
+  such as permission denied, the profile stays listed so an explicit import reports the real error.
+  The "several browser profiles" hint now says `--profile` takes a path. On macOS, Chromium-family
+  cookies protected by the Keychain are still refused.
 
 ## New-release notice
 
