@@ -89,7 +89,8 @@ func Run(ctx context.Context, build Build, args []string) int {
 		}
 		if *verbose {
 			// stderr, because stdout carries the result. The trace redacts
-			// the token and the session cookie before writing them.
+			// tokens, keys and the session cookie, in what is sent and in
+			// what the site answers, before writing them.
 			options = append(options, moodle.WithTrace(streams.Err))
 		}
 		return moodle.NewClient(target, options...)

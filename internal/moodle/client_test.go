@@ -232,6 +232,254 @@ func TestTraceRedactsTheToken(t *testing.T) {
 	}
 }
 
+// Credentials Moodle hands back in a response body. They are distinctive on
+// purpose: a prefix of one anywhere in a trace or an error is a leak.
+const (
+	bodyToken     = "qZ7kLm2VbN8xRt4YpC9wDe3HsJ6aGf0u"
+	bodyPrivate   = "Hn3Bv6Xc9Zl1Km4Jq8Wr2Ts5Yd7Fg0PaUe3Ox6Ci9Lb2Nv5Mz8Ht1Rw4Sk7Dj0Ay"
+	bodyKey       = "Xp4Wd9Tg2Ro7Ks5Mb1Ve8Lc3Hn6Zq0Fj"
+	bodyAccessKey = "Ju2Fa8Pe5Nb1Yt7Gx4Co9Ml3Rs6Dk0Vh"
+	bodyCookie    = "Bw6Ez1Qi4Sg8Ur3Ty7Kd2Na9Lf5Mc0Xo"
+	bodyQRKey     = "Vc3Hy8Rb5Ne1Tp6Wm9Zj2Qk4Ud7Gs0Lx"
+)
+
+func TestTraceNeverShowsASecretFromAResponseBody(t *testing.T) {
+	// The request side was redacted from the start; the body the site answers
+	// with was summarised verbatim, so login/token.php and the QR exchange
+	// printed the token they had just issued.
+	ctx := context.Background()
+	login := func(c *moodle.Client) error {
+		_, _, err := c.LoginToken(ctx, "student1", "pw", "")
+		return err
+	}
+	exchange := func(c *moodle.Client) error {
+		_, _, err := c.ExchangeQRLogin(ctx, moodle.QRLogin{Key: bodyQRKey, UserID: "4"})
+		return err
+	}
+	rest := func(function string) func(*moodle.Client) error {
+		return func(c *moodle.Client) error { return c.Call(ctx, "tok", function, nil, nil) }
+	}
+	// A body whose token value starts at offset `at`, so that the 120
+	// character summary limit falls inside it.
+	straddle := func(at int) string {
+		head, tail := `{"p":"`, `","token":"`
+		return head + strings.Repeat("x", at-len(head)-len(tail)) + tail + bodyToken + `"}`
+	}
+
+	cases := []struct {
+		name    string
+		call    func(*moodle.Client) error
+		headers map[string]string
+		reply   string
+		secrets []string // none may appear anywhere in the trace
+		visible []string // must still appear, or the summary is no use
+	}{{
+		name:    "login/token.php",
+		call:    login,
+		reply:   `{"token":"` + bodyToken + `","privatetoken":"` + bodyPrivate + `"}`,
+		secrets: []string{bodyToken, bodyPrivate, bodyPrivate[:30]},
+		visible: []string{"privatetoken", moodle.Redacted},
+	}, {
+		name:    "the QR exchange",
+		call:    exchange,
+		reply:   `[{"error":false,"data":{"token":"` + bodyToken + `","privatetoken":"` + bodyPrivate + `"}}]`,
+		secrets: []string{bodyToken, bodyPrivate, bodyPrivate[:30], bodyQRKey},
+		visible: []string{"privatetoken", moodle.Redacted},
+	}, {
+		name: "an autologin key as PHP writes it",
+		call: rest("tool_mobile_get_autologin_key"),
+		reply: `{"key":"` + bodyKey + `","autologinurl":"https:\/\/moodle.example.edu` +
+			`\/admin\/tool\/mobile\/autologin.php?userid=4&key=` + bodyKey + `"}`,
+		secrets: []string{bodyKey, bodyKey[:10]},
+		visible: []string{"autologinurl", moodle.Redacted},
+	}, {
+		name: "an autologin key as Go escapes it",
+		call: rest("tool_mobile_get_autologin_key"),
+		reply: `{"key":"` + bodyKey + `","autologinurl":"https://moodle.example.edu` +
+			`/admin/tool/mobile/autologin.php?userid=4\u0026key=` + bodyKey + `"}`,
+		secrets: []string{bodyKey, bodyKey[:10]},
+		visible: []string{"autologinurl", moodle.Redacted},
+	}, {
+		name: "a key in a URL under a name nobody listed",
+		call: rest("local_example_next"),
+		reply: `{"next":"https:\/\/moodle.example.edu\/go.php?userid=4\u0026key=` +
+			bodyKey + `\u0026page=2"}`,
+		secrets: []string{bodyKey, bodyKey[:10]},
+		visible: []string{"userid=4", "page=2"},
+	}, {
+		name:    "a body that is not JSON",
+		call:    rest("local_example_plain"),
+		reply:   "token=" + bodyToken + "&privatetoken=" + bodyPrivate + "&userid=4",
+		secrets: []string{bodyToken, bodyPrivate, bodyPrivate[:30]},
+		visible: []string{"userid=4"},
+	}, {
+		name:    "JSON laid out for a person",
+		call:    login,
+		reply:   "{\n  \"Token\" : \"" + bodyToken + "\",\n  \"privatetoken\" : \"" + bodyPrivate + "\"\n}",
+		secrets: []string{bodyToken, bodyPrivate},
+		visible: []string{moodle.Redacted},
+	}, {
+		name:    "a secret containing an escaped quote",
+		call:    login,
+		reply:   `{"token":"` + bodyToken[:10] + `\"` + bodyToken[10:] + `"}`,
+		secrets: []string{bodyToken[:10], bodyToken[10:]},
+		visible: []string{moodle.Redacted},
+	}, {
+		name:    "the user's private access key in site info",
+		call:    rest("core_webservice_get_site_info"),
+		reply:   `{"sitename":"Test Moodle","userprivateaccesskey":"` + bodyAccessKey + `","userid":4}`,
+		secrets: []string{bodyAccessKey, bodyAccessKey[:10]},
+		visible: []string{"Test Moodle", "userid"},
+	}, {
+		name: "cookie headers",
+		call: rest("core_webservice_get_site_info"),
+		// No request this client traces carries a Cookie header, so a response
+		// header of that name stands in for it: both go through RedactHeader.
+		headers: map[string]string{
+			"Set-Cookie": "MoodleSession=" + bodyCookie + "; Path=/; HttpOnly",
+			"Cookie":     "MoodleSession=" + bodyCookie,
+		},
+		reply:   `{"sitename":"Test Moodle"}`,
+		secrets: []string{bodyCookie},
+		visible: []string{"Set-Cookie", "Test Moodle"},
+	}, {
+		name:    "an ordinary answer",
+		call:    rest("core_webservice_get_site_info"),
+		reply:   `{"sitename":"Test Moodle","username":"student1","userid":4,"release":"5.2.3"}`,
+		visible: []string{"sitename", "Test Moodle", "student1", "5.2.3"},
+	}, {
+		name:    "a body cut off inside a secret",
+		call:    rest("core_webservice_get_site_info"),
+		reply:   `{"sitename":"Test Moodle","token":"` + bodyToken,
+		secrets: []string{bodyToken, bodyToken[:20]},
+		visible: []string{"Test Moodle", moodle.Redacted},
+	}, {
+		name:    "a secret that outlasts the part of the body that is searched",
+		call:    rest("core_webservice_get_site_info"),
+		reply:   `{"sitename":"Test Moodle","token":"` + strings.Repeat(bodyToken, 200) + `"}`,
+		secrets: []string{bodyToken[:20]},
+		visible: []string{"Test Moodle", moodle.Redacted},
+	}, {
+		name:    "a token that starts well inside the limit",
+		call:    rest("core_webservice_get_site_info"),
+		reply:   straddle(100),
+		secrets: []string{bodyToken, bodyToken[:20]},
+		visible: []string{moodle.Redacted},
+	}, {
+		name:    "a token whose first characters are the last the limit allows",
+		call:    rest("core_webservice_get_site_info"),
+		reply:   straddle(118),
+		secrets: []string{bodyToken, bodyToken[:2]},
+		// The limit now cuts the marker short instead of the secret.
+		visible: []string{`token`},
+	}}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var trace bytes.Buffer
+			client := driftSite(t, func(w http.ResponseWriter, _ *http.Request) {
+				for name, value := range tc.headers {
+					w.Header().Set(name, value)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tc.reply))
+			}, moodle.WithTrace(&trace))
+
+			// Whether the call itself succeeds is not the point; that the
+			// response was traced is.
+			_ = tc.call(client)
+
+			got := trace.String()
+			if !strings.Contains(got, "<   body:") {
+				t.Fatalf("the response was not traced:\n%s", got)
+			}
+			for _, secret := range tc.secrets {
+				if strings.Contains(got, secret) {
+					t.Errorf("%q appears in the trace:\n%s", secret, got)
+				}
+			}
+			for _, want := range tc.visible {
+				if !strings.Contains(got, want) {
+					t.Errorf("the trace lost %q, which a reader needs:\n%s", want, got)
+				}
+			}
+		})
+	}
+}
+
+func TestACredentialDoesNotReachTheCallersThroughAnErrorExcerpt(t *testing.T) {
+	// The same excerpt that the trace prints is quoted in the hint when a reply
+	// cannot be read, and in the message when the site answers with an error
+	// status. Neither is behind --verbose, and the MCP server hands both to
+	// whatever agent is connected.
+	ctx := context.Background()
+	login := func(c *moodle.Client) error {
+		_, _, err := c.LoginToken(ctx, "student1", "pw", "")
+		return err
+	}
+	exchange := func(c *moodle.Client) error {
+		_, _, err := c.ExchangeQRLogin(ctx, moodle.QRLogin{Key: bodyQRKey, UserID: "4"})
+		return err
+	}
+
+	cases := []struct {
+		name    string
+		call    func(*moodle.Client) error
+		status  int
+		reply   string
+		visible string // part of the answer that must survive, in the hint or message
+	}{{
+		name:    "a reply that cannot be decoded",
+		call:    login,
+		status:  http.StatusOK,
+		reply:   `{"token":"` + bodyToken + `","privatetoken":12345,"note":"drifted"}`,
+		visible: "drifted",
+	}, {
+		name:    "a QR reply that cannot be decoded",
+		call:    exchange,
+		status:  http.StatusOK,
+		reply:   `[{"error":false,"data":{"token":"` + bodyToken + `","privatetoken":12345,"note":"drifted"}}]`,
+		visible: "drifted",
+	}, {
+		name:    "an error status with a JSON body",
+		call:    login,
+		status:  http.StatusBadGateway,
+		reply:   `{"token":"` + bodyToken + `","detail":"upstream"}`,
+		visible: "upstream",
+	}, {
+		name:    "an error status with a form-shaped body",
+		call:    login,
+		status:  http.StatusInternalServerError,
+		reply:   "token=" + bodyToken + "&privatetoken=" + bodyPrivate + "&detail=upstream",
+		visible: "upstream",
+	}}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			client := driftSite(t, func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.reply))
+			})
+
+			err := tc.call(client)
+			if err == nil {
+				t.Fatal("the reply was accepted")
+			}
+			e := errs.From(err)
+			shown := e.Message + "\n" + e.Hint + "\n" + e.Error()
+			for _, secret := range []string{bodyToken, bodyToken[:20], bodyPrivate} {
+				if strings.Contains(shown, secret) {
+					t.Errorf("%q appears in the error:\n%s", secret, shown)
+				}
+			}
+			if !strings.Contains(shown, tc.visible) {
+				t.Errorf("the error lost %q, which a reader needs:\n%s", tc.visible, shown)
+			}
+		})
+	}
+}
+
 func TestRedaction(t *testing.T) {
 	raw, err := url.Parse("https://example.edu/webservice/pluginfile.php?token=abc123&forcedownload=1")
 	if err != nil {
@@ -490,7 +738,7 @@ func TestAFunctionTheSiteDoesNotOfferIsNotWorthRetrying(t *testing.T) {
 
 // driftSite serves one hand-written response, for the shapes a real Moodle
 // never sends but a network between here and there does.
-func driftSite(t *testing.T, handler http.HandlerFunc) *moodle.Client {
+func driftSite(t *testing.T, handler http.HandlerFunc, opts ...moodle.Option) *moodle.Client {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -498,7 +746,8 @@ func driftSite(t *testing.T, handler http.HandlerFunc) *moodle.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return moodle.NewClient(site.Site{BaseURL: base}, moodle.WithHTTPClient(server.Client()))
+	opts = append([]moodle.Option{moodle.WithHTTPClient(server.Client())}, opts...)
+	return moodle.NewClient(site.Site{BaseURL: base}, opts...)
 }
 
 func TestABlockingIntermediaryIsNotACredentialProblem(t *testing.T) {

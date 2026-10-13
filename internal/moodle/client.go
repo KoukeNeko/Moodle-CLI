@@ -467,10 +467,7 @@ func describeBody(body []byte) string {
 			"display; an administrator has debugging output switched on"
 	}
 	const limit = 120
-	if len(trimmed) > limit {
-		trimmed = trimmed[:limit] + "…"
-	}
-	return fmt.Sprintf("%q", trimmed)
+	return fmt.Sprintf("%q", excerpt(trimmed, limit))
 }
 
 // phpNotice names the kind of PHP diagnostic a body starts with, empty when
@@ -616,10 +613,7 @@ func describeErrorBody(body []byte) string {
 		return ""
 	}
 	const limit = 160
-	if len(trimmed) > limit {
-		return trimmed[:limit] + "…"
-	}
-	return trimmed
+	return excerpt(trimmed, limit)
 }
 
 func networkError(ctx context.Context, cause error, function string) error {

@@ -76,6 +76,16 @@ from before for `mcp serve`:
   such as permission denied, the profile stays listed so an explicit import reports the real error.
   The "several browser profiles" hint now says `--profile` takes a path. On macOS, Chromium-family
   cookies protected by the Keychain are still refused.
+- `--verbose` no longer prints credentials a site answers with. The trace masked what was sent but
+  quoted the first 120 characters of whatever came back, so `login/token.php` and the QR exchange
+  printed the web service token they had just issued and most of the private token, and
+  `tool_mobile_get_autologin_key` its key. The same excerpt appears in the hint when a reply cannot
+  be read and in the message for an error status, so those showed the values without the flag, and
+  an MCP client received them. The excerpt now masks any JSON member or `name=value` pair named
+  `token`, `privatetoken`, `wstoken`, `qrloginkey`, `key`, `autologinurl`, `userprivateaccesskey`,
+  `sesskey`, `passport` or `password` before it is cut, so a secret that straddles the limit is hidden
+  whole. A request parameter named `key` or `autologinurl` is now redacted in the trace too, and a
+  calendar or forum link carrying one of these names is no longer shown.
 
 ## New-release notice
 
